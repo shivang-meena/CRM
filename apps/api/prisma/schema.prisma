@@ -1,0 +1,736 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadStatus {
+  NEW
+  PROCESSING
+  CLOSE_BY
+  CONFIRM
+  CANCEL
+}
+
+enum LeadSource {
+  CUSTOMER_REFERENCE
+  WEBSITE
+  CALL
+  WHATSAPP
+  SOCIAL_MEDIA
+  OTHER
+}
+
+model Lead {
+  id              String     @id @default(uuid())
+  name            String
+  companyName     String?
+  phone           String
+  email           String?
+  address         String?
+  comment         String?
+  reference       String?
+  status          LeadStatus @default(NEW)
+  source          LeadSource @default(CUSTOMER_REFERENCE)
+  label           String?
+  estimatedAmount Decimal    @default(0) @db.Decimal(14, 2)
+  rating          Int        @default(0)
+  nextFollowUpAt  DateTime?
+  createdBy       String
+  assignedTo      String
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?  @db.Timestamptz(3)
+  version         Int        @default(1)
+  followups       LeadFollowUp[]
+  tasks           LeadTask[]
+  meetings        LeadMeeting[]
+  reminders       LeadReminder[]
+  history         LeadHistory[]
+  documents       SalesDocument[]
+  notifications   CrmNotification[]
+  customer        Customer?
+
+  @@index([status])
+  @@map("leads")
+}
+
+model Customer {
+  id              String   @id @default(uuid())
+  leadId          String   @unique
+  convertedAt     DateTime @default(now()) @db.Timestamptz(3)
+  convertedById   String
+  convertedByName String
+  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  documents       SalesDocument[]
+
+  @@index([convertedAt, id])
+  @@map("customers")
+}
+
+enum FollowUpChannel {
+  CALL
+  WHATSAPP
+  EMAIL
+  VISIT
+  OTHER
+}
+
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum ActivityOrigin {
+  USER
+  LEGACY
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MeetingMode {
+  ONLINE
+  PHONE
+  IN_PERSON
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum ReminderStatus {
+  PENDING
+  TRIGGERED
+  DISMISSED
+  CANCELLED
+}
+
+enum CalendarEventCategory {
+  EVENT
+  HOLIDAY
+  SERVICE
+}
+
+enum HistoryEntity {
+  LEAD
+  FOLLOWUP
+  TASK
+  REMINDER
+  MEETING
+  QUOTATION
+  INVOICE
+  PAYMENT
+}
+
+enum HistoryAction {
+  CREATED
+  UPDATED
+  COMPLETED
+  CANCELLED
+  DELETED
+  ARCHIVED
+  TRIGGERED
+  DISMISSED
+  FINALIZED
+  ACCEPTED
+  REJECTED
+  ISSUED
+  VOIDED
+  CONVERTED
+  IMPORTED
+}
+
+enum DocumentType {
+  QUOTATION
+  INVOICE
+}
+
+enum DocumentStatus {
+  DRAFT
+  FINALIZED
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  ISSUED
+  VOID
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CARD
+  OTHER
+}
+
+enum StandaloneTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum StandaloneTaskStatus {
+  NEW
+  IN_FEEDBACK
+  COMPLETED
+  REJECTED
+  PROCESSING
+}
+
+enum TaskRecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum TaskHistoryAction {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  LABEL_CHANGED
+  DELETED
+  RECURRENCE_STARTED
+  RECURRENCE_UPDATED
+  RECURRENCE_STOPPED
+  OCCURRENCE_GENERATED
+}
+
+model LeadFollowUp {
+  id String @id @default(uuid())
+  leadId String
+  createdById String
+  createdByName String
+  updatedById String?
+  updatedByName String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+  version Int @default(1)
+  requestKey String?
+  requestHash String?
+  title String
+  description String?
+  scheduledAt DateTime @db.Timestamptz(3)
+  channel FollowUpChannel @default(CALL)
+  status FollowUpStatus @default(PENDING)
+  assignedTo String
+  outcome String?
+  completedAt DateTime? @db.Timestamptz(3)
+  origin ActivityOrigin @default(USER)
+  legacyKey String? @unique
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  reminders LeadReminder[]
+  @@unique([createdById, requestKey])
+  @@index([leadId, deletedAt, scheduledAt])
+  @@index([leadId, status, scheduledAt])
+  @@map("lead_followups")
+}
+
+model LeadTask {
+  id String @id @default(uuid())
+  leadId String
+  createdById String
+  createdByName String
+  updatedById String?
+  updatedByName String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+  version Int @default(1)
+  requestKey String?
+  requestHash String?
+  title String
+  description String?
+  dueAt DateTime @db.Timestamptz(3)
+  priority TaskPriority @default(MEDIUM)
+  status TaskStatus @default(TODO)
+  assignedTo String
+  completedAt DateTime? @db.Timestamptz(3)
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  reminders LeadReminder[]
+  @@unique([createdById, requestKey])
+  @@index([leadId, deletedAt, dueAt])
+  @@index([status, dueAt])
+  @@map("lead_tasks")
+}
+
+model LeadMeeting {
+  id String @id @default(uuid())
+  leadId String?
+  createdById String
+  createdByName String
+  updatedById String?
+  updatedByName String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+  version Int @default(1)
+  requestKey String?
+  requestHash String?
+  title String
+  agenda String?
+  startAt DateTime @db.Timestamptz(3)
+  endAt DateTime @db.Timestamptz(3)
+  timezone String @default("Asia/Kolkata")
+  mode MeetingMode @default(ONLINE)
+  location String?
+  meetingUrl String?
+  attendees Json @default("[]")
+  assignedTo String
+  status MeetingStatus @default(SCHEDULED)
+  outcome String?
+  completedAt DateTime? @db.Timestamptz(3)
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  reminders LeadReminder[]
+  @@unique([createdById, requestKey])
+  @@index([leadId, deletedAt, startAt])
+  @@index([status, startAt])
+  @@map("lead_meetings")
+}
+
+model LeadReminder {
+  id String @id @default(uuid())
+  leadId String?
+  createdById String
+  createdByName String
+  updatedById String?
+  updatedByName String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+  version Int @default(1)
+  requestKey String?
+  requestHash String?
+  title String
+  message String?
+  remindAt DateTime @db.Timestamptz(3)
+  recipientId String
+  status ReminderStatus @default(PENDING)
+  followUpId String?
+  taskId String?
+  meetingId String?
+  triggeredAt DateTime? @db.Timestamptz(3)
+  dismissedAt DateTime? @db.Timestamptz(3)
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  followUp LeadFollowUp? @relation(fields: [followUpId], references: [id], onDelete: Restrict)
+  task LeadTask? @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  meeting LeadMeeting? @relation(fields: [meetingId], references: [id], onDelete: Restrict)
+  notification CrmNotification?
+  @@unique([createdById, requestKey])
+  @@index([status, deletedAt, remindAt])
+  @@map("lead_reminders")
+}
+
+model LeadHistory {
+  id String @id @default(uuid())
+  leadId String
+  entityType HistoryEntity
+  entityId String?
+  action HistoryAction
+  actorId String
+  actorName String
+  summary String
+  changes Json?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Restrict)
+
+
+  @@index([leadId, createdAt, id])
+  @@map("lead_history")
+}
+
+enum SalesDocumentType {
+  QUOTATION
+  INVOICE
+}
+
+enum SalesDocumentStatus {
+  DRAFT
+  FINALIZED
+  ACCEPTED
+  REJECTED
+  ISSUED
+  VOID
+}
+
+enum GstMode {
+  NON_GST
+  IGST
+  SGST_CGST
+}
+
+enum DiscountType {
+  FIXED
+  OVERALL
+  PERCENTAGE
+  FLAT_PER_UNIT
+}
+
+enum InvoicePaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  HALF_PAID
+  PAID
+}
+
+model SalesDocument {
+  id                      String                @id @default(uuid())
+  documentNo              String                @unique
+  type                    SalesDocumentType     @default(INVOICE)
+  status                  SalesDocumentStatus   @default(ISSUED)
+  sourceQuotationId       String?               @unique
+  customerId              String
+  customer                Customer              @relation(fields: [customerId], references: [id])
+  leadId                  String?
+  lead                    Lead?                 @relation(fields: [leadId], references: [id])
+  issueDate               DateTime              @default(now())
+  paymentDate             DateTime?             @db.Date
+  nextPaymentDate         DateTime?
+  gstMode                 GstMode               @default(NON_GST)
+  inclusiveGst            Boolean               @default(false)
+  currency                String                @default("INR")
+  paymentStatus           InvoicePaymentStatus  @default(UNPAID)
+  paymentMethodId         String?
+  paymentMethod           PaymentMethodMaster?  @relation(fields: [paymentMethodId], references: [id])
+  brochureId              String?
+  brochure                BrochureMaster?       @relation(fields: [brochureId], references: [id])
+  termsAndConditions      String?
+  emailAutomation         Boolean               @default(false)
+  whatsappAutomation      Boolean               @default(false)
+
+  // Authoritative Financial Totals
+  grossSubtotal           Decimal               @default(0) @db.Decimal(12, 2)
+  subtotal                Decimal               @default(0) @db.Decimal(12, 2) // Taxable subtotal
+  discountTotal           Decimal               @default(0) @db.Decimal(12, 2)
+  igstTotal               Decimal               @default(0) @db.Decimal(12, 2)
+  sgstTotal               Decimal               @default(0) @db.Decimal(12, 2)
+  cgstTotal               Decimal               @default(0) @db.Decimal(12, 2)
+  taxTotal                Decimal               @default(0) @db.Decimal(12, 2)
+  grandTotal              Decimal               @default(0) @db.Decimal(12, 2)
+  paidAmount              Decimal               @default(0) @db.Decimal(12, 2)
+  dueAmount               Decimal               @default(0) @db.Decimal(12, 2)
+
+  // Immutable Document Snapshots (Preserved at issue time)
+  customerNameSnapshot    String?
+  companyNameSnapshot     String?
+  customerPhoneSnapshot   String?
+  customerEmailSnapshot   String?
+  customerAddressSnapshot String?
+  customerGstinSnapshot   String?
+  sellerCompanyName       String                @default("CRAZYWEBDEV TECHNOLOGIES")
+  sellerPhone             String                @default("918081048515")
+  sellerEmail             String                @default("contact@crazywebdev.com")
+  sellerAddress           String                @default("RISE Jhansi Incubation Center, Jhansi Nagar Nigam Premises, Near Elite Chauraha, Civil Lines")
+  bankName                String                @default("HDFC Bank")
+  bankAccountNo           String                @default("50200103608173")
+  bankIfsc                String                @default("HDFC0009621")
+  signatoryName           String                @default("Vishwajeet")
+
+  createdById             String?
+  createdByName           String                @default("System User")
+  requestKey              String?               @unique
+  version                 Int                   @default(1)
+  deletedAt               DateTime?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  items                   SalesDocumentItem[]
+  payments                InvoicePayment[]
+
+  @@index([type, deletedAt, issueDate])
+  @@index([customerId])
+  @@map("sales_documents")
+}
+
+model SalesDocumentItem {
+  id              String        @id @default(uuid())
+  salesDocumentId String
+  salesDocument   SalesDocument @relation(fields: [salesDocumentId], references: [id], onDelete: Cascade)
+  productName     String
+  hsnSac          String?
+  quantity        Int           @default(1)
+  unitPrice       Decimal       @default(0) @db.Decimal(12, 2)
+  discountValue   Decimal       @default(0) @db.Decimal(12, 2)
+  discountType    DiscountType  @default(FIXED)
+  discountAmount  Decimal       @default(0) @db.Decimal(12, 2)
+  grossAmount     Decimal       @default(0) @db.Decimal(12, 2)
+  netAmount       Decimal       @default(0) @db.Decimal(12, 2) // Taxable base amount
+  igstRate        Decimal       @default(0) @db.Decimal(5, 2)
+  igstAmount      Decimal       @default(0) @db.Decimal(12, 2)
+  sgstRate        Decimal       @default(0) @db.Decimal(5, 2)
+  sgstAmount      Decimal       @default(0) @db.Decimal(12, 2)
+  cgstRate        Decimal       @default(0) @db.Decimal(5, 2)
+  cgstAmount      Decimal       @default(0) @db.Decimal(12, 2)
+  taxPercent      Decimal       @default(0) @db.Decimal(5, 2) // Combined rate for backward compatibility
+  taxAmount       Decimal       @default(0) @db.Decimal(12, 2)
+  totalAmount     Decimal       @default(0) @db.Decimal(12, 2)
+  comments        String?
+  sortOrder       Int           @default(0)
+
+  @@index([salesDocumentId])
+  @@map("sales_document_items")
+}
+
+model PaymentMethodMaster {
+  id            String          @id @default(uuid())
+  method        String
+  bankName      String?
+  accountNo     String?
+  ifscCode      String?
+  isDefault     Boolean         @default(false)
+  isActive      Boolean         @default(true)
+  version       Int             @default(1)
+  deletedAt     DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  documents     SalesDocument[]
+
+  @@map("payment_method_masters")
+}
+
+model BrochureMaster {
+  id            String          @id @default(uuid())
+  brochureName  String
+  type          String          @default("PDF")
+  startAfter    String          @default("Immediate")
+  fileUrl       String?
+  version       Int             @default(1)
+  deletedAt     DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  documents     SalesDocument[]
+
+  @@map("brochure_masters")
+}
+
+model DocumentSequence {
+  id String @id @default(uuid())
+  documentType DocumentType
+  year Int
+  lastNumber Int @default(0)
+
+  @@unique([documentType, year])
+
+  @@map("document_sequences")
+}
+
+model InvoicePayment {
+  id String @id @default(uuid())
+  invoiceId String
+  amount Decimal @default(0) @db.Decimal(16, 2)
+  paidAt DateTime @db.Timestamptz(3)
+  method PaymentMethod
+  reference String?
+  note String?
+  createdById String
+  createdByName String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  requestKey String
+  requestHash String
+  voidedAt DateTime? @db.Timestamptz(3)
+  voidedById String?
+  voidReason String?
+  invoice SalesDocument @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  @@unique([createdById, requestKey])
+  @@index([invoiceId, paidAt])
+  @@map("invoice_payments")
+}
+
+model CrmNotification {
+  id String @id @default(uuid())
+  leadId String?
+  reminderId String @unique
+  recipientId String
+  title String
+  message String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  readAt DateTime? @db.Timestamptz(3)
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  reminder LeadReminder @relation(fields: [reminderId], references: [id], onDelete: Restrict)
+
+  @@index([recipientId, readAt, createdAt])
+  @@map("crm_notifications")
+}
+
+model TaskLabel {
+  id              String                    @id @default(uuid())
+  name            String
+  normalizedName  String
+  colour          String
+  createdAt       DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                  @updatedAt @db.Timestamptz(3)
+  deletedAt       DateTime?                 @db.Timestamptz(3)
+  tasks           Task[]
+  recurrenceSeries TaskRecurrenceSeries[]
+
+  @@index([normalizedName, deletedAt])
+  @@map("task_labels")
+}
+
+model TaskRecurrenceSeries {
+  id                String                  @id @default(uuid())
+  subject           String
+  description       String?
+  priority          StandaloneTaskPriority  @default(LOW)
+  labelId           String?
+  assignedTo        String
+  createdById       String
+  createdByName     String
+  frequency         TaskRecurrenceFrequency
+  interval          Int                     @default(1)
+  timezone          String                  @default("Asia/Kolkata")
+  anchorStartAt     DateTime                @db.Timestamptz(3)
+  durationMinutes   Int
+  recurrenceEndsAt  DateTime?               @db.Timestamptz(3)
+  nextOccurrenceAt  DateTime                @db.Timestamptz(3)
+  active            Boolean                 @default(true)
+  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                @updatedAt @db.Timestamptz(3)
+  version           Int                     @default(1)
+  label             TaskLabel?              @relation(fields: [labelId], references: [id], onDelete: Restrict)
+  tasks             Task[]
+
+  @@index([active, nextOccurrenceAt])
+  @@index([labelId, active])
+  @@map("task_recurrence_series")
+}
+
+model Task {
+  id                String                  @id @default(uuid())
+  subject           String
+  description       String?
+  priority          StandaloneTaskPriority  @default(LOW)
+  status            StandaloneTaskStatus     @default(NEW)
+  labelId           String?
+  startAt           DateTime                @db.Timestamptz(3)
+  endAt             DateTime                @db.Timestamptz(3)
+  assignedTo        String
+  createdById       String
+  createdByName     String
+  updatedById       String?
+  updatedByName     String?
+  completedAt       DateTime?               @db.Timestamptz(3)
+  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                @updatedAt @db.Timestamptz(3)
+  deletedAt         DateTime?               @db.Timestamptz(3)
+  version           Int                     @default(1)
+  requestKey        String?
+  requestHash       String?
+  recurrenceSeriesId String?
+  occurrenceAt      DateTime?               @db.Timestamptz(3)
+  label             TaskLabel?              @relation(fields: [labelId], references: [id], onDelete: Restrict)
+  recurrenceSeries  TaskRecurrenceSeries?   @relation(fields: [recurrenceSeriesId], references: [id], onDelete: Restrict)
+  history           TaskHistory[]
+
+  @@unique([createdById, requestKey])
+  @@unique([recurrenceSeriesId, occurrenceAt])
+  @@index([status, deletedAt, endAt])
+  @@index([assignedTo, deletedAt, endAt])
+  @@index([labelId, deletedAt])
+  @@index([deletedAt, endAt])
+  @@index([recurrenceSeriesId, occurrenceAt])
+  @@map("tasks")
+}
+
+model TaskHistory {
+  id          String            @id @default(uuid())
+  taskId      String
+  action      TaskHistoryAction
+  actorId     String
+  actorName   String
+  changes     Json?
+  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
+  task        Task              @relation(fields: [taskId], references: [id], onDelete: Restrict)
+
+  @@index([taskId, createdAt, id])
+  @@map("task_history")
+}
+
+model Note {
+  id          String    @id @default(uuid())
+  content     String
+  createdById String
+  createdByName String
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt   DateTime? @db.Timestamptz(3)
+  version     Int       @default(1)
+  requestKey  String?
+  requestHash String?
+
+  @@unique([createdById, requestKey])
+  @@index([createdById, deletedAt, createdAt, id])
+  @@map("notes")
+}
+
+model CalendarEvent {
+  id            String                @id @default(uuid())
+  category      CalendarEventCategory @default(EVENT)
+  title         String
+  description   String?
+  startAt       DateTime              @db.Timestamptz(3)
+  endAt         DateTime              @db.Timestamptz(3)
+  allDay        Boolean               @default(false)
+  timezone      String                @default("Asia/Kolkata")
+  createdById   String
+  createdByName String
+  updatedById   String?
+  updatedByName String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  deletedAt     DateTime?
+  version       Int                   @default(1)
+  requestKey    String
+  requestHash   String
+
+  @@unique([createdById, requestKey])
+  @@index([createdById, deletedAt, startAt])
+  @@map("calendar_events")
+}
+
+enum StaffStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model StaffMember {
+  id           String      @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String      @unique
+  phone        String?
+  birthDate    DateTime?   @db.Date
+  joiningDate  DateTime    @db.Date
+  status       StaffStatus @default(ACTIVE)
+  department   String?
+  designation  String?
+  employeeCode String?     @unique
+  version      Int         @default(1)
+  deletedAt    DateTime?   @db.Timestamptz(3)
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+
+  @@index([status, deletedAt])
+  @@index([lastName, firstName])
+  @@index([joiningDate])
+  @@map("staff_members")
+}
