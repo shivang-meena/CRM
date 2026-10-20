@@ -59,7 +59,7 @@ function TableCell({ width, children, style }: { width: number; children: React.
 export function LeaveScreen() {
   const { userName, role } = useAuth();
   const { isAdmin, canAccess } = usePermissions();
-  const canApply = role === 'staff' && canAccess('leave');
+  const canApply = isAdmin || (role === 'staff' && canAccess('leave'));
   const { width: windowWidth } = useWindowDimensions();
   const desktop = windowWidth >= 960;
 
