@@ -6,9 +6,19 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import type { GstInvoiceSettings, NonGstInvoiceSettings, Prisma } from '@prisma/client';
-import { GstInvoiceSettingsService, gstSettingsSnapshot } from '../settings/gst-invoice-settings.service';
-import { NonGstInvoiceSettingsService, nonGstSettingsSnapshot } from '../settings/non-gst-invoice-settings.service';
+import type {
+  GstInvoiceSettings,
+  NonGstInvoiceSettings,
+  Prisma,
+} from '@prisma/client';
+import {
+  GstInvoiceSettingsService,
+  gstSettingsSnapshot,
+} from '../settings/gst-invoice-settings.service';
+import {
+  NonGstInvoiceSettingsService,
+  nonGstSettingsSnapshot,
+} from '../settings/non-gst-invoice-settings.service';
 import {
   CreateSalesDocumentDto,
   DiscountTypeDto,
@@ -46,7 +56,9 @@ function round2(n: number): number {
 function assertFiniteNumber(val: unknown, fieldName: string): number {
   const num = Number(val);
   if (!Number.isFinite(num)) {
-    throw new BadRequestException(`${fieldName} must be a valid finite number.`);
+    throw new BadRequestException(
+      `${fieldName} must be a valid finite number.`,
+    );
   }
   return num;
 }
@@ -59,8 +71,12 @@ export class SalesDocumentsService implements OnModuleInit {
     private readonly nonGstSettings: NonGstInvoiceSettingsService,
   ) {}
 
-  getGstInvoiceSettings() { return this.gstSettings.get(); }
-  getNonGstInvoiceSettings() { return this.nonGstSettings.get(); }
+  getGstInvoiceSettings() {
+    return this.gstSettings.get();
+  }
+  getNonGstInvoiceSettings() {
+    return this.nonGstSettings.get();
+  }
 
   getInvoiceCompanyProfile() {
     // Invoice users can read branding and issuer details, not administrative settings.
@@ -110,15 +126,22 @@ export class SalesDocumentsService implements OnModuleInit {
     requestedPaymentStatus?: InvoicePaymentStatusDto;
     explicitPaidAmount?: number;
   }) {
-    const { items, gstMode, documentType, requestedPaymentStatus, explicitPaidAmount } =
-      params;
+    const {
+      items,
+      gstMode,
+      documentType,
+      requestedPaymentStatus,
+      explicitPaidAmount,
+    } = params;
 
     // Rule 4: In Non-GST mode, inclusiveGst is ignored and forced to false
     const effectiveInclusiveGst =
       gstMode === GstModeDto.NON_GST ? false : Boolean(params.inclusiveGst);
 
     if (!Array.isArray(items) || items.length === 0) {
-      throw new BadRequestException('At least one valid line item is required.');
+      throw new BadRequestException(
+        'At least one valid line item is required.',
+      );
     }
 
     let grossSubtotal = 0;
@@ -148,7 +171,10 @@ export class SalesDocumentsService implements OnModuleInit {
         );
       }
 
-      const quantity = assertFiniteNumber(item.quantity, `Item #${idx + 1} quantity`);
+      const quantity = assertFiniteNumber(
+        item.quantity,
+        `Item #${idx + 1} quantity`,
+      );
       if (!Number.isInteger(quantity) || quantity <= 0) {
         throw new BadRequestException(
           `Item #${idx + 1} (${productName}): Quantity must be a positive integer.`,
@@ -206,15 +232,24 @@ export class SalesDocumentsService implements OnModuleInit {
       let cgstRate = 0;
 
       if (gstMode === GstModeDto.IGST) {
-        igstRate = assertFiniteNumber(item.igstRate ?? 0, `Item #${idx + 1} IGST %`);
+        igstRate = assertFiniteNumber(
+          item.igstRate ?? 0,
+          `Item #${idx + 1} IGST %`,
+        );
         if (igstRate < 0 || igstRate > 100) {
           throw new BadRequestException(
             `Item #${idx + 1} (${productName}): IGST rate must be between 0 and 100.`,
           );
         }
       } else if (gstMode === GstModeDto.SGST_CGST) {
-        sgstRate = assertFiniteNumber(item.sgstRate ?? 0, `Item #${idx + 1} SGST %`);
-        cgstRate = assertFiniteNumber(item.cgstRate ?? 0, `Item #${idx + 1} CGST %`);
+        sgstRate = assertFiniteNumber(
+          item.sgstRate ?? 0,
+          `Item #${idx + 1} SGST %`,
+        );
+        cgstRate = assertFiniteNumber(
+          item.cgstRate ?? 0,
+          `Item #${idx + 1} CGST %`,
+        );
         if (sgstRate < 0 || sgstRate > 100 || cgstRate < 0 || cgstRate > 100) {
           throw new BadRequestException(
             `Item #${idx + 1} (${productName}): SGST and CGST rates must be between 0 and 100.`,
@@ -226,8 +261,8 @@ export class SalesDocumentsService implements OnModuleInit {
         gstMode === GstModeDto.IGST
           ? igstRate
           : gstMode === GstModeDto.SGST_CGST
-          ? sgstRate + cgstRate
-          : 0,
+            ? sgstRate + cgstRate
+            : 0,
       );
 
       let netAmount = 0; // Taxable base
@@ -337,7 +372,8 @@ export class SalesDocumentsService implements OnModuleInit {
 
       if (paidAmount <= 0 || grandTotal === 0) {
         derivedPaymentStatus =
-          grandTotal === 0 && requestedPaymentStatus === InvoicePaymentStatusDto.PAID
+          grandTotal === 0 &&
+          requestedPaymentStatus === InvoicePaymentStatusDto.PAID
             ? InvoicePaymentStatusDto.PAID
             : InvoicePaymentStatusDto.UNPAID;
       } else if (paidAmount >= grandTotal) {
@@ -367,7 +403,9 @@ export class SalesDocumentsService implements OnModuleInit {
     };
   }
 
-  private async generateNextDocumentNo(type: SalesDocumentTypeDto): Promise<string> {
+  private async generateNextDocumentNo(
+    type: SalesDocumentTypeDto,
+  ): Promise<string> {
     const prefix = type === SalesDocumentTypeDto.QUOTATION ? 'QTN' : 'INV';
     const year = new Date().getFullYear();
     const count = await this.prisma.salesDocument.count({
@@ -417,7 +455,11 @@ export class SalesDocumentsService implements OnModuleInit {
         { companyNameSnapshot: { contains: q, mode: 'insensitive' } },
         { customerPhoneSnapshot: { contains: q, mode: 'insensitive' } },
         { customer: { lead: { name: { contains: q, mode: 'insensitive' } } } },
-        { customer: { lead: { companyName: { contains: q, mode: 'insensitive' } } } },
+        {
+          customer: {
+            lead: { companyName: { contains: q, mode: 'insensitive' } },
+          },
+        },
         { customer: { lead: { phone: { contains: q, mode: 'insensitive' } } } },
       ];
     }
@@ -536,6 +578,7 @@ export class SalesDocumentsService implements OnModuleInit {
         ? this.calculateDocumentFinancials({
             items: dto.items.map((item) => ({
               ...item,
+              hsnSac: item.hsnSac?.trim() || invoiceSettings?.hsnSac || '9983',
               igstRate: item.igstRate ?? gstSettings.gstPercentage,
               sgstRate: item.sgstRate ?? sgstDefault,
               cgstRate:
@@ -571,7 +614,7 @@ export class SalesDocumentsService implements OnModuleInit {
             : null,
           gstMode: activeGstMode,
           inclusiveGst: calculated.effectiveInclusiveGst,
-          currency: dto.currency || 'INR',
+          currency: dto.currency || invoiceSettings?.invoiceCurrency || 'INR',
           paymentStatus: calculated.derivedPaymentStatus,
           paymentMethodId: dto.paymentMethodId || defaultBankMethod?.id || null,
           brochureId: dto.brochureId || null,
@@ -736,12 +779,17 @@ export class SalesDocumentsService implements OnModuleInit {
           leadId: customer.leadId || null,
           issueDate: new Date(dto.issueDate),
           paymentDate:
-            dto.type === SalesDocumentTypeDto.INVOICE && financials.paidAmount > 0
+            dto.type === SalesDocumentTypeDto.INVOICE &&
+            financials.paidAmount > 0
               ? dto.paymentDate === undefined
                 ? existing.paymentDate
-                : dto.paymentDate ? new Date(dto.paymentDate) : null
+                : dto.paymentDate
+                  ? new Date(dto.paymentDate)
+                  : null
               : null,
-          nextPaymentDate: dto.nextPaymentDate ? new Date(dto.nextPaymentDate) : null,
+          nextPaymentDate: dto.nextPaymentDate
+            ? new Date(dto.nextPaymentDate)
+            : null,
           gstMode: activeGstMode,
           inclusiveGst: financials.effectiveInclusiveGst,
           currency: dto.currency || 'INR',
@@ -763,15 +811,20 @@ export class SalesDocumentsService implements OnModuleInit {
           paidAmount: financials.paidAmount,
           dueAmount: financials.dueAmount,
 
-          customerNameSnapshot: customer.name || lead.name || existing.customerNameSnapshot,
+          customerNameSnapshot:
+            customer.name || lead.name || existing.customerNameSnapshot,
           companyNameSnapshot:
-            customer.companyName || lead.companyName || existing.companyNameSnapshot,
+            customer.companyName ||
+            lead.companyName ||
+            existing.companyNameSnapshot,
           customerPhoneSnapshot:
             customer.phone || lead.phone || existing.customerPhoneSnapshot,
           customerEmailSnapshot:
             customer.email || lead.email || existing.customerEmailSnapshot,
           customerAddressSnapshot:
-            customer.address || lead.address || existing.customerAddressSnapshot,
+            customer.address ||
+            lead.address ||
+            existing.customerAddressSnapshot,
 
           version: { increment: 1 },
           items: {
@@ -1076,15 +1129,9 @@ export class SalesDocumentsService implements OnModuleInit {
         lead?.name ||
         'Unknown Customer',
       mobile:
-        doc.customerPhoneSnapshot ||
-        doc.customer?.phone ||
-        lead?.phone ||
-        '-',
+        doc.customerPhoneSnapshot || doc.customer?.phone || lead?.phone || '-',
       email:
-        doc.customerEmailSnapshot ||
-        doc.customer?.email ||
-        lead?.email ||
-        '',
+        doc.customerEmailSnapshot || doc.customer?.email || lead?.email || '',
       address:
         doc.customerAddressSnapshot ||
         doc.customer?.address ||
@@ -1100,7 +1147,9 @@ export class SalesDocumentsService implements OnModuleInit {
       inclusiveGst: Boolean(doc.inclusiveGst),
       currency: doc.currency,
       paymentStatus:
-        doc.paymentStatus === 'HALF_PAID' ? 'PARTIALLY_PAID' : doc.paymentStatus,
+        doc.paymentStatus === 'HALF_PAID'
+          ? 'PARTIALLY_PAID'
+          : doc.paymentStatus,
       paymentMethodId: doc.paymentMethodId || null,
       paymentMethodName: doc.paymentMethod?.method || null,
       brochureId: doc.brochureId,
@@ -1175,7 +1224,12 @@ export class SalesDocumentsService implements OnModuleInit {
     const total = await this.prisma.salesDocument.count({
       where: { leadId, deletedAt: null, type: type as any },
     });
-    return { items: docs.map((d) => this.mapDocumentResponse(d)), total, page: query?.page ?? 1, pageSize: query?.pageSize ?? 20 };
+    return {
+      items: docs.map((d) => this.mapDocumentResponse(d)),
+      total,
+      page: query?.page ?? 1,
+      pageSize: query?.pageSize ?? 20,
+    };
   }
 
   async one(leadId: string, id: string, type: any) {
@@ -1193,30 +1247,43 @@ export class SalesDocumentsService implements OnModuleInit {
         },
       });
     }
-    return this.createDocument({
-      ...body,
-      requestKey: body.requestKey || `lead-doc-${Date.now()}`,
-      customerId: customer.id,
-      type: type as any,
-      items: (body.items || []).map((i: any) => ({
-        productName: i.description || i.productName || 'Item',
-        unitPrice: Number(i.unitPrice || 0),
-        quantity: Number(i.quantity || 1),
-        discountValue: Number(i.discountAmount || 0),
-        discountType: DiscountTypeDto.FIXED,
-        comments: '',
-      })),
-      gstMode: GstModeDto.NON_GST,
-      paymentStatus: InvoicePaymentStatusDto.UNPAID,
-      issueDate: body.documentDate || new Date().toISOString().slice(0, 10),
-    }, { userId: actor?.id, userName: actor?.name });
+    return this.createDocument(
+      {
+        ...body,
+        requestKey: body.requestKey || `lead-doc-${Date.now()}`,
+        customerId: customer.id,
+        type: type as any,
+        items: (body.items || []).map((i: any) => ({
+          productName: i.description || i.productName || 'Item',
+          unitPrice: Number(i.unitPrice || 0),
+          quantity: Number(i.quantity || 1),
+          discountValue: Number(i.discountAmount || 0),
+          discountType: DiscountTypeDto.FIXED,
+          comments: '',
+        })),
+        gstMode: GstModeDto.NON_GST,
+        paymentStatus: InvoicePaymentStatusDto.UNPAID,
+        issueDate: body.documentDate || new Date().toISOString().slice(0, 10),
+      },
+      { userId: actor?.id, userName: actor?.name },
+    );
   }
 
   async update(leadId: string, id: string, type: any, body: any, actor: any) {
-    return this.updateDocument(id, body, { userId: actor?.id, userName: actor?.name });
+    return this.updateDocument(id, body, {
+      userId: actor?.id,
+      userName: actor?.name,
+    });
   }
 
-  async action(leadId: string, id: string, type: any, action: string, body: any, actor: any) {
+  async action(
+    leadId: string,
+    id: string,
+    type: any,
+    action: string,
+    body: any,
+    actor: any,
+  ) {
     if (action === 'delete') {
       return this.deleteDocument(id);
     }
@@ -1224,7 +1291,10 @@ export class SalesDocumentsService implements OnModuleInit {
   }
 
   async convert(leadId: string, id: string, body: any, actor: any) {
-    return this.convertQuotationToInvoice(id, { userId: actor?.id, userName: actor?.name });
+    return this.convertQuotationToInvoice(id, {
+      userId: actor?.id,
+      userName: actor?.name,
+    });
   }
 
   async payments(leadId: string, id: string) {
@@ -1249,10 +1319,20 @@ export class SalesDocumentsService implements OnModuleInit {
     return payment;
   }
 
-  async voidPayment(leadId: string, id: string, paymentId: string, body: any, actor: any) {
+  async voidPayment(
+    leadId: string,
+    id: string,
+    paymentId: string,
+    body: any,
+    actor: any,
+  ) {
     return this.prisma.invoicePayment.update({
       where: { id: paymentId },
-      data: { voidedAt: new Date(), voidedById: actor?.id, voidReason: body?.reason },
+      data: {
+        voidedAt: new Date(),
+        voidedById: actor?.id,
+        voidReason: body?.reason,
+      },
     });
   }
 }

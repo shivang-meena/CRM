@@ -3,6 +3,7 @@ import {
   IsInt,
   IsNumber,
   IsString,
+  IsOptional,
   Matches,
   Max,
   MaxLength,
@@ -13,6 +14,18 @@ const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
 
 export class SaveGstInvoiceSettingsDto {
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @Matches(/^(INR|USD|EUR)$/)
+  invoiceCurrency?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(20)
+  hsnSac?: string;
+
   @Transform(trim)
   @IsString()
   @Matches(/^[A-Za-z0-9][A-Za-z0-9_\/-]{0,29}$/)

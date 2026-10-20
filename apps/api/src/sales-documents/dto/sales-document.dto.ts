@@ -133,7 +133,7 @@ export class CreateSalesDocumentDto {
   inclusiveGst?: boolean;
 
   @IsOptional()
-  @IsString()
+  @Matches(/^(INR|USD|EUR)$/)
   currency?: string;
 
   @IsOptional()

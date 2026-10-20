@@ -14,6 +14,8 @@ export function nonGstDocumentNumber(prefix: string, number: number): string {
 
 export function nonGstSettingsSnapshot(settings: NonGstInvoiceSettings) {
   return {
+    invoiceCurrency: settings.invoiceCurrency,
+    hsnSac: settings.hsnSac,
     invoicePrefix: settings.invoicePrefix,
     invoiceStart: settings.invoiceStart,
     bankName: settings.bankName,
@@ -78,11 +80,16 @@ export class NonGstInvoiceSettingsService {
       create: {
         ...data,
         id: 'non-gst',
+        invoiceCurrency: data.invoiceCurrency ?? 'INR',
+        hsnSac: data.hsnSac ?? '9983',
         ifscCode: data.ifscCode.toUpperCase(),
         nextNumber: data.invoiceStart,
       },
       update: {
         ...data,
+        invoiceCurrency:
+          data.invoiceCurrency ?? existing?.invoiceCurrency ?? 'INR',
+        hsnSac: data.hsnSac ?? existing?.hsnSac ?? '9983',
         ifscCode: data.ifscCode.toUpperCase(),
         ...(restart ? { nextNumber: data.invoiceStart } : {}),
       },

@@ -14,6 +14,8 @@ export function gstDocumentNumber(prefix: string, number: number): string {
 
 export function gstSettingsSnapshot(settings: GstInvoiceSettings) {
   return {
+    invoiceCurrency: settings.invoiceCurrency,
+    hsnSac: settings.hsnSac,
     invoicePrefix: settings.invoicePrefix,
     invoiceStart: settings.invoiceStart,
     gstPercentage: settings.gstPercentage,
@@ -77,11 +79,16 @@ export class GstInvoiceSettingsService {
       create: {
         ...data,
         id: 'gst',
+        invoiceCurrency: data.invoiceCurrency ?? 'INR',
+        hsnSac: data.hsnSac ?? '9983',
         ifscCode: data.ifscCode.toUpperCase(),
         nextNumber: data.invoiceStart,
       },
       update: {
         ...data,
+        invoiceCurrency:
+          data.invoiceCurrency ?? existing?.invoiceCurrency ?? 'INR',
+        hsnSac: data.hsnSac ?? existing?.hsnSac ?? '9983',
         ifscCode: data.ifscCode.toUpperCase(),
         ...(restart ? { nextNumber: data.invoiceStart } : {}),
       },

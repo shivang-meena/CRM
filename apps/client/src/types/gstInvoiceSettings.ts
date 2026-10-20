@@ -1,4 +1,6 @@
 export type GstInvoiceSettingsSnapshot = {
+  invoiceCurrency: string;
+  hsnSac: string;
   invoicePrefix: string;
   invoiceStart: number;
   gstPercentage: number;
@@ -15,27 +17,31 @@ export type GstInvoiceSettings = GstInvoiceSettingsSnapshot & {
 };
 
 export const EMPTY_GST_INVOICE_SETTINGS: GstInvoiceSettings = {
-  invoicePrefix: 'GST',
+  invoiceCurrency: "INR",
+  hsnSac: "9983",
+  invoicePrefix: "GST",
   invoiceStart: 1,
   nextNumber: 1,
   gstPercentage: 18,
-  bankName: '',
-  accountNo: '',
-  ifscCode: '',
-  paymentUpiId: '',
-  signature: '',
+  bankName: "",
+  accountNo: "",
+  ifscCode: "",
+  paymentUpiId: "",
+  signature: "",
   termsAndConditions:
-    '1. Goods or services will be delivered after full payment.',
+    "1. Goods or services will be delivered after full payment.",
 };
 
 export function gstInvoiceNumber(prefix: string, number: number): string {
-  return `${prefix}${prefix.endsWith('-') ? '' : '-'}${number}`;
+  return `${prefix}${prefix.endsWith("-") ? "" : "-"}${number}`;
 }
 
 export function gstSettingsPayload(
   settings: GstInvoiceSettingsSnapshot,
 ): GstInvoiceSettingsSnapshot {
   return {
+    invoiceCurrency: settings.invoiceCurrency,
+    hsnSac: settings.hsnSac.trim(),
     invoicePrefix: settings.invoicePrefix.trim(),
     invoiceStart: settings.invoiceStart,
     gstPercentage: settings.gstPercentage,

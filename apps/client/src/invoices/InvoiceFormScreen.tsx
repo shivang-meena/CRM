@@ -1,17 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
@@ -25,12 +13,7 @@ import { getDocumentCompanyProfile, getDocumentInvoiceSettings } from './company
 import { invoiceBranding } from './invoiceBranding';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
 import { useCustomers } from '@/hooks/useCustomers';
-import {
-  useBrochures,
-  useCreateSalesDocument,
-  usePaymentMethods,
-  useUpdateSalesDocument,
-} from '@/hooks/useSalesDocuments';
+import { useBrochures, useCreateSalesDocument, usePaymentMethods, useUpdateSalesDocument } from '@/hooks/useSalesDocuments';
 import {
   calculateInvoicePreview,
   round2,
@@ -89,78 +72,53 @@ function isoToDdmmyyyy(iso?: string | null): string {
   return `${dd}-${mm}-${yyyy}`;
 }
 
-export function InvoiceFormScreen({
-  initialType = 'INVOICE',
-  existingDocument,
-  isClone = false,
-}: InvoiceFormScreenProps) {
+export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, isClone = false }: InvoiceFormScreenProps) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const editingExisting = Boolean(existingDocument && !isClone);
   const companyQuery = useInvoiceCompanyProfile(!editingExisting);
-  const companyProfile =
-    editingExisting && existingDocument
-      ? getDocumentCompanyProfile(existingDocument)
-      : companyQuery.data;
-  const companyUnavailable = !editingExisting && (
-    companyQuery.isFetching || companyQuery.isError || !companyProfile?.companyName
-  );
+  const companyProfile = editingExisting && existingDocument ? getDocumentCompanyProfile(existingDocument) : companyQuery.data;
+  const companyUnavailable = !editingExisting && (companyQuery.isFetching || companyQuery.isError || !companyProfile?.companyName);
   const [savedDocument, setSavedDocument] = useState<SalesDocumentRecord | null>(null);
-  const previewCompany = savedDocument
-    ? getDocumentCompanyProfile(savedDocument)
-    : companyProfile;
-  const printStyles = useMemo(
-    () => invoiceBranding(styles, previewCompany), [previewCompany],
-  );
+  const previewCompany = savedDocument ? getDocumentCompanyProfile(savedDocument) : companyProfile;
+  const printStyles = useMemo(() => invoiceBranding(styles, previewCompany), [previewCompany]);
 
   const today = useMemo(() => getTodayIstFormatted(), []);
-  const [docType] = useState<SalesDocumentType>(
-    existingDocument?.type ?? initialType,
-  );
-  const [dateDisplay, setDateDisplay] = useState<string>(
-    existingDocument ? isoToDdmmyyyy(existingDocument.issueDate) : today.display,
-  );
-  const [customerId, setCustomerId] = useState<string>(
-    existingDocument?.customerId ?? '',
-  );
+  const [docType] = useState<SalesDocumentType>(existingDocument?.type ?? initialType);
+  const [dateDisplay, setDateDisplay] = useState<string>(existingDocument ? isoToDdmmyyyy(existingDocument.issueDate) : today.display);
+  const [customerId, setCustomerId] = useState<string>(existingDocument?.customerId ?? '');
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
 
-  const [gstMode, setGstMode] = useState<GstMode>(
-    existingDocument?.gstMode ??
-      (existingDocument as any)?.gstType ??
-      'NON_GST',
-  );
-  const [inclusiveGst, setInclusiveGst] = useState<boolean>(
-    existingDocument?.inclusiveGst ?? false,
-  );
+  const [gstMode, setGstMode] = useState<GstMode>(existingDocument?.gstMode ?? (existingDocument as any)?.gstType ?? 'NON_GST');
+  const [inclusiveGst, setInclusiveGst] = useState<boolean>(existingDocument?.inclusiveGst ?? false);
   const isGstInvoice = docType === 'INVOICE' && gstMode !== 'NON_GST';
   const gstQuery = useInvoiceGstSettings(isGstInvoice && !editingExisting);
   const nonGstQuery = useInvoiceNonGstSettings(docType === 'INVOICE' && !isGstInvoice && !editingExisting);
   const settingsQuery = isGstInvoice ? gstQuery : nonGstQuery;
-  const gstSettings = isGstInvoice ? editingExisting ? existingDocument?.gstInvoiceSettingsSnapshot : gstQuery.data : null;
-  const invoiceSettings = docType === 'INVOICE'
-    ? editingExisting && existingDocument ? getDocumentInvoiceSettings(existingDocument) : settingsQuery.data
-    : null;
-  const invoiceSettingsUnavailable = docType === 'INVOICE' && !editingExisting && (
-    settingsQuery.isFetching || settingsQuery.isError || !invoiceSettings
-  );
+  const gstSettings = isGstInvoice ? (editingExisting ? existingDocument?.gstInvoiceSettingsSnapshot : gstQuery.data) : null;
+  const invoiceSettings = docType === 'INVOICE' ? (editingExisting && existingDocument ? getDocumentInvoiceSettings(existingDocument) : settingsQuery.data) : null;
+  const invoiceSettingsUnavailable = docType === 'INVOICE' && !editingExisting && (settingsQuery.isFetching || settingsQuery.isError || !invoiceSettings);
   const documentBank = invoiceSettings ?? {
-    bankName: editingExisting ? existingDocument?.bankName ?? '' : docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.bankName,
-    accountNo: editingExisting ? existingDocument?.bankAccountNo ?? '' : docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.accountNo,
-    ifscCode: editingExisting ? existingDocument?.bankIfsc ?? '' : docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.ifscCode,
-    paymentUpiId: '', signature: '',
+    bankName: editingExisting ? (existingDocument?.bankName ?? '') : docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.bankName,
+    accountNo: editingExisting ? (existingDocument?.bankAccountNo ?? '') : docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.accountNo,
+    ifscCode: editingExisting ? (existingDocument?.bankIfsc ?? '') : docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.ifscCode,
+    paymentUpiId: '',
+    signature: '',
   };
   const previewInvoiceSettings = savedDocument ? getDocumentInvoiceSettings(savedDocument) : invoiceSettings;
-  const previewBank = docType === 'INVOICE' && savedDocument ? {
-    bankName: savedDocument.bankName, accountNo: savedDocument.bankAccountNo,
-    ifscCode: savedDocument.bankIfsc, paymentUpiId: previewInvoiceSettings?.paymentUpiId ?? '',
-  } : documentBank;
+  const previewBank =
+    docType === 'INVOICE' && savedDocument
+      ? {
+          bankName: savedDocument.bankName,
+          accountNo: savedDocument.bankAccountNo,
+          ifscCode: savedDocument.bankIfsc,
+          paymentUpiId: previewInvoiceSettings?.paymentUpiId ?? '',
+        }
+      : documentBank;
 
-  const [currency, setCurrency] = useState<string>(
-    existingDocument?.currency ?? 'INR',
-  );
+  const [currency, setCurrency] = useState<string>(existingDocument?.currency ?? 'INR');
   const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
   const [discountDropdownIndex, setDiscountDropdownIndex] = useState<number | null>(null);
 
@@ -173,8 +131,7 @@ export function InvoiceFormScreen({
           unitPrice: it.unitPrice,
           quantity: it.quantity,
           discountValue: it.discountValue,
-          discountType:
-            it.discountType === 'FIXED' ? 'OVERALL' : it.discountType || 'OVERALL',
+          discountType: it.discountType === 'FIXED' ? 'OVERALL' : it.discountType || 'OVERALL',
           igstRate: it.igstRate ?? 18,
           sgstRate: it.sgstRate ?? 9,
           cgstRate: it.cgstRate ?? 9,
@@ -197,51 +154,40 @@ export function InvoiceFormScreen({
         ],
   );
 
-  const [paymentStatus, setPaymentStatus] = useState<InvoicePaymentStatus>(
-    existingDocument?.paymentStatus === 'HALF_PAID'
-      ? 'PARTIALLY_PAID'
-      : existingDocument?.paymentStatus ?? 'UNPAID',
-  );
-  const [paidAmountInput, setPaidAmountInput] = useState<string>(
-    existingDocument?.paidAmount ? String(existingDocument.paidAmount) : '0',
-  );
-  const [paymentMethodId, setPaymentMethodId] = useState<string | null>(
-    existingDocument?.paymentMethodId ?? null,
-  );
+  useEffect(() => {
+    if (docType !== 'INVOICE' || editingExisting || !invoiceSettings) return;
+    setCurrency(invoiceSettings.invoiceCurrency);
+    setItems((current) => current.map((item) => (!item.productName.trim() && item.hsnSac === '9983' ? { ...item, hsnSac: invoiceSettings.hsnSac } : item)));
+  }, [docType, editingExisting, invoiceSettings]);
+
+  const [paymentStatus, setPaymentStatus] = useState<InvoicePaymentStatus>(existingDocument?.paymentStatus === 'HALF_PAID' ? 'PARTIALLY_PAID' : (existingDocument?.paymentStatus ?? 'UNPAID'));
+  const [paidAmountInput, setPaidAmountInput] = useState<string>(existingDocument?.paidAmount ? String(existingDocument.paidAmount) : '0');
+  const [paymentMethodId, setPaymentMethodId] = useState<string | null>(existingDocument?.paymentMethodId ?? null);
   const [paymentMethodDropdownOpen, setPaymentMethodDropdownOpen] = useState(false);
-  const [paymentDateDisplay, setPaymentDateDisplay] = useState<string>(
-    existingDocument?.paymentDate
-      ? isoToDdmmyyyy(existingDocument.paymentDate)
-      : today.display,
-  );
-  const [brochureId, setBrochureId] = useState<string | null>(
-    existingDocument?.brochureId ?? null,
-  );
+  const [paymentDateDisplay, setPaymentDateDisplay] = useState<string>(existingDocument?.paymentDate ? isoToDdmmyyyy(existingDocument.paymentDate) : today.display);
+  const [brochureId, setBrochureId] = useState<string | null>(existingDocument?.brochureId ?? null);
   const [brochureDropdownOpen, setBrochureDropdownOpen] = useState(false);
-  const [nextPaymentDateDisplay, setNextPaymentDateDisplay] = useState<string>(
-    existingDocument?.nextPaymentDate
-      ? isoToDdmmyyyy(existingDocument.nextPaymentDate)
-      : '',
-  );
+  const [nextPaymentDateDisplay, setNextPaymentDateDisplay] = useState<string>(existingDocument?.nextPaymentDate ? isoToDdmmyyyy(existingDocument.nextPaymentDate) : '');
   const [nextPaymentDatePickerOpen, setNextPaymentDatePickerOpen] = useState(false);
 
-  const [termsOverride, setTermsAndConditions] = useState<string | null>(
-    existingDocument?.termsAndConditions ?? null,
-  );
+  const [termsOverride, setTermsAndConditions] = useState<string | null>(existingDocument?.termsAndConditions ?? null);
   const termsAndConditions = termsOverride ?? invoiceSettings?.termsAndConditions ?? (docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.defaultTerms);
-  const effectiveItems = useMemo(() => items.map(item =>
-    isGstInvoice && !editingExisting && item.useDefaultGstRate && gstSettings
-      ? { ...item, igstRate: gstSettings.gstPercentage,
-          sgstRate: round2(gstSettings.gstPercentage / 2),
-          cgstRate: round2(gstSettings.gstPercentage - round2(gstSettings.gstPercentage / 2)) }
-      : item,
-  ), [items, isGstInvoice, editingExisting, gstSettings]);
-  const [emailAutomation, setEmailAutomation] = useState<boolean>(
-    existingDocument?.emailAutomation ?? false,
+  const effectiveItems = useMemo(
+    () =>
+      items.map((item) =>
+        isGstInvoice && !editingExisting && item.useDefaultGstRate && gstSettings
+          ? {
+              ...item,
+              igstRate: gstSettings.gstPercentage,
+              sgstRate: round2(gstSettings.gstPercentage / 2),
+              cgstRate: round2(gstSettings.gstPercentage - round2(gstSettings.gstPercentage / 2)),
+            }
+          : item,
+      ),
+    [items, isGstInvoice, editingExisting, gstSettings],
   );
-  const [whatsappAutomation, setWhatsappAutomation] = useState<boolean>(
-    existingDocument?.whatsappAutomation ?? false,
-  );
+  const [emailAutomation, setEmailAutomation] = useState<boolean>(existingDocument?.emailAutomation ?? false);
+  const [whatsappAutomation, setWhatsappAutomation] = useState<boolean>(existingDocument?.whatsappAutomation ?? false);
 
   const [formError, setFormError] = useState<string | null>(null);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
@@ -256,12 +202,7 @@ export function InvoiceFormScreen({
   }, [customerPage]);
 
   const { data: brochures = [] } = useBrochures();
-  const {
-    data: paymentMethods = [],
-    isLoading: loadingPaymentMethods,
-    isError: paymentMethodsError,
-    refetch: refetchPaymentMethods,
-  } = usePaymentMethods();
+  const { data: paymentMethods = [], isLoading: loadingPaymentMethods, isError: paymentMethodsError, refetch: refetchPaymentMethods } = usePaymentMethods();
   const createMutation = useCreateSalesDocument();
   const updateMutation = useUpdateSalesDocument();
 
@@ -307,8 +248,9 @@ export function InvoiceFormScreen({
     setItems((prev) => {
       const copy = [...prev];
       copy[idx] = {
-        ...effectiveItems[idx], ...patch,
-        ...(['igstRate', 'sgstRate', 'cgstRate'].some(key => key in patch) ? { useDefaultGstRate: false } : {}),
+        ...effectiveItems[idx],
+        ...patch,
+        ...(['igstRate', 'sgstRate', 'cgstRate'].some((key) => key in patch) ? { useDefaultGstRate: false } : {}),
       };
       return copy;
     });
@@ -321,7 +263,7 @@ export function InvoiceFormScreen({
         {
           productName: '',
           useDefaultGstRate: true,
-          hsnSac: '9983',
+          hsnSac: invoiceSettings?.hsnSac ?? '9983',
           unitPrice: 0,
           quantity: 1,
           discountValue: 0,
@@ -344,7 +286,7 @@ export function InvoiceFormScreen({
       {
         productName: '',
         useDefaultGstRate: true,
-        hsnSac: '9983',
+        hsnSac: invoiceSettings?.hsnSac ?? '9983',
         unitPrice: 0,
         quantity: 1,
         discountValue: 0,
@@ -363,13 +305,17 @@ export function InvoiceFormScreen({
     setFormError(null);
 
     if (companyUnavailable) {
-      setFormError(companyQuery.isFetching
-        ? 'Loading company profile. Please wait.'
-        : 'Save the Company Profile in General Settings → Web Settings before creating this document.');
+      setFormError(companyQuery.isFetching ? 'Loading company profile. Please wait.' : 'Save the Company Profile in General Settings → Web Settings before creating this document.');
       return;
     }
     if (invoiceSettingsUnavailable) {
-      setFormError(settingsQuery.isFetching ? 'Loading Invoice Settings. Please wait.' : settingsQuery.isError ? errorMessage(settingsQuery.error) : `Save ${isGstInvoice ? 'GST' : 'Non GST'} Invoice settings in Web Settings → Invoice Settings before creating this invoice.`);
+      setFormError(
+        settingsQuery.isFetching
+          ? 'Loading Invoice Settings. Please wait.'
+          : settingsQuery.isError
+            ? errorMessage(settingsQuery.error)
+            : `Save ${isGstInvoice ? 'GST' : 'Non GST'} Invoice settings in Web Settings → Invoice Settings before creating this invoice.`,
+      );
       return;
     }
 
@@ -393,16 +339,10 @@ export function InvoiceFormScreen({
     }
 
     const hasPayment = docType === 'INVOICE' && paymentStatus !== 'UNPAID';
-    const nextPaymentDate = docType === 'INVOICE' && paymentStatus !== 'PAID' && nextPaymentDateDisplay.trim()
-      ? ddmmyyyyToIso(nextPaymentDateDisplay)
-      : null;
+    const nextPaymentDate = docType === 'INVOICE' && paymentStatus !== 'PAID' && nextPaymentDateDisplay.trim() ? ddmmyyyyToIso(nextPaymentDateDisplay) : null;
     if (nextPaymentDate !== null) {
       const parsedNextDate = new Date(nextPaymentDate);
-      if (
-        !/^\d{4}-\d{2}-\d{2}$/.test(nextPaymentDate) ||
-        Number.isNaN(parsedNextDate.getTime()) ||
-        parsedNextDate.toISOString().slice(0, 10) !== nextPaymentDate
-      ) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(nextPaymentDate) || Number.isNaN(parsedNextDate.getTime()) || parsedNextDate.toISOString().slice(0, 10) !== nextPaymentDate) {
         setFormError('Please enter a valid next payment date in DD-MM-YYYY format.');
         return;
       }
@@ -410,11 +350,7 @@ export function InvoiceFormScreen({
     const paymentDate = hasPayment ? ddmmyyyyToIso(paymentDateDisplay) : null;
     if (paymentDate !== null) {
       const parsedDate = new Date(paymentDate);
-      if (
-        !/^\d{4}-\d{2}-\d{2}$/.test(paymentDate) ||
-        Number.isNaN(parsedDate.getTime()) ||
-        parsedDate.toISOString().slice(0, 10) !== paymentDate
-      ) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentDate) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== paymentDate) {
         setFormError('Please enter a valid payment date in DD-MM-YYYY format.');
         return;
       }
@@ -431,16 +367,8 @@ export function InvoiceFormScreen({
       gstType: gstMode,
       inclusiveGst: gstMode === 'NON_GST' ? false : inclusiveGst,
       currency,
-      paymentStatus:
-        docType === 'QUOTATION'
-          ? ('UNPAID' as InvoicePaymentStatus)
-          : paymentStatus,
-      paidAmount:
-        docType === 'INVOICE' && paymentStatus === 'PARTIALLY_PAID'
-          ? Number(paidAmountInput) || 0
-          : paymentStatus === 'PAID'
-          ? calculations.grandTotal
-          : 0,
+      paymentStatus: docType === 'QUOTATION' ? ('UNPAID' as InvoicePaymentStatus) : paymentStatus,
+      paidAmount: docType === 'INVOICE' && paymentStatus === 'PARTIALLY_PAID' ? Number(paidAmountInput) || 0 : paymentStatus === 'PAID' ? calculations.grandTotal : 0,
       paymentMethodId,
       brochureId: brochureId || null,
       termsAndConditions,
@@ -448,7 +376,7 @@ export function InvoiceFormScreen({
       whatsappAutomation,
       items: validItems.map((it) => ({
         productName: it.productName.trim(),
-        hsnSac: gstMode === 'NON_GST' ? '' : it.hsnSac?.trim() || '9983',
+        hsnSac: gstMode === 'NON_GST' ? '' : it.hsnSac?.trim() || invoiceSettings?.hsnSac || '9983',
         unitPrice: Number(it.unitPrice) || 0,
         quantity: Math.max(1, Number(it.quantity) || 1),
         discountValue: Number(it.discountValue) || 0,
@@ -478,9 +406,7 @@ export function InvoiceFormScreen({
       if (openPreviewAfter) {
         setPreviewModalOpen(true);
       } else {
-        router.push(
-          (docType === 'QUOTATION' ? '/invoice/quotation' : '/invoice') as Href,
-        );
+        router.push((docType === 'QUOTATION' ? '/invoice/quotation' : '/invoice') as Href);
       }
     } catch (err: unknown) {
       setFormError(errorMessage(err));
@@ -490,28 +416,25 @@ export function InvoiceFormScreen({
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <ScrollView
-      style={styles.page}
-      contentContainerStyle={styles.pageContent}
-      keyboardShouldPersistTaps="handled"
-    >
+    <ScrollView style={styles.page} contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled">
       {/* Main Pure White Container Card */}
       <View style={styles.mainCard}>
         {/* Section 1: Company Branding & Document Date */}
         <View style={[styles.sectionRow, isDesktop && styles.sectionRowDesktop]}>
           <View style={styles.companyBlock}>
             {companyProfile ? <InvoiceCompanyDetails profile={companyProfile} /> : null}
-            {!editingExisting && companyQuery.isFetching ? (
-              <ActivityIndicator accessibilityLabel="Loading company profile" color={colors.primary} />
-            ) : null}
+            {!editingExisting && companyQuery.isFetching ? <ActivityIndicator accessibilityLabel="Loading company profile" color={colors.primary} /> : null}
             {!editingExisting && !companyQuery.isFetching && (companyQuery.isError || !companyProfile) ? (
               <View style={{ gap: 8 }}>
                 <Text accessibilityRole="alert" style={styles.errorBannerText}>
-                  {companyQuery.isError
-                    ? errorMessage(companyQuery.error)
-                    : 'Save Company Profile in General Settings → Web Settings to create invoices.'}
+                  {companyQuery.isError ? errorMessage(companyQuery.error) : 'Save Company Profile in General Settings → Web Settings to create invoices.'}
                 </Text>
-                <Pressable accessibilityRole="button" onPress={() => { void companyQuery.refetch(); }}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    void companyQuery.refetch();
+                  }}
+                >
                   <Text style={styles.outlineActionBtnText}>Reload company profile</Text>
                 </Pressable>
               </View>
@@ -522,59 +445,27 @@ export function InvoiceFormScreen({
             <Text style={styles.fieldLabel}>
               Date <Text style={styles.requiredStar}>*</Text>
             </Text>
-            <TextInput
-              style={styles.dateInput}
-              value={dateDisplay}
-              onChangeText={setDateDisplay}
-              placeholder="DD-MM-YYYY"
-              placeholderTextColor={colors.textMuted}
-            />
+            <TextInput style={styles.dateInput} value={dateDisplay} onChangeText={setDateDisplay} placeholder="DD-MM-YYYY" placeholderTextColor={colors.textMuted} />
           </View>
         </View>
 
         <View style={styles.divider} />
 
         {/* Section 2: Invoice To (Floating Customer Dropdown) & Static Payment Details */}
-        <View
-          style={[
-            styles.sectionRow,
-            isDesktop && styles.sectionRowDesktop,
-            { zIndex: 100 },
-          ]}
-        >
+        <View style={[styles.sectionRow, isDesktop && styles.sectionRowDesktop, { zIndex: 100 }]}>
           <View style={[styles.halfCol, { position: 'relative', zIndex: 110 }]}>
-            <Text style={styles.fieldLabel}>
-              {docType === 'QUOTATION' ? 'Quotation To:' : 'Invoice To:'}
-            </Text>
+            <Text style={styles.fieldLabel}>{docType === 'QUOTATION' ? 'Quotation To:' : 'Invoice To:'}</Text>
 
             <View style={{ position: 'relative', zIndex: 120 }}>
-              <Pressable
-                style={styles.dropdownTrigger}
-                onPress={() => setCustomerDropdownOpen((o) => !o)}
-              >
-                <Text
-                  style={[
-                    styles.dropdownTriggerText,
-                    !selectedCustomer && styles.placeholderText,
-                  ]}
-                >
+              <Pressable style={styles.dropdownTrigger} onPress={() => setCustomerDropdownOpen((o) => !o)}>
+                <Text style={[styles.dropdownTriggerText, !selectedCustomer && styles.placeholderText]}>
                   {selectedCustomer
-                    ? `${
-                        selectedCustomer.companyName ||
-                        selectedCustomer.lead?.companyName ||
-                        ''
-                      } ${
+                    ? `${selectedCustomer.companyName || selectedCustomer.lead?.companyName || ''} ${
                         selectedCustomer.name || selectedCustomer.lead?.name || ''
-                      } (${
-                        selectedCustomer.phone || selectedCustomer.lead?.phone || ''
-                      })`.trim()
+                      } (${selectedCustomer.phone || selectedCustomer.lead?.phone || ''})`.trim()
                     : 'Select...'}
                 </Text>
-                <Ionicons
-                  name={customerDropdownOpen ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.textMuted}
-                />
+                <Ionicons name={customerDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
               </Pressable>
 
               {customerDropdownOpen && (
@@ -587,41 +478,27 @@ export function InvoiceFormScreen({
                     placeholderTextColor={colors.textMuted}
                   />
                   {loadingCustomers ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={colors.primary}
-                      style={{ marginVertical: 12 }}
-                    />
+                    <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 12 }} />
                   ) : filteredCustomers.length === 0 ? (
-                    <Text style={styles.emptyDropdownText}>
-                      No existing customers found
-                    </Text>
+                    <Text style={styles.emptyDropdownText}>No existing customers found</Text>
                   ) : (
                     <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
                       {filteredCustomers.map((cust: any) => {
                         const cName = cust.name || cust.lead?.name || 'Customer';
-                        const cComp =
-                          cust.companyName || cust.lead?.companyName || '';
+                        const cComp = cust.companyName || cust.lead?.companyName || '';
                         const cPhone = cust.phone || cust.lead?.phone || '';
                         const isSelected = cust.id === customerId;
                         return (
                           <Pressable
                             key={cust.id}
-                            style={[
-                              styles.dropdownOption,
-                              isSelected && styles.dropdownOptionActive,
-                            ]}
+                            style={[styles.dropdownOption, isSelected && styles.dropdownOptionActive]}
                             onPress={() => {
                               setCustomerId(cust.id);
                               setCustomerDropdownOpen(false);
                             }}
                           >
-                            <Text style={styles.dropdownOptionTitle}>
-                              {cComp ? `${cComp} — ${cName}` : cName}
-                            </Text>
-                            {Boolean(cPhone) && (
-                              <Text style={styles.dropdownOptionSub}>{cPhone}</Text>
-                            )}
+                            <Text style={styles.dropdownOptionTitle}>{cComp ? `${cComp} — ${cName}` : cName}</Text>
+                            {Boolean(cPhone) && <Text style={styles.dropdownOptionSub}>{cPhone}</Text>}
                           </Pressable>
                         );
                       })}
@@ -633,15 +510,10 @@ export function InvoiceFormScreen({
 
             {Boolean(selectedCustomer) && (
               <View style={styles.customerSummaryPill}>
-                <Ionicons
-                  name="person-circle-outline"
-                  size={16}
-                  color={colors.primary}
-                />
+                <Ionicons name="person-circle-outline" size={16} color={colors.primary} />
                 <Text style={styles.customerSummaryText}>
                   {[
-                    selectedCustomer.companyName ||
-                      selectedCustomer.lead?.companyName,
+                    selectedCustomer.companyName || selectedCustomer.lead?.companyName,
                     selectedCustomer.name || selectedCustomer.lead?.name,
                     selectedCustomer.phone || selectedCustomer.lead?.phone,
                     selectedCustomer.address || selectedCustomer.lead?.address,
@@ -658,35 +530,41 @@ export function InvoiceFormScreen({
             <View style={styles.bankInfoGrid}>
               <View style={styles.bankInfoRow}>
                 <Text style={styles.bankInfoKey}>Bank name:</Text>
-                <Text style={styles.bankInfoVal}>
-                  {documentBank.bankName}
-                </Text>
+                <Text style={styles.bankInfoVal}>{documentBank.bankName}</Text>
               </View>
               <View style={styles.bankInfoRow}>
                 <Text style={styles.bankInfoKey}>Account No.:</Text>
-                <Text style={styles.bankInfoVal}>
-                  {documentBank.accountNo}
-                </Text>
+                <Text style={styles.bankInfoVal}>{documentBank.accountNo}</Text>
               </View>
               <View style={styles.bankInfoRow}>
                 <Text style={styles.bankInfoKey}>IFSC Code:</Text>
-                <Text style={styles.bankInfoVal}>
-                  {documentBank.ifscCode}
-                </Text>
+                <Text style={styles.bankInfoVal}>{documentBank.ifscCode}</Text>
               </View>
-              {documentBank.paymentUpiId ? <View style={styles.bankInfoRow}>
-                <Text style={styles.bankInfoKey}>UPI ID:</Text><Text style={styles.bankInfoVal}>{documentBank.paymentUpiId}</Text>
-              </View> : null}
+              {documentBank.paymentUpiId ? (
+                <View style={styles.bankInfoRow}>
+                  <Text style={styles.bankInfoKey}>UPI ID:</Text>
+                  <Text style={styles.bankInfoVal}>{documentBank.paymentUpiId}</Text>
+                </View>
+              ) : null}
               {docType === 'INVOICE' && !editingExisting && (settingsQuery.isFetching || settingsQuery.isError || !invoiceSettings) ? (
                 <View style={{ gap: 8, marginTop: 10 }}>
-                  {settingsQuery.isFetching ? <ActivityIndicator accessibilityLabel="Loading Invoice Settings" color={colors.primary} /> : <>
-                    <Text accessibilityRole="alert" style={styles.errorBannerText}>
-                      {settingsQuery.isError ? errorMessage(settingsQuery.error) : `Save ${isGstInvoice ? 'GST' : 'Non GST'} bank details and signature in Web Settings → Invoice Settings.`}
-                    </Text>
-                    <Pressable accessibilityRole="button" onPress={() => { void settingsQuery.refetch(); }}>
-                      <Text style={styles.outlineActionBtnText}>Reload Invoice Settings</Text>
-                    </Pressable>
-                  </>}
+                  {settingsQuery.isFetching ? (
+                    <ActivityIndicator accessibilityLabel="Loading Invoice Settings" color={colors.primary} />
+                  ) : (
+                    <>
+                      <Text accessibilityRole="alert" style={styles.errorBannerText}>
+                        {settingsQuery.isError ? errorMessage(settingsQuery.error) : `Save ${isGstInvoice ? 'GST' : 'Non GST'} bank details and signature in Web Settings → Invoice Settings.`}
+                      </Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => {
+                          void settingsQuery.refetch();
+                        }}
+                      >
+                        <Text style={styles.outlineActionBtnText}>Reload Invoice Settings</Text>
+                      </Pressable>
+                    </>
+                  )}
                 </View>
               ) : null}
             </View>
@@ -696,13 +574,7 @@ export function InvoiceFormScreen({
         <View style={styles.divider} />
 
         {/* Section 3: GST Type Store & Invoice Currency */}
-        <View
-          style={[
-            styles.sectionRow,
-            isDesktop && styles.sectionRowDesktop,
-            { zIndex: 70 },
-          ]}
-        >
+        <View style={[styles.sectionRow, isDesktop && styles.sectionRowDesktop, { zIndex: 70 }]}>
           <View style={styles.halfCol}>
             <Text style={styles.fieldLabel}>
               GST Type Store <Text style={styles.requiredStar}>*</Text>
@@ -717,19 +589,8 @@ export function InvoiceFormScreen({
               ).map((opt) => {
                 const selected = gstMode === opt.value;
                 return (
-                  <Pressable
-                    key={opt.value}
-                    style={styles.radioOption}
-                    onPress={() => setGstMode(opt.value)}
-                  >
-                    <View
-                      style={[
-                        styles.radioCircle,
-                        selected && styles.radioCircleSelected,
-                      ]}
-                    >
-                      {selected && <View style={styles.radioInnerDot} />}
-                    </View>
+                  <Pressable key={opt.value} style={styles.radioOption} onPress={() => setGstMode(opt.value)}>
+                    <View style={[styles.radioCircle, selected && styles.radioCircleSelected]}>{selected && <View style={styles.radioInnerDot} />}</View>
                     <Text style={styles.radioLabel}>{opt.label}</Text>
                   </Pressable>
                 );
@@ -740,11 +601,7 @@ export function InvoiceFormScreen({
             {gstMode !== 'NON_GST' && (
               <View style={styles.inclusiveToggleRow}>
                 <Text style={styles.fieldLabelInline}>Inclusive GST</Text>
-                <Switch
-                  value={inclusiveGst}
-                  onValueChange={setInclusiveGst}
-                  trackColor={{ false: '#CBD5E1', true: '#0B2F7D' }}
-                />
+                <Switch value={inclusiveGst} onValueChange={setInclusiveGst} trackColor={{ false: '#CBD5E1', true: '#0B2F7D' }} />
               </View>
             )}
           </View>
@@ -752,17 +609,8 @@ export function InvoiceFormScreen({
           <View style={[styles.halfCol, { position: 'relative', zIndex: 80 }]}>
             <Text style={styles.fieldLabel}>Invoice Currency:</Text>
             <View style={{ position: 'relative', zIndex: 90 }}>
-              <Pressable
-                style={styles.dropdownTrigger}
-                onPress={() => setCurrencyDropdownOpen((o) => !o)}
-              >
-                <Text style={styles.dropdownTriggerText}>
-                  {currency === 'INR'
-                    ? '₹ - India'
-                    : currency === 'USD'
-                    ? '$ - USD'
-                    : '€ - EUR'}
-                </Text>
+              <Pressable style={styles.dropdownTrigger} onPress={() => setCurrencyDropdownOpen((o) => !o)}>
+                <Text style={styles.dropdownTriggerText}>{currency === 'INR' ? '₹ - India' : currency === 'USD' ? '$ - USD' : '€ - EUR'}</Text>
                 <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
               </Pressable>
               {currencyDropdownOpen && (
@@ -809,13 +657,7 @@ export function InvoiceFormScreen({
           };
 
           return (
-            <View
-              key={idx}
-              style={[
-                styles.itemCard,
-                discountDropdownIndex === idx && styles.discountDropdownLayer,
-              ]}
-            >
+            <View key={idx} style={[styles.itemCard, discountDropdownIndex === idx && styles.discountDropdownLayer]}>
               <View style={styles.itemRemoveTopRight}>
                 <Pressable onPress={() => handleRemoveItem(idx)} hitSlop={8}>
                   <Ionicons name="close" size={18} color={colors.textMuted} />
@@ -831,9 +673,7 @@ export function InvoiceFormScreen({
                   <TextInput
                     style={styles.textInput}
                     value={item.productName}
-                    onChangeText={(val) =>
-                      handleUpdateItem(idx, { productName: val })
-                    }
+                    onChangeText={(val) => handleUpdateItem(idx, { productName: val })}
                     placeholder="Product Name"
                     placeholderTextColor={colors.textMuted}
                   />
@@ -844,27 +684,13 @@ export function InvoiceFormScreen({
                     <Text style={styles.fieldLabel}>
                       HSN Code <Text style={styles.requiredStar}>*</Text>
                     </Text>
-                    <TextInput
-                      style={styles.textInput}
-                      value={item.hsnSac}
-                      onChangeText={(val) =>
-                        handleUpdateItem(idx, { hsnSac: val })
-                      }
-                      placeholder="9983"
-                      placeholderTextColor={colors.textMuted}
-                    />
+                    <TextInput style={styles.textInput} value={item.hsnSac} onChangeText={(val) => handleUpdateItem(idx, { hsnSac: val })} placeholder="9983" placeholderTextColor={colors.textMuted} />
                   </View>
                 )}
               </View>
 
               {/* Row 2: Cost, Qty (- input +), Discount, Discount Type, Sub Total */}
-              <View
-                style={[
-                  styles.itemMetricsRow,
-                  isDesktop && styles.itemMetricsRowDesktop,
-                  discountDropdownIndex === idx && styles.discountDropdownLayer,
-                ]}
-              >
+              <View style={[styles.itemMetricsRow, isDesktop && styles.itemMetricsRowDesktop, discountDropdownIndex === idx && styles.discountDropdownLayer]}>
                 <View style={styles.metricCol}>
                   <Text style={styles.fieldLabel}>
                     Cost <Text style={styles.requiredStar}>*</Text>
@@ -897,10 +723,7 @@ export function InvoiceFormScreen({
                       accessibilityLabel={`Decrease quantity for item ${idx + 1}`}
                       onPress={() =>
                         handleUpdateItem(idx, {
-                          quantity: Math.max(
-                            1,
-                            (Number(item.quantity) || 1) - 1,
-                          ),
+                          quantity: Math.max(1, (Number(item.quantity) || 1) - 1),
                         })
                       }
                     >
@@ -913,8 +736,7 @@ export function InvoiceFormScreen({
                       onChangeText={(val) => {
                         const parsed = parseInt(val.replace(/[^0-9]/g, ''), 10);
                         handleUpdateItem(idx, {
-                          quantity:
-                            Number.isFinite(parsed) && parsed > 0 ? parsed : 1,
+                          quantity: Number.isFinite(parsed) && parsed > 0 ? parsed : 1,
                         });
                       }}
                     />
@@ -943,45 +765,28 @@ export function InvoiceFormScreen({
                     value={String(item.discountValue)}
                     onChangeText={(val) =>
                       handleUpdateItem(idx, {
-                        discountValue:
-                          Number(val.replace(/[^0-9.]/g, '')) || 0,
+                        discountValue: Number(val.replace(/[^0-9.]/g, '')) || 0,
                       })
                     }
                   />
                 </View>
 
-                <View
-                  style={[
-                    styles.metricCol,
-                    discountDropdownIndex === idx && styles.discountDropdownLayer,
-                  ]}
-                >
+                <View style={[styles.metricCol, discountDropdownIndex === idx && styles.discountDropdownLayer]}>
                   <Text style={styles.fieldLabel}>Discount Type :</Text>
                   <View style={styles.discountDropdownAnchor}>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`Discount type for item ${idx + 1}`}
-                      accessibilityState={{ expanded: discountDropdownIndex === idx }}
-                      style={[
-                        styles.dropdownTrigger,
-                        { backgroundColor: '#F1F5F9' },
-                      ]}
-                      onPress={() =>
-                        setDiscountDropdownIndex((current) => current === idx ? null : idx)
-                      }
+                      accessibilityState={{
+                        expanded: discountDropdownIndex === idx,
+                      }}
+                      style={[styles.dropdownTrigger, { backgroundColor: '#F1F5F9' }]}
+                      onPress={() => setDiscountDropdownIndex((current) => (current === idx ? null : idx))}
                     >
                       <Text style={styles.dropdownTriggerText}>
-                        {item.discountType === 'FLAT_PER_UNIT'
-                          ? 'Per Item Discount'
-                          : item.discountType === 'PERCENTAGE'
-                          ? 'Percentage (%)'
-                          : 'Overall Discount'}
+                        {item.discountType === 'FLAT_PER_UNIT' ? 'Per Item Discount' : item.discountType === 'PERCENTAGE' ? 'Percentage (%)' : 'Overall Discount'}
                       </Text>
-                      <Ionicons
-                        name={discountDropdownIndex === idx ? 'chevron-up' : 'chevron-down'}
-                        size={16}
-                        color={colors.textMuted}
-                      />
+                      <Ionicons name={discountDropdownIndex === idx ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
                     </Pressable>
                     {discountDropdownIndex === idx && (
                       <View style={styles.dropdownMenu}>
@@ -993,12 +798,11 @@ export function InvoiceFormScreen({
                               accessibilityRole="button"
                               accessibilityLabel={option.label}
                               accessibilityState={{ selected }}
-                              style={[
-                                styles.dropdownOption,
-                                selected && styles.dropdownOptionActive,
-                              ]}
+                              style={[styles.dropdownOption, selected && styles.dropdownOptionActive]}
                               onPress={() => {
-                                handleUpdateItem(idx, { discountType: option.value });
+                                handleUpdateItem(idx, {
+                                  discountType: option.value,
+                                });
                                 setDiscountDropdownIndex(null);
                               }}
                             >
@@ -1017,21 +821,14 @@ export function InvoiceFormScreen({
                     <View style={styles.prefixBox}>
                       <Text style={styles.prefixText}>{currencySymbol}</Text>
                     </View>
-                    <Text style={styles.readOnlyValueText}>
-                      {lineCalc.taxableAmount.toFixed(2)}
-                    </Text>
+                    <Text style={styles.readOnlyValueText}>{lineCalc.taxableAmount.toFixed(2)}</Text>
                   </View>
                 </View>
               </View>
 
               {/* Row 3: Conditional Tax Fields based on gstMode */}
               {gstMode === 'IGST' && (
-                <View
-                  style={[
-                    styles.itemMetricsRow,
-                    isDesktop && styles.itemMetricsRowDesktop,
-                  ]}
-                >
+                <View style={[styles.itemMetricsRow, isDesktop && styles.itemMetricsRowDesktop]}>
                   <View style={styles.metricCol}>
                     <Text style={styles.fieldLabel}>IGST</Text>
                     <View style={styles.suffixedInputWrap}>
@@ -1051,41 +848,28 @@ export function InvoiceFormScreen({
 
                   <View style={styles.metricColWide}>
                     <Text style={styles.fieldLabel}>Tax Amount</Text>
-                    <View
-                      style={[styles.prefixedInputWrap, styles.readOnlyWrap]}
-                    >
+                    <View style={[styles.prefixedInputWrap, styles.readOnlyWrap]}>
                       <View style={styles.prefixBox}>
                         <Text style={styles.prefixText}>{currencySymbol}</Text>
                       </View>
-                      <Text style={styles.readOnlyValueText}>
-                        {lineCalc.taxAmount.toFixed(2)}
-                      </Text>
+                      <Text style={styles.readOnlyValueText}>{lineCalc.taxAmount.toFixed(2)}</Text>
                     </View>
                   </View>
 
                   <View style={styles.metricColWide}>
                     <Text style={styles.fieldLabel}>Total Amount</Text>
-                    <View
-                      style={[styles.prefixedInputWrap, styles.readOnlyWrap]}
-                    >
+                    <View style={[styles.prefixedInputWrap, styles.readOnlyWrap]}>
                       <View style={styles.prefixBox}>
                         <Text style={styles.prefixText}>{currencySymbol}</Text>
                       </View>
-                      <Text style={styles.readOnlyValueText}>
-                        {lineCalc.totalAmount.toFixed(2)}
-                      </Text>
+                      <Text style={styles.readOnlyValueText}>{lineCalc.totalAmount.toFixed(2)}</Text>
                     </View>
                   </View>
                 </View>
               )}
 
               {gstMode === 'SGST_CGST' && (
-                <View
-                  style={[
-                    styles.itemMetricsRow,
-                    isDesktop && styles.itemMetricsRowDesktop,
-                  ]}
-                >
+                <View style={[styles.itemMetricsRow, isDesktop && styles.itemMetricsRowDesktop]}>
                   <View style={styles.metricColSmall}>
                     <Text style={styles.fieldLabel}>SGST</Text>
                     <View style={styles.suffixedInputWrap}>
@@ -1122,29 +906,21 @@ export function InvoiceFormScreen({
 
                   <View style={styles.metricColWide}>
                     <Text style={styles.fieldLabel}>Tax Amount</Text>
-                    <View
-                      style={[styles.prefixedInputWrap, styles.readOnlyWrap]}
-                    >
+                    <View style={[styles.prefixedInputWrap, styles.readOnlyWrap]}>
                       <View style={styles.prefixBox}>
                         <Text style={styles.prefixText}>{currencySymbol}</Text>
                       </View>
-                      <Text style={styles.readOnlyValueText}>
-                        {lineCalc.taxAmount.toFixed(2)}
-                      </Text>
+                      <Text style={styles.readOnlyValueText}>{lineCalc.taxAmount.toFixed(2)}</Text>
                     </View>
                   </View>
 
                   <View style={styles.metricColWide}>
                     <Text style={styles.fieldLabel}>Total Amount</Text>
-                    <View
-                      style={[styles.prefixedInputWrap, styles.readOnlyWrap]}
-                    >
+                    <View style={[styles.prefixedInputWrap, styles.readOnlyWrap]}>
                       <View style={styles.prefixBox}>
                         <Text style={styles.prefixText}>{currencySymbol}</Text>
                       </View>
-                      <Text style={styles.readOnlyValueText}>
-                        {lineCalc.totalAmount.toFixed(2)}
-                      </Text>
+                      <Text style={styles.readOnlyValueText}>{lineCalc.totalAmount.toFixed(2)}</Text>
                     </View>
                   </View>
                 </View>
@@ -1195,17 +971,7 @@ export function InvoiceFormScreen({
                         setBrochureDropdownOpen(false);
                       }}
                     >
-                      <View
-                        style={[
-                          styles.radioCircle,
-                          paymentStatus === st.value &&
-                            styles.radioCircleSelected,
-                        ]}
-                      >
-                        {paymentStatus === st.value && (
-                          <View style={styles.radioInnerDot} />
-                        )}
-                      </View>
+                      <View style={[styles.radioCircle, paymentStatus === st.value && styles.radioCircleSelected]}>{paymentStatus === st.value && <View style={styles.radioInnerDot} />}</View>
                       <Text style={styles.radioLabel}>{st.label}</Text>
                     </Pressable>
                   ))}
@@ -1223,22 +989,10 @@ export function InvoiceFormScreen({
                   setBrochureDropdownOpen((o) => !o);
                 }}
               >
-                <Text
-                  style={[
-                    styles.dropdownTriggerText,
-                    !brochureId && styles.placeholderText,
-                  ]}
-                >
-                  {brochureId
-                    ? brochures.find((b) => b.id === brochureId)?.brochureName ||
-                      'Select Brochure'
-                    : 'Select Brochure'}
+                <Text style={[styles.dropdownTriggerText, !brochureId && styles.placeholderText]}>
+                  {brochureId ? brochures.find((b) => b.id === brochureId)?.brochureName || 'Select Brochure' : 'Select Brochure'}
                 </Text>
-                <Ionicons
-                  name="chevron-down"
-                  size={18}
-                  color={colors.textMuted}
-                />
+                <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
               </Pressable>
 
               {brochureDropdownOpen && (
@@ -1296,20 +1050,12 @@ export function InvoiceFormScreen({
                       setPaymentMethodDropdownOpen((open) => !open);
                     }}
                   >
-                    <Text style={[
-                      styles.dropdownTriggerText,
-                      !paymentMethodId && styles.placeholderText,
-                    ]}>
+                    <Text style={[styles.dropdownTriggerText, !paymentMethodId && styles.placeholderText]}>
                       {paymentMethods.find((method) => method.id === paymentMethodId)?.method ||
-                        (paymentMethodId === existingDocument?.paymentMethodId
-                          ? existingDocument?.paymentMethodName
-                          : null) || 'Select...'}
+                        (paymentMethodId === existingDocument?.paymentMethodId ? existingDocument?.paymentMethodName : null) ||
+                        'Select...'}
                     </Text>
-                    <Ionicons
-                      name={paymentMethodDropdownOpen ? 'chevron-up' : 'chevron-down'}
-                      size={18}
-                      color={colors.textMuted}
-                    />
+                    <Ionicons name={paymentMethodDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
                   </Pressable>
                   {paymentMethodDropdownOpen && (
                     <View style={styles.dropdownMenu}>
@@ -1318,7 +1064,9 @@ export function InvoiceFormScreen({
                       ) : paymentMethodsError ? (
                         <Pressable
                           accessibilityRole="button"
-                          onPress={() => { void refetchPaymentMethods(); }}
+                          onPress={() => {
+                            void refetchPaymentMethods();
+                          }}
                           style={styles.dropdownOption}
                         >
                           <Text style={styles.dropdownOptionTitle}>Unable to load payment methods. Retry</Text>
@@ -1327,23 +1075,24 @@ export function InvoiceFormScreen({
                         <Text style={styles.emptyDropdownText}>No payment methods configured.</Text>
                       ) : (
                         <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled>
-                          {paymentMethods.filter((method) => method.isActive !== false).map((method) => (
-                            <Pressable
-                              key={method.id}
-                              accessibilityRole="button"
-                              accessibilityState={{ selected: paymentMethodId === method.id }}
-                              style={[
-                                styles.dropdownOption,
-                                paymentMethodId === method.id && styles.dropdownOptionActive,
-                              ]}
-                              onPress={() => {
-                                setPaymentMethodId(method.id);
-                                setPaymentMethodDropdownOpen(false);
-                              }}
-                            >
-                              <Text style={styles.dropdownOptionTitle}>{method.method}</Text>
-                            </Pressable>
-                          ))}
+                          {paymentMethods
+                            .filter((method) => method.isActive !== false)
+                            .map((method) => (
+                              <Pressable
+                                key={method.id}
+                                accessibilityRole="button"
+                                accessibilityState={{
+                                  selected: paymentMethodId === method.id,
+                                }}
+                                style={[styles.dropdownOption, paymentMethodId === method.id && styles.dropdownOptionActive]}
+                                onPress={() => {
+                                  setPaymentMethodId(method.id);
+                                  setPaymentMethodDropdownOpen(false);
+                                }}
+                              >
+                                <Text style={styles.dropdownOptionTitle}>{method.method}</Text>
+                              </Pressable>
+                            ))}
                         </ScrollView>
                       )}
                     </View>
@@ -1352,10 +1101,7 @@ export function InvoiceFormScreen({
 
                 <View style={{ marginTop: 14 }}>
                   <Text style={styles.fieldLabel}>Amount</Text>
-                  <View style={[
-                    styles.prefixedInputWrap,
-                    paymentStatus === 'PAID' && styles.readOnlyWrap,
-                  ]}>
+                  <View style={[styles.prefixedInputWrap, paymentStatus === 'PAID' && styles.readOnlyWrap]}>
                     <View style={styles.prefixBox}>
                       <Text style={styles.prefixText}>{currencySymbol}</Text>
                     </View>
@@ -1364,9 +1110,7 @@ export function InvoiceFormScreen({
                       style={styles.prefixedInput}
                       keyboardType="numeric"
                       editable={paymentStatus !== 'PAID'}
-                      value={paymentStatus === 'PAID'
-                        ? calculations.grandTotal.toFixed(2)
-                        : paidAmountInput}
+                      value={paymentStatus === 'PAID' ? calculations.grandTotal.toFixed(2) : paidAmountInput}
                       onChangeText={setPaidAmountInput}
                       placeholder="0.00"
                       placeholderTextColor={colors.textMuted}
@@ -1482,9 +1226,7 @@ export function InvoiceFormScreen({
                     </Text>
                   </View>
                   <View style={styles.summaryRow}>
-                    <Text style={styles.dueAmountLabel}>
-                      Total Due / Outstanding:
-                    </Text>
+                    <Text style={styles.dueAmountLabel}>Total Due / Outstanding:</Text>
                     <Text style={styles.dueAmountValue}>
                       {currencySymbol}
                       {calculations.dueAmount.toFixed(2)}
@@ -1496,13 +1238,14 @@ export function InvoiceFormScreen({
 
             {/* Signature uses the applicable invoice settings. */}
             <View style={styles.signatureBox}>
-              {docType === 'INVOICE' ? <InvoiceSignature
-                signature={invoiceSettings?.signature}
-                name={editingExisting ? existingDocument?.signatoryName : undefined}
-                color={companyProfile?.fontColor} /> : <>
-                <Text style={styles.signatureCursiveText}>{DEFAULT_DOCUMENT_CONFIG.signatoryName}</Text>
-                <Text style={styles.signatoryLabel}>Authorized Signatory</Text>
-              </>}
+              {docType === 'INVOICE' ? (
+                <InvoiceSignature signature={invoiceSettings?.signature} name={editingExisting ? existingDocument?.signatoryName : undefined} color={companyProfile?.fontColor} />
+              ) : (
+                <>
+                  <Text style={styles.signatureCursiveText}>{DEFAULT_DOCUMENT_CONFIG.signatoryName}</Text>
+                  <Text style={styles.signatoryLabel}>Authorized Signatory</Text>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -1510,12 +1253,7 @@ export function InvoiceFormScreen({
         {/* Terms & Conditions Box */}
         <View style={{ marginTop: 20 }}>
           <Text style={styles.fieldLabel}>Terms &amp; Conditions</Text>
-          <TextInput
-            style={[styles.textInput, styles.termsInput]}
-            multiline
-            value={termsAndConditions}
-            onChangeText={setTermsAndConditions}
-          />
+          <TextInput style={[styles.textInput, styles.termsInput]} multiline value={termsAndConditions} onChangeText={setTermsAndConditions} />
         </View>
 
         <View style={{ marginTop: 18 }}>
@@ -1523,20 +1261,12 @@ export function InvoiceFormScreen({
           <View style={styles.automationRow}>
             <View style={styles.automationToggleGroup}>
               <Text style={styles.fieldLabel}>Email Automation</Text>
-              <Switch
-                value={emailAutomation}
-                onValueChange={setEmailAutomation}
-                trackColor={{ false: '#CBD5E1', true: colors.primary }}
-              />
+              <Switch value={emailAutomation} onValueChange={setEmailAutomation} trackColor={{ false: '#CBD5E1', true: colors.primary }} />
             </View>
 
             <View style={styles.automationToggleGroup}>
               <Text style={styles.fieldLabel}>Whatsapp Automation</Text>
-              <Switch
-                value={whatsappAutomation}
-                onValueChange={setWhatsappAutomation}
-                trackColor={{ false: '#CBD5E1', true: colors.primary }}
-              />
+              <Switch value={whatsappAutomation} onValueChange={setWhatsappAutomation} trackColor={{ false: '#CBD5E1', true: colors.primary }} />
             </View>
           </View>
         </View>
@@ -1554,11 +1284,7 @@ export function InvoiceFormScreen({
             disabled={isSaving || Boolean(companyUnavailable) || invoiceSettingsUnavailable}
             onPress={() => handleSave(false)}
           >
-            {isSaving ? (
-              <ActivityIndicator size="small" color="#0B2F7D" />
-            ) : (
-              <Text style={styles.outlineActionBtnText}>Generate</Text>
-            )}
+            {isSaving ? <ActivityIndicator size="small" color="#0B2F7D" /> : <Text style={styles.outlineActionBtnText}>Generate</Text>}
           </Pressable>
 
           <Pressable
@@ -1587,20 +1313,11 @@ export function InvoiceFormScreen({
       />
 
       {/* Printable Preview / Download Modal */}
-      <Modal
-        visible={previewModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPreviewModalOpen(false)}
-      >
+      <Modal visible={previewModalOpen} transparent animationType="fade" onRequestClose={() => setPreviewModalOpen(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.previewModalCard}>
             <View style={styles.previewHeaderBar}>
-              <Text style={styles.previewHeaderTitle}>
-                {docType === 'QUOTATION'
-                  ? 'Quotation Preview'
-                  : 'Invoice Preview'}
-              </Text>
+              <Text style={styles.previewHeaderTitle}>{docType === 'QUOTATION' ? 'Quotation Preview' : 'Invoice Preview'}</Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 {Platform.OS === 'web' && (
                   <Pressable
@@ -1609,18 +1326,11 @@ export function InvoiceFormScreen({
                       if (typeof window !== 'undefined') window.print();
                     }}
                   >
-                    <Ionicons
-                      name="print-outline"
-                      size={16}
-                      color={colors.white}
-                    />
+                    <Ionicons name="print-outline" size={16} color={colors.white} />
                     <Text style={styles.navyButtonText}>Print / Save PDF</Text>
                   </Pressable>
                 )}
-                <Pressable
-                  style={styles.outlineActionBtn}
-                  onPress={() => setPreviewModalOpen(false)}
-                >
+                <Pressable style={styles.outlineActionBtn} onPress={() => setPreviewModalOpen(false)}>
                   <Text style={styles.outlineActionBtnText}>Close</Text>
                 </Pressable>
               </View>
@@ -1632,20 +1342,11 @@ export function InvoiceFormScreen({
                 <View style={printStyles.divider} />
                 <Text style={printStyles.fieldLabel}>
                   Billed To:{' '}
-                  {selectedCustomer
-                    ? `${
-                        selectedCustomer.companyName ||
-                        selectedCustomer.lead?.companyName ||
-                        ''
-                      } - ${
-                        selectedCustomer.name || selectedCustomer.lead?.name || ''
-                      }`
-                    : 'Customer'}
+                  {selectedCustomer ? `${selectedCustomer.companyName || selectedCustomer.lead?.companyName || ''} - ${selectedCustomer.name || selectedCustomer.lead?.name || ''}` : 'Customer'}
                 </Text>
                 <Text style={printStyles.companyMetaText}>Date: {dateDisplay}</Text>
                 <Text style={printStyles.companyMetaText}>
-                  GST Mode: {gstMode === 'NON_GST' ? 'Non GST' : gstMode === 'IGST' ? 'IGST' : 'SGST/CGST'}{' '}
-                  {inclusiveGst && gstMode !== 'NON_GST' ? '(Inclusive GST)' : ''}
+                  GST Mode: {gstMode === 'NON_GST' ? 'Non GST' : gstMode === 'IGST' ? 'IGST' : 'SGST/CGST'} {inclusiveGst && gstMode !== 'NON_GST' ? '(Inclusive GST)' : ''}
                 </Text>
                 <View style={printStyles.divider} />
 
@@ -1659,10 +1360,7 @@ export function InvoiceFormScreen({
                   return (
                     <View key={i} style={printStyles.summaryRow}>
                       <Text style={printStyles.summaryLabel}>
-                        {i + 1}. {it.productName || 'Item'}{' '}
-                        {Boolean(it.hsnSac && gstMode !== 'NON_GST') &&
-                          `[HSN: ${it.hsnSac}]`}{' '}
-                        (Qty: {it.quantity} × {currencySymbol}
+                        {i + 1}. {it.productName || 'Item'} {Boolean(it.hsnSac && gstMode !== 'NON_GST') && `[HSN: ${it.hsnSac}]`} (Qty: {it.quantity} × {currencySymbol}
                         {it.unitPrice})
                       </Text>
                       <Text style={printStyles.summaryValueBold}>
@@ -1732,19 +1430,26 @@ export function InvoiceFormScreen({
 
                 {/* Bank Details in Preview */}
                 <View style={printStyles.divider} />
-                <Text style={[printStyles.fieldLabel, { marginBottom: 4 }]}>
-                  Payment Details:
-                </Text>
+                <Text style={[printStyles.fieldLabel, { marginBottom: 4 }]}>Payment Details:</Text>
                 <Text style={printStyles.companyMetaText}>
-                  Bank: {previewBank.bankName} | A/C:{' '}
-                  {previewBank.accountNo} | IFSC:{' '}
-                  {previewBank.ifscCode}
+                  Bank: {previewBank.bankName} | A/C: {previewBank.accountNo} | IFSC: {previewBank.ifscCode}
                 </Text>
                 {previewBank.paymentUpiId ? <Text style={printStyles.companyMetaText}>UPI ID: {previewBank.paymentUpiId}</Text> : null}
-                {docType === 'INVOICE' ? <InvoiceSignature signature={previewInvoiceSettings?.signature}
-                  name={savedDocument?.signatoryName ?? (editingExisting ? existingDocument?.signatoryName : undefined)} color={previewCompany?.fontColor} /> :
-                  <Text style={[printStyles.companyMetaText, { marginTop: 8 }]}>Authorized Signatory: {DEFAULT_DOCUMENT_CONFIG.signatoryName}</Text>}
-                {docType === 'INVOICE' ? <View style={{ marginTop: 12 }}><Text style={printStyles.fieldLabel}>Terms & Conditions</Text><Text style={printStyles.companyMetaText}>{savedDocument?.termsAndConditions ?? termsAndConditions}</Text></View> : null}
+                {docType === 'INVOICE' ? (
+                  <InvoiceSignature
+                    signature={previewInvoiceSettings?.signature}
+                    name={savedDocument?.signatoryName ?? (editingExisting ? existingDocument?.signatoryName : undefined)}
+                    color={previewCompany?.fontColor}
+                  />
+                ) : (
+                  <Text style={[printStyles.companyMetaText, { marginTop: 8 }]}>Authorized Signatory: {DEFAULT_DOCUMENT_CONFIG.signatoryName}</Text>
+                )}
+                {docType === 'INVOICE' ? (
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={printStyles.fieldLabel}>Terms & Conditions</Text>
+                    <Text style={printStyles.companyMetaText}>{savedDocument?.termsAndConditions ?? termsAndConditions}</Text>
+                  </View>
+                ) : null}
               </View>
             </ScrollView>
           </View>

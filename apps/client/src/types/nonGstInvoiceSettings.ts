@@ -1,11 +1,11 @@
 import type {
   GstInvoiceSettings,
   GstInvoiceSettingsSnapshot,
-} from './gstInvoiceSettings';
+} from "./gstInvoiceSettings";
 
 export type NonGstInvoiceSettingsSnapshot = Omit<
   GstInvoiceSettingsSnapshot,
-  'gstPercentage'
+  "gstPercentage"
 >;
 export type NonGstInvoiceSettings = NonGstInvoiceSettingsSnapshot & {
   nextNumber: number;
@@ -20,14 +20,16 @@ export type InvoiceSettingsPayload = {
 };
 
 export const EMPTY_NON_GST_INVOICE_SETTINGS: NonGstInvoiceSettings = {
-  invoicePrefix: 'NON-GST',
+  invoiceCurrency: "INR",
+  hsnSac: "9983",
+  invoicePrefix: "NON-GST",
   invoiceStart: 1,
   nextNumber: 1,
-  bankName: '',
-  accountNo: '',
-  ifscCode: '',
-  paymentUpiId: '',
-  signature: '',
+  bankName: "",
+  accountNo: "",
+  ifscCode: "",
+  paymentUpiId: "",
+  signature: "",
   termsAndConditions:
-    '1. Goods or services will be delivered after full payment.',
+    "1. Goods or services will be delivered after full payment.",
 };
