@@ -1,11 +1,13 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequirePermissions } from '../auth/permissions';
 import { Actor } from '../crm/crm-core.service';
 import { ListQueryDto, VersionDto } from '../crm/crm.dto';
 import { CreateStandaloneReminderDto, UpdateStandaloneReminderDto } from './dto/standalone-activity.dto';
 import { StandaloneActivitiesService } from './standalone-activities.service';
 
 @UseGuards(JwtAuthGuard)
+@RequirePermissions('reminder')
 @Controller('reminders')
 export class StandaloneRemindersController {
   constructor(private service: StandaloneActivitiesService) {}

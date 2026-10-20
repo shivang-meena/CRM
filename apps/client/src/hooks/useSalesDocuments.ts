@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useModuleQuery } from './useModuleQuery';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchDocument,
   fetchDocuments,
@@ -13,14 +14,14 @@ import {
 import { DocumentKind, ListFilters } from '@/types/leadActivities';
 
 export function useSalesDocuments(filters: SalesDocumentFilters) {
-  return useQuery({
+  return useModuleQuery('invoice', {
     queryKey: ['sales-documents', filters],
     queryFn: () => salesDocumentsApi.list(filters),
   });
 }
 
 export function useSalesDocument(id?: string) {
-  return useQuery({
+  return useModuleQuery('invoice', {
     queryKey: ['sales-document', id],
     queryFn: () => salesDocumentsApi.getById(id!),
     enabled: Boolean(id),
@@ -71,7 +72,7 @@ export function useConvertQuotationToInvoice() {
 }
 
 export function usePaymentMethods(search?: string) {
-  return useQuery({
+  return useModuleQuery('invoice', {
     queryKey: ['payment-methods', search ?? ''],
     queryFn: () => salesDocumentsApi.listPaymentMethods(search),
   });
@@ -101,7 +102,7 @@ export function usePaymentMethodActions() {
 }
 
 export function useBrochures(search?: string) {
-  return useQuery({
+  return useModuleQuery('invoice', {
     queryKey: ['brochures', search ?? ''],
     queryFn: () => salesDocumentsApi.listBrochures(search),
   });
@@ -139,21 +140,21 @@ export function useBrochureActions() {
 
 // Backward compatibility hooks for lead-level components
 export function useDocuments(leadId: string, kind: DocumentKind, filters: ListFilters, enabled = true) {
-  return useQuery({
+  return useModuleQuery('invoice', {
     queryKey: ['lead-documents', leadId, kind, filters],
     queryFn: () => fetchDocuments(leadId, kind, filters),
     enabled: !!leadId && enabled,
   });
 }
 export function useDocument(leadId: string, kind: DocumentKind, id: string) {
-  return useQuery({
+  return useModuleQuery('invoice', {
     queryKey: ['lead-document', leadId, kind, id],
     queryFn: () => fetchDocument(leadId, kind, id),
     enabled: !!id,
   });
 }
 export function usePayments(leadId: string, invoiceId: string, enabled = true) {
-  return useQuery({
+  return useModuleQuery('invoice', {
     queryKey: ['invoice-payments', leadId, invoiceId],
     queryFn: () => fetchPayments(leadId, invoiceId),
     enabled: !!invoiceId && enabled,

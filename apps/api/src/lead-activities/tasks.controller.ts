@@ -1,10 +1,12 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Actor } from '../crm/crm-core.service';
+import { RequirePermissions } from '../auth/permissions';
+import type { AuthenticatedUser as Actor } from '../auth/permissions';
 import { ListQueryDto, VersionDto } from '../crm/crm.dto';
 import { CreateTaskDto, UpdateTaskDto } from './dto/activity.dto';
 import { ActivitiesService } from './activities.service';
 @UseGuards(JwtAuthGuard)
+@RequirePermissions('task')
 @Controller('leads/:leadId/tasks')
 export class TasksController {
   constructor(private service: ActivitiesService) {}

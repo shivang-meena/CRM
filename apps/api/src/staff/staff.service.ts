@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { Prisma, StaffMember, StaffStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStaffDto, isValidCalendarDateString, ListStaffQueryDto, UpdateStaffDto, UpdateStaffStatusDto } from './dto/staff.dto';
@@ -24,6 +25,20 @@ export class StaffService {
       department: record.department,
       designation: record.designation,
       employeeCode: record.employeeCode,
+      canLoginApp: record.canLoginApp,
+      hasPassword: !!record.passwordHash,
+      permissions: {
+        lead: record.permLead,
+        task: record.permTask,
+        reminder: record.permReminder,
+        meeting: record.permMeeting,
+        note: record.permNote,
+        calendar: record.permCalendar,
+        customer: record.permCustomer,
+        invoice: record.permInvoice,
+        staff: record.permStaff,
+        leave: record.permLeave,
+      },
       version: record.version,
       createdAt: record.createdAt.toISOString(),
       updatedAt: record.updatedAt.toISOString(),
@@ -115,6 +130,7 @@ export class StaffService {
     const birthDate = dto.birthDate ? this.toDate(dto.birthDate, 'birthDate') : null;
     const joiningDate = this.toDate(dto.joiningDate, 'joiningDate');
     this.validateDates(birthDate, joiningDate);
+    const passwordHash = dto.password ? await bcrypt.hash(dto.password, 10) : null;
     try {
       const record = await this.prisma.staffMember.create({
         data: {
@@ -128,6 +144,18 @@ export class StaffService {
           department: dto.department ?? null,
           designation: dto.designation ?? null,
           employeeCode: dto.employeeCode ?? null,
+          passwordHash,
+          canLoginApp: dto.canLoginApp ?? false,
+          permLead: dto.permissions?.lead ?? true,
+          permTask: dto.permissions?.task ?? true,
+          permReminder: dto.permissions?.reminder ?? true,
+          permMeeting: dto.permissions?.meeting ?? true,
+          permNote: dto.permissions?.note ?? true,
+          permCalendar: dto.permissions?.calendar ?? true,
+          permCustomer: dto.permissions?.customer ?? true,
+          permInvoice: dto.permissions?.invoice ?? false,
+          permStaff: dto.permissions?.staff ?? false,
+          permLeave: dto.permissions?.leave ?? true,
         },
       });
       return this.serialize(record);
@@ -144,6 +172,12 @@ export class StaffService {
     const birthDate = dto.birthDate ? this.toDate(dto.birthDate, 'birthDate') : null;
     const joiningDate = this.toDate(dto.joiningDate, 'joiningDate');
     this.validateDates(birthDate, joiningDate);
+
+    // Only re-hash password if a new one was provided
+    const passwordHash = dto.password
+      ? await bcrypt.hash(dto.password, 10)
+      : existing.passwordHash;
+
     try {
       const result = await this.prisma.staffMember.updateMany({
         where: { id, deletedAt: null, version: dto.version },
@@ -158,6 +192,18 @@ export class StaffService {
           department: dto.department ?? null,
           designation: dto.designation ?? null,
           employeeCode: dto.employeeCode ?? null,
+          passwordHash,
+          canLoginApp: dto.canLoginApp ?? existing.canLoginApp,
+          permLead: dto.permissions?.lead ?? existing.permLead,
+          permTask: dto.permissions?.task ?? existing.permTask,
+          permReminder: dto.permissions?.reminder ?? existing.permReminder,
+          permMeeting: dto.permissions?.meeting ?? existing.permMeeting,
+          permNote: dto.permissions?.note ?? existing.permNote,
+          permCalendar: dto.permissions?.calendar ?? existing.permCalendar,
+          permCustomer: dto.permissions?.customer ?? existing.permCustomer,
+          permInvoice: dto.permissions?.invoice ?? existing.permInvoice,
+          permStaff: dto.permissions?.staff ?? existing.permStaff,
+          permLeave: dto.permissions?.leave ?? existing.permLeave,
           version: { increment: 1 },
         },
       });
@@ -181,3 +227,4 @@ export class StaffService {
     return this.findOne(id);
   }
 }
+

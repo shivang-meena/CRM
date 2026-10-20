@@ -3,6 +3,8 @@ import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
 import ConvertLeadAction from './ConvertLeadAction';
+import { usePermissions } from '@/hooks/usePermissions';
+import type { ModulePermission } from '@/hooks/usePermissions';
 
 type Props = {
   leadId: string;
@@ -17,6 +19,7 @@ type Props = {
 
 interface ActionItem {
   key: string;
+  permission: ModulePermission;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
@@ -27,24 +30,23 @@ export default function LeadActionBar({
   leadId, onCustomerOpen, onAddFollowUp, onAddTask, onAddReminder,
   onAddMeeting, onCreateQuotation, onCreateInvoice,
 }: Props) {
+  const { canAccess } = usePermissions();
   const actions: ActionItem[] = [
-    { key: 'followup', label: 'Add FollowUp', icon: 'call-outline', onPress: onAddFollowUp },
-    { key: 'task', label: 'Add Task', icon: 'checkbox-outline', onPress: onAddTask },
-    { key: 'reminder', label: 'Add Reminder', icon: 'alarm-outline', onPress: onAddReminder },
-    { key: 'meeting', label: 'Add Meeting', icon: 'calendar-outline', onPress: onAddMeeting },
-    { key: 'quotation', label: 'Create Quotation', icon: 'document-text-outline', onPress: onCreateQuotation },
-    { key: 'invoice', label: 'Create Invoice', icon: 'receipt-outline', onPress: onCreateInvoice, primary: true },
+    { key: 'followup', permission: 'lead', label: 'Add FollowUp', icon: 'call-outline', onPress: onAddFollowUp },
+    { key: 'task', permission: 'task', label: 'Add Task', icon: 'checkbox-outline', onPress: onAddTask },
+    { key: 'reminder', permission: 'reminder', label: 'Add Reminder', icon: 'alarm-outline', onPress: onAddReminder },
+    { key: 'meeting', permission: 'meeting', label: 'Add Meeting', icon: 'calendar-outline', onPress: onAddMeeting },
+    { key: 'quotation', permission: 'invoice', label: 'Create Quotation', icon: 'document-text-outline', onPress: onCreateQuotation },
+    { key: 'invoice', permission: 'invoice', label: 'Create Invoice', icon: 'receipt-outline', onPress: onCreateInvoice, primary: true },
   ];
 
   return (
     <View style={styles.container}>
       <Text style={styles.sectionHeading}>Quick Actions</Text>
       <View style={styles.actionsRow}>
-        {actions.map(item => (
+        {canAccess('customer') ? <ConvertLeadAction key={leadId} leadId={leadId} onCustomerOpen={onCustomerOpen} /> : null}
+        {actions.filter(item => canAccess(item.permission)).map(item => (
           <React.Fragment key={item.key}>
-            {item.key === 'meeting' ? (
-              <ConvertLeadAction key={leadId} leadId={leadId} onCustomerOpen={onCustomerOpen} />
-            ) : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={item.label}

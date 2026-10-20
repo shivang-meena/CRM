@@ -434,10 +434,13 @@ model SalesDocument {
   customerEmailSnapshot   String?
   customerAddressSnapshot String?
   customerGstinSnapshot   String?
-  sellerCompanyName       String                @default("CRAZYWEBDEV TECHNOLOGIES")
-  sellerPhone             String                @default("918081048515")
-  sellerEmail             String                @default("contact@crazywebdev.com")
-  sellerAddress           String                @default("RISE Jhansi Incubation Center, Jhansi Nagar Nigam Premises, Near Elite Chauraha, Civil Lines")
+  sellerCompanyName       String                @default("")
+  sellerPhone             String                @default("")
+  sellerEmail             String                @default("")
+  sellerAddress           String                @default("")
+  companyProfileSnapshot  Json?
+  gstInvoiceSettingsSnapshot Json?
+  nonGstInvoiceSettingsSnapshot Json?
   bankName                String                @default("HDFC Bank")
   bankAccountNo           String                @default("50200103608173")
   bankIfsc                String                @default("HDFC0009621")
@@ -713,24 +716,141 @@ enum StaffStatus {
 }
 
 model StaffMember {
-  id           String      @id @default(uuid())
-  firstName    String
-  lastName     String
-  email        String      @unique
-  phone        String?
-  birthDate    DateTime?   @db.Date
-  joiningDate  DateTime    @db.Date
-  status       StaffStatus @default(ACTIVE)
-  department   String?
-  designation  String?
-  employeeCode String?     @unique
-  version      Int         @default(1)
-  deletedAt    DateTime?   @db.Timestamptz(3)
-  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+  id             String      @id @default(uuid())
+  firstName      String
+  lastName       String
+  email          String      @unique
+  phone          String?
+  birthDate      DateTime?   @db.Date
+  joiningDate    DateTime    @db.Date
+  status         StaffStatus @default(ACTIVE)
+  department     String?
+  designation    String?
+  employeeCode   String?     @unique
+  // Login credentials
+  passwordHash   String?
+  canLoginApp    Boolean     @default(false)
+  // Module permissions
+  permLead       Boolean     @default(true)
+  permTask       Boolean     @default(true)
+  permReminder   Boolean     @default(true)
+  permMeeting    Boolean     @default(true)
+  permNote       Boolean     @default(true)
+  permCalendar   Boolean     @default(true)
+  permCustomer   Boolean     @default(true)
+  permInvoice    Boolean     @default(false)
+  permStaff      Boolean     @default(false)
+  permLeave      Boolean     @default(true)
+  version        Int         @default(1)
+  deletedAt      DateTime?   @db.Timestamptz(3)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
+  leaves         LeaveRequest[]
 
   @@index([status, deletedAt])
   @@index([lastName, firstName])
   @@index([joiningDate])
   @@map("staff_members")
+}
+
+enum LeaveType {
+  SICK
+  CASUAL
+  EARNED
+  MATERNITY
+  PATERNITY
+  BEREAVEMENT
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model GstInvoiceSettings {
+  id                 String   @id @default("gst")
+  invoicePrefix      String   @default("GST")
+  invoiceStart       Int      @default(1)
+  nextNumber         Int      @default(1)
+  gstPercentage      Float    @default(18)
+  bankName           String   @default("")
+  accountNo          String   @default("")
+  ifscCode           String   @default("")
+  paymentUpiId       String   @default("")
+  signature          String   @default("") @db.Text
+  termsAndConditions String   @default("") @db.Text
+  updatedAt          DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("gst_invoice_settings")
+}
+
+model NonGstInvoiceSettings {
+  id                 String   @id @default("non-gst")
+  invoicePrefix      String   @default("NON-GST")
+  invoiceStart       Int      @default(1)
+  nextNumber         Int      @default(1)
+  bankName           String   @default("")
+  accountNo          String   @default("")
+  ifscCode           String   @default("")
+  paymentUpiId       String   @default("")
+  signature          String   @default("") @db.Text
+  termsAndConditions String   @default("") @db.Text
+  updatedAt          DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("non_gst_invoice_settings")
+}
+
+model CompanyProfile {
+  id                            String   @id @default("company")
+  companyName                   String   @default("")
+  contactNumber                 String   @default("")
+  dialCode                      String   @default("+91")
+  gstNumber                     String   @default("")
+  email                         String   @default("")
+  address                       String   @default("")
+  logo                          String   @default("") @db.Text
+  country                       String   @default("India")
+  state                         String   @default("")
+  city                          String   @default("")
+  businessCategory              String   @default("")
+  openingTime                   String   @default("")
+  closingTime                   String   @default("")
+  considerOvertime              Boolean  @default(false)
+  themeColor                    String   @default("#1966A6")
+  fontColor                     String   @default("#1966A6")
+  missedFollowUpReminder        Boolean  @default(false)
+  staffWhatsAppDeviceReconnect  Boolean  @default(false)
+  updatedAt                     DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("company_profile")
+}
+
+model LeaveRequest {
+  id            String       @id @default(uuid())
+  staffId       String?
+  staffName     String
+  type          LeaveType    @default(CASUAL)
+  status        LeaveStatus  @default(PENDING)
+  startDate     DateTime     @db.Timestamptz(3)
+  endDate       DateTime     @db.Timestamptz(3)
+  reason        String
+  leaveDetail   String?
+  appliedAt     DateTime     @default(now()) @db.Timestamptz(3)
+  reviewedAt    DateTime?    @db.Timestamptz(3)
+  reviewedById  String?
+  reviewedByName String?
+  rejectionNote String?
+  version       Int          @default(1)
+  deletedAt     DateTime?    @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @db.Timestamptz(3)
+  staff         StaffMember? @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@index([staffId, deletedAt, appliedAt])
+  @@index([status, deletedAt, appliedAt])
+  @@map("leave_requests")
 }

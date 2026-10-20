@@ -1,9 +1,11 @@
 import { Controller, Get, NotFoundException, Param, ParseUUIDPipe, Patch, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequirePermissions } from '../auth/permissions';
 import { PrismaService } from '../prisma/prisma.service';
 import { Actor } from '../crm/crm-core.service';
 import { ListQueryDto } from '../crm/crm.dto';
 @UseGuards(JwtAuthGuard)
+@RequirePermissions('reminder')
 @Controller('notifications')
 export class NotificationsController {
   constructor(private prisma: PrismaService) {}

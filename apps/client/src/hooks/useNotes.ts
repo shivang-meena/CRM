@@ -1,13 +1,14 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useModuleQuery } from './useModuleQuery';
+import { keepPreviousData, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createNote, deleteNote, fetchNote, fetchNotes, updateNote } from '@/api/notes';
 import { NoteFilters } from '@/types/note';
 
 export function useNotes(filters: NoteFilters) {
-  return useQuery({ queryKey: ['notes', filters], queryFn: () => fetchNotes(filters), placeholderData: keepPreviousData });
+  return useModuleQuery('note', { queryKey: ['notes', filters], queryFn: () => fetchNotes(filters), placeholderData: keepPreviousData });
 }
 
 export function useNote(id: string | null) {
-  return useQuery({ queryKey: ['note', id], queryFn: () => fetchNote(id!), enabled: !!id });
+  return useModuleQuery('note', { queryKey: ['note', id], queryFn: () => fetchNote(id!), enabled: !!id });
 }
 
 export function useNoteActions() {

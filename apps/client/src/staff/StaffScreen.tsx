@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
   Modal,
@@ -11,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { errorMessage } from '@/api/client';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useCreateStaff, useStaffList, useUpdateStaff, useUpdateStaffStatus } from '@/hooks/useStaff';
 import { StaffFormModal } from '@/staff/StaffFormModal';
 import { colors } from '@/theme/colors';
@@ -30,9 +32,25 @@ function validDate(value: string) {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
+const defaultPermissions = {
+  lead: true,
+  task: true,
+  reminder: true,
+  meeting: true,
+  note: true,
+  calendar: true,
+  customer: true,
+  invoice: false,
+  staff: false,
+  leave: true,
+};
+
 const blankForm = (): StaffFormValues => ({
   firstName: '', lastName: '', email: '', phone: '', birthDate: '', joiningDate: today(),
   status: 'ACTIVE', department: '', designation: '', employeeCode: '',
+  password: '',
+  canLoginApp: true,
+  permissions: { ...defaultPermissions },
 });
 
 function TableCell({ width, children }: { width: number; children: React.ReactNode }) {
@@ -40,6 +58,7 @@ function TableCell({ width, children }: { width: number; children: React.ReactNo
 }
 
 export function StaffScreen() {
+  const { isAdmin } = usePermissions();
   const { width: windowWidth } = useWindowDimensions();
   const desktop = windowWidth >= 960;
   const [draftSearch, setDraftSearch] = useState('');
@@ -74,6 +93,7 @@ export function StaffScreen() {
   const pending = createMutation.isPending || updateMutation.isPending;
 
   function openCreate() {
+    if (!isAdmin) return;
     setSelected(null);
     setValues(blankForm());
     setFormError(null);
@@ -82,6 +102,7 @@ export function StaffScreen() {
   }
 
   function openEdit(person: StaffMember) {
+    if (!isAdmin) return;
     setSelected(person);
     setValues({
       firstName: person.firstName,
@@ -94,6 +115,9 @@ export function StaffScreen() {
       department: person.department ?? '',
       designation: person.designation ?? '',
       employeeCode: person.employeeCode ?? '',
+      password: '',
+      canLoginApp: person.canLoginApp ?? false,
+      permissions: person.permissions ? { ...person.permissions } : { ...defaultPermissions },
     });
     setFormError(null);
     setFeedback(null);
@@ -131,10 +155,19 @@ export function StaffScreen() {
     if (!validDate(joiningDate)) return 'Joining date must be a valid YYYY-MM-DD date.';
     if (birthDate && !validDate(birthDate)) return 'Birth date must be a valid YYYY-MM-DD date.';
     if (birthDate && birthDate >= joiningDate) return 'Birth date must be earlier than joining date.';
+    if (values.canLoginApp) {
+      if (formMode === 'create' && (!values.password || values.password.trim().length < 6)) {
+        return 'Password is required (min 6 characters) when app login is allowed.';
+      }
+      if (formMode === 'edit' && values.password && values.password.trim().length < 6) {
+        return 'Password must be at least 6 characters.';
+      }
+    }
     return null;
   }
 
   async function submitForm() {
+    if (!isAdmin) return;
     if (pending) return;
     const validation = validateForm();
     if (validation) {
@@ -152,6 +185,9 @@ export function StaffScreen() {
       department: values.department.trim() || null,
       designation: values.designation.trim() || null,
       employeeCode: values.employeeCode.trim() || null,
+      password: values.password.trim() || null,
+      canLoginApp: values.canLoginApp,
+      permissions: values.permissions,
     };
     try {
       if (formMode === 'create') {
@@ -170,6 +206,7 @@ export function StaffScreen() {
   }
 
   async function confirmStatusChange() {
+    if (!isAdmin) return;
     if (!statusTarget || statusMutation.isPending) return;
     try {
       await statusMutation.mutateAsync({ id: statusTarget.staff.id, status: statusTarget.status, version: statusTarget.staff.version });
@@ -228,7 +265,7 @@ export function StaffScreen() {
             </View>
             {(draftSearch || search) ? <Pressable accessibilityRole="button" onPress={() => { setDraftSearch(''); setSearch(''); setPage(1); }} style={styles.outlineButton}><Text style={styles.outlineButtonText}>Clear</Text></Pressable> : null}
             <Pressable accessibilityRole="button" accessibilityState={{ expanded: reportsOpen }} onPress={() => setReportsOpen(open => !open)} style={styles.outlineButton}><Text style={styles.outlineButtonText}>Reports {reportsOpen ? '⌃' : '⌄'}</Text></Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Add staff" onPress={openCreate} style={styles.primaryButton}><Text style={styles.primaryButtonText}>＋ Add Staff</Text></Pressable>
+            {isAdmin ? <Pressable accessibilityRole="button" accessibilityLabel="Add staff" onPress={openCreate} style={styles.primaryButton}><Text style={styles.primaryButtonText}>＋ Add Staff</Text></Pressable> : null}
           </View>
         </View>
         <View style={styles.filtersRow}>
@@ -261,7 +298,7 @@ export function StaffScreen() {
           : staff.length === 0 ? <View style={styles.state}>
             <Text style={styles.stateTitle}>{search || filter !== 'ALL' ? 'No staff match these filters' : 'No staff members yet'}</Text>
             <Text style={styles.muted}>{search || filter !== 'ALL' ? 'Clear the search or choose another status.' : 'Add the first employee record to start the directory.'}</Text>
-            {search || filter !== 'ALL' ? <Pressable accessibilityRole="button" onPress={() => { setDraftSearch(''); setSearch(''); setFilter('ALL'); setPage(1); }} style={styles.outlineButton}><Text style={styles.outlineButtonText}>Clear filters</Text></Pressable> : <Pressable accessibilityRole="button" onPress={openCreate} style={styles.primaryButton}><Text style={styles.primaryButtonText}>＋ Add Staff</Text></Pressable>}
+            {search || filter !== 'ALL' ? <Pressable accessibilityRole="button" onPress={() => { setDraftSearch(''); setSearch(''); setFilter('ALL'); setPage(1); }} style={styles.outlineButton}><Text style={styles.outlineButtonText}>Clear filters</Text></Pressable> : isAdmin ? <Pressable accessibilityRole="button" onPress={openCreate} style={styles.primaryButton}><Text style={styles.primaryButtonText}>＋ Add Staff</Text></Pressable> : null}
           </View>
           : desktop ? <ScrollView horizontal showsHorizontalScrollIndicator>
             <View>
@@ -273,14 +310,17 @@ export function StaffScreen() {
                 return <View key={person.id} style={styles.rowGroup}>
                   <View style={[styles.tableRow, index % 2 === 1 && styles.alternateRow]}>
                     <TableCell width={72}><Pressable accessibilityRole="button" accessibilityState={{ expanded }} accessibilityLabel={`${expanded ? 'Hide' : 'Show'} details for ${person.firstName} ${person.lastName}`} onPress={() => toggleExpanded(person.id)} style={styles.numberCell}><Text style={styles.caret}>{expanded ? '⌄' : '›'}</Text><Text style={styles.value}>{number}</Text></Pressable></TableCell>
-                    <TableCell width={110}><Pressable accessibilityRole="button" accessibilityLabel={`Edit ${person.firstName} ${person.lastName}`} onPress={() => openEdit(person)} style={styles.editButton}><Text style={styles.editButtonText}>✎ Edit</Text></Pressable></TableCell>
+                    <TableCell width={110}>{isAdmin ? <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${person.firstName} ${person.lastName}`} onPress={() => openEdit(person)} style={styles.editButton}><Text style={styles.editButtonText}>✎ Edit</Text></Pressable> : <Text style={styles.muted}>—</Text>}</TableCell>
                     <TableCell width={145}><Text numberOfLines={1} style={[styles.value, styles.bold]}>{person.firstName}</Text></TableCell>
                     <TableCell width={145}><Text numberOfLines={1} style={styles.value}>{person.lastName}</Text></TableCell>
                     <TableCell width={230}><Text numberOfLines={1} selectable style={styles.value}>{person.email}</Text></TableCell>
                     <TableCell width={145}><Text numberOfLines={1} style={styles.value}>{person.phone || '—'}</Text></TableCell>
                     <TableCell width={125}><Text style={styles.value}>{person.birthDate || '—'}</Text></TableCell>
                     <TableCell width={130}><Text style={styles.value}>{person.joiningDate}</Text></TableCell>
-                    <TableCell width={125}><Pressable accessibilityRole="button" accessibilityLabel={`Change status for ${person.firstName} ${person.lastName}; currently ${active ? 'active' : 'inactive'}`} onPress={() => setStatusTarget({ staff: person, status: active ? 'INACTIVE' : 'ACTIVE' })} style={[styles.statusBadge, active ? styles.activeBadge : styles.inactiveBadge]}><Text style={[styles.statusText, active ? styles.activeText : styles.inactiveText]}>{active ? 'Active' : 'Inactive'} ⌄</Text></Pressable></TableCell>
+                    <TableCell width={125}><Pressable disabled={!isAdmin} accessibilityRole="button" accessibilityLabel={`Change status for ${person.firstName} ${person.lastName}; currently ${active ? 'active' : 'inactive'}`} onPress={() => setStatusTarget({ staff: person, status: active ? 'INACTIVE' : 'ACTIVE' })} style={[styles.statusBadge, styles.tableStatusBadge, active ? styles.activeBadge : styles.inactiveBadge]}>
+                      <Text numberOfLines={1} style={[styles.statusText, styles.tableStatusText, active ? styles.activeText : styles.inactiveText]}>{active ? 'Active' : 'Inactive'}</Text>
+                      {isAdmin ? <Ionicons name="chevron-down" size={12} color={active ? colors.success : colors.muted} style={styles.tableStatusCaret} /> : null}
+                    </Pressable></TableCell>
                   </View>
                   {expanded ? personDetails(person) : null}
                 </View>;
@@ -294,13 +334,13 @@ export function StaffScreen() {
               return <View key={person.id} style={styles.staffCard}>
                 <View style={styles.cardTop}>
                   <Text style={styles.cardName}>#{(page - 1) * pageSize + index + 1} · {person.firstName} {person.lastName}</Text>
-                  <Pressable accessibilityRole="button" onPress={() => setStatusTarget({ staff: person, status: active ? 'INACTIVE' : 'ACTIVE' })} style={[styles.statusBadge, active ? styles.activeBadge : styles.inactiveBadge]}><Text style={[styles.statusText, active ? styles.activeText : styles.inactiveText]}>{active ? 'Active' : 'Inactive'}</Text></Pressable>
+                  <Pressable disabled={!isAdmin} accessibilityRole="button" onPress={() => setStatusTarget({ staff: person, status: active ? 'INACTIVE' : 'ACTIVE' })} style={[styles.statusBadge, active ? styles.activeBadge : styles.inactiveBadge]}><Text style={[styles.statusText, active ? styles.activeText : styles.inactiveText]}>{active ? 'Active' : 'Inactive'}</Text></Pressable>
                 </View>
                 <Text selectable style={styles.value}>{person.email}</Text>
                 <Text style={styles.muted}>Phone: {person.phone || '—'} · Joining: {person.joiningDate}</Text>
                 <View style={styles.cardActions}>
                   <Pressable accessibilityRole="button" onPress={() => toggleExpanded(person.id)} style={styles.outlineButton}><Text style={styles.outlineButtonText}>{expanded ? 'Hide details' : 'More details'}</Text></Pressable>
-                  <Pressable accessibilityRole="button" onPress={() => openEdit(person)} style={styles.editButton}><Text style={styles.editButtonText}>✎ Edit</Text></Pressable>
+                  {isAdmin ? <Pressable accessibilityRole="button" onPress={() => openEdit(person)} style={styles.editButton}><Text style={styles.editButtonText}>✎ Edit</Text></Pressable> : null}
                 </View>
                 {expanded ? personDetails(person) : null}
               </View>;
@@ -316,14 +356,14 @@ export function StaffScreen() {
         </View> : null}
       </View>
 
-      <StaffFormModal visible={formMode !== 'closed'} mode={formMode === 'edit' ? 'edit' : 'create'} values={values} error={formError} pending={pending} onChange={changeField} onClose={closeForm} onSubmit={() => { void submitForm(); }} />
+      <StaffFormModal visible={isAdmin && formMode !== 'closed'} mode={formMode === 'edit' ? 'edit' : 'create'} values={values} error={formError} pending={pending} onChange={changeField} onClose={closeForm} onSubmit={() => { void submitForm(); }} />
 
-      <Modal visible={Boolean(statusTarget)} transparent animationType="fade" onRequestClose={() => { if (!statusMutation.isPending) setStatusTarget(null); }}>
+      <Modal visible={isAdmin && Boolean(statusTarget)} transparent animationType="fade" onRequestClose={() => { if (!statusMutation.isPending) setStatusTarget(null); }}>
         <View style={styles.modalBackdrop}><View style={styles.confirmCard}>
           <Text style={styles.confirmTitle}>Change staff status?</Text>
           <Text style={styles.confirmBody}>{statusTarget ? `${statusTarget.staff.firstName} ${statusTarget.staff.lastName} will be marked ${statusTarget.status.toLowerCase()}.` : ''}</Text>
           <View style={styles.confirmActions}>
-            <Pressable accessibilityRole="button" disabled={statusMutation.isPending} onPress={() => setStatusTarget(null)} style={[styles.outlineButton, styles.confirmButton]}><Text style={styles.outlineButtonText}>Cancel</Text></Pressable>
+            <Pressable disabled={!isAdmin || statusMutation.isPending} accessibilityRole="button" onPress={() => setStatusTarget(null)} style={[styles.outlineButton, styles.confirmButton]}><Text style={styles.outlineButtonText}>Cancel</Text></Pressable>
             <Pressable accessibilityRole="button" disabled={statusMutation.isPending} onPress={() => { void confirmStatusChange(); }} style={[styles.primaryButton, styles.confirmButton, statusMutation.isPending && styles.disabled]}><Text style={styles.primaryButtonText}>{statusMutation.isPending ? 'Saving…' : 'Confirm'}</Text></Pressable>
           </View>
         </View></View>
@@ -383,6 +423,9 @@ const styles = StyleSheet.create({
   editButton: { alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 6, borderRadius: 6, backgroundColor: colors.accentSoft },
   editButtonText: { color: colors.primaryText, fontWeight: '700', fontSize: 11 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderRadius: 15, alignSelf: 'flex-start' },
+  tableStatusBadge: { minWidth: 90, height: 30, paddingVertical: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  tableStatusText: { lineHeight: 16 },
+  tableStatusCaret: { lineHeight: 16 },
   activeBadge: { backgroundColor: colors.successSoft, borderColor: '#A8DAB5' },
   inactiveBadge: { backgroundColor: '#F1F5F9', borderColor: colors.border },
   statusText: { fontSize: 11, fontWeight: '700' },

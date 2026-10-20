@@ -1,11 +1,12 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useModuleQuery } from './useModuleQuery';
+import { keepPreviousData, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   createLeadRequest, deleteLeadRequest, fetchLead, fetchLeads, updateLeadRequest,
 } from '@/api/leads';
 import { Lead, LeadInput } from '@/types/lead';
 
 export function useLeads(search: string) {
-  return useQuery({
+  return useModuleQuery('lead', {
     queryKey: ['leads', search],
     queryFn: () => fetchLeads(search),
     placeholderData: keepPreviousData,
@@ -13,7 +14,7 @@ export function useLeads(search: string) {
 }
 
 export function useLead(id: string) {
-  return useQuery({
+  return useModuleQuery('lead', {
     queryKey: ['lead', id],
     queryFn: () => fetchLead(id),
     enabled: !!id,

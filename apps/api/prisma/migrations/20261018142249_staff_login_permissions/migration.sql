@@ -1,0 +1,12 @@
+-- AlterTable
+ALTER TABLE "staff_members" ADD COLUMN     "canLoginApp" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "passwordHash" TEXT,
+ADD COLUMN     "permCalendar" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "permCustomer" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "permInvoice" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "permLead" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "permMeeting" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "permNote" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "permReminder" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "permStaff" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "permTask" BOOLEAN NOT NULL DEFAULT true;

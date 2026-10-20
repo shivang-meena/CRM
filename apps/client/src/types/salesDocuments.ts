@@ -1,26 +1,21 @@
+import type { InvoiceCompanyProfile } from './companyProfile';
+import type { GstInvoiceSettingsSnapshot } from './gstInvoiceSettings';
+import type { NonGstInvoiceSettingsSnapshot } from './nonGstInvoiceSettings';
+
 export type SalesDocumentType = 'INVOICE' | 'QUOTATION';
 export type GstMode = 'NON_GST' | 'IGST' | 'SGST_CGST';
 export type GstType = GstMode; // Backward-compatible alias
 export type DiscountType = 'FIXED' | 'PERCENTAGE' | 'OVERALL' | 'FLAT_PER_UNIT';
 export type InvoicePaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'HALF_PAID' | 'PAID';
 
-export const DEFAULT_COMPANY_CONFIG = {
-  brandTitle: 'CrazyWebDev',
-  brandSubtitle: 'TECHNOLOGIES',
-  companyName: 'CRAZYWEBDEV TECHNOLOGIES',
-  phone: '918081048515',
-  email: 'contact@crazywebdev.com',
-  address:
-    'RISE Jhansi Incubation Center, Jhansi Nagar Nigam Premises, Near Elite Chauraha, Civil Lines',
+export const DEFAULT_DOCUMENT_CONFIG = {
   bankName: 'HDFC Bank',
   accountNo: '50200103608173',
   ifscCode: 'HDFC0009621',
   signatoryName: 'Vishwajeet',
   defaultTerms:
-    '1. Goods or services will be delivered after full payment.\n2. For detailed terms & conditions, kindly visit https://crazywebdev.com/terms-and-conditions',
+    '1. Goods or services will be delivered after full payment.',
 };
-
-export const STATIC_COMPANY_PROFILE = DEFAULT_COMPANY_CONFIG;
 
 export interface SalesDocumentItem {
   id?: string;
@@ -269,6 +264,9 @@ export interface SalesDocumentRecord {
   sellerPhone: string;
   sellerEmail: string;
   sellerAddress: string;
+  companyProfileSnapshot?: InvoiceCompanyProfile | null;
+  gstInvoiceSettingsSnapshot?: GstInvoiceSettingsSnapshot | null;
+  nonGstInvoiceSettingsSnapshot?: NonGstInvoiceSettingsSnapshot | null;
   bankName: string;
   bankAccountNo: string;
   bankIfsc: string;

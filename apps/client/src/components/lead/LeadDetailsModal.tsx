@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
 import { useAuth } from '@/context/AuthContext';
+import { leadSectionPermissions, usePermissions } from '@/hooks/usePermissions';
 import { useDeleteLead, useLead } from '@/hooks/useLeads';
 import { useSectionSummary } from '@/hooks/useLeadActivities';
 import { LeadSection } from '@/types/leadActivities';
@@ -45,7 +46,9 @@ type Props = {
 
 export default function LeadDetailsModal({ visible, leadId, onClose }: Props) {
   const { userName } = useAuth();
-  const [selectedSection, setSelectedSection] = useState<LeadSection>('details');
+  const { canAccess } = usePermissions();
+  const [requestedSection, setSelectedSection] = useState<LeadSection>('details');
+  const selectedSection = canAccess(leadSectionPermissions[requestedSection]) ? requestedSection : 'details';
 
   const {
     data: lead,
@@ -206,7 +209,7 @@ export default function LeadDetailsModal({ visible, leadId, onClose }: Props) {
 
           {/* Edit Lead Modal */}
           <LeadFormModal
-            visible={editLeadOpen}
+            visible={editLeadOpen && canAccess('lead')}
             lead={lead ?? null}
             defaultAssignee={userName}
             onClose={() => {
@@ -217,7 +220,7 @@ export default function LeadDetailsModal({ visible, leadId, onClose }: Props) {
 
           {/* Delete Lead Confirm Dialog */}
           <ConfirmDialog
-            visible={deleteConfirmOpen}
+            visible={deleteConfirmOpen && canAccess('lead')}
             title="Delete lead?"
             message={`This will archive ${lead?.name ?? 'this lead'} and retain all its linked records.`}
             loading={del.isPending}
@@ -228,7 +231,7 @@ export default function LeadDetailsModal({ visible, leadId, onClose }: Props) {
           {/* Add FollowUp Modal */}
           {followUpOpen && lead ? (
             <FollowUpFormModal
-              visible={followUpOpen}
+              visible={followUpOpen && canAccess('lead')}
               leadId={lead.id}
               defaultAssignee={lead.assignedTo || userName}
               onSaved={() => {
@@ -242,7 +245,7 @@ export default function LeadDetailsModal({ visible, leadId, onClose }: Props) {
           {/* Add Task Modal */}
           {taskOpen && lead ? (
             <TaskFormModal
-              visible={taskOpen}
+              visible={taskOpen && canAccess('task')}
               leadId={lead.id}
               defaultAssignee={lead.assignedTo || userName}
               onSaved={() => {
@@ -256,7 +259,7 @@ export default function LeadDetailsModal({ visible, leadId, onClose }: Props) {
           {/* Add Reminder Modal */}
           {reminderOpen && lead ? (
             <ReminderFormModal
-              visible={reminderOpen}
+              visible={reminderOpen && canAccess('reminder')}
               leadId={lead.id}
               onSaved={() => {
                 setReminderOpen(false);
@@ -269,7 +272,7 @@ export default function LeadDetailsModal({ visible, leadId, onClose }: Props) {
           {/* Add Meeting Modal */}
           {meetingOpen && lead ? (
             <MeetingFormModal
-              visible={meetingOpen}
+              visible={meetingOpen && canAccess('meeting')}
               leadId={lead.id}
               defaultAssignee={lead.assignedTo || userName}
               onSaved={() => {
@@ -283,7 +286,7 @@ export default function LeadDetailsModal({ visible, leadId, onClose }: Props) {
           {/* Create Quotation Modal */}
           {quotationOpen && lead ? (
             <SalesDocumentFormModal
-              visible={quotationOpen}
+              visible={quotationOpen && canAccess('invoice')}
               leadId={lead.id}
               type="QUOTATION"
               lead={lead}
@@ -298,7 +301,7 @@ export default function LeadDetailsModal({ visible, leadId, onClose }: Props) {
           {/* Create Invoice Modal */}
           {invoiceOpen && lead ? (
             <SalesDocumentFormModal
-              visible={invoiceOpen}
+              visible={invoiceOpen && canAccess('invoice')}
               leadId={lead.id}
               type="INVOICE"
               lead={lead}

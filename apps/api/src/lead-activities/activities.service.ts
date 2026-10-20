@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { HistoryEntity, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { Actor, CrmCoreService, Tx } from '../crm/crm-core.service';
+import { CrmCoreService, Tx } from '../crm/crm-core.service';
 import { ListQueryDto, VersionDto } from '../crm/crm.dto';
+import { activityPermissions, assertPermissions, hasPermission } from '../auth/permissions';
+import type { AuthenticatedUser, ModulePermission } from '../auth/permissions';
 
 export type ActivityKind = 'followups' | 'tasks' | 'meetings' | 'reminders';
 const config = {
@@ -82,7 +84,8 @@ export class ActivitiesService {
     return row;
   }
 
-  async create(kind: ActivityKind, leadId: string, input: Record<string, any>, actor: Actor) {
+  async create(kind: ActivityKind, leadId: string, input: Record<string, any>, actor: AuthenticatedUser) {
+    if (kind !== 'reminders' && input.reminderAt) assertPermissions(actor, 'reminder');
     return this.prisma.$transaction(async tx => {
       await this.core.lockLead(tx, leadId);
       const db = this.db(tx, kind), hash = this.core.hash({ leadId, kind, input });
@@ -104,7 +107,8 @@ export class ActivitiesService {
     });
   }
 
-  async change(kind: ActivityKind, leadId: string, id: string, input: Record<string, any>, actor: Actor, action: 'update' | 'complete' | 'cancel' | 'dismiss' | 'delete') {
+  async change(kind: ActivityKind, leadId: string, id: string, input: Record<string, any>, actor: AuthenticatedUser, action: 'update' | 'complete' | 'cancel' | 'dismiss' | 'delete') {
+    if (kind !== 'reminders' && action === 'update' && input.updateLinkedReminder && input.reminderAt) assertPermissions(actor, 'reminder');
     return this.prisma.$transaction(async tx => {
       await this.core.lockLead(tx, leadId);
       const db = this.db(tx, kind);
@@ -141,28 +145,45 @@ export class ActivitiesService {
     });
   }
 
-  async summary(leadId: string) {
+  async summary(leadId: string, actor: AuthenticatedUser) {
     return this.prisma.$transaction(async tx => {
       const lead = await tx.lead.findFirst({ where: { id: leadId, deletedAt: null } });
       if (!lead) throw new NotFoundException('Lead not found');
       const counts: Record<string, number> = {}, pending: Record<string, number> = {}, overdue: Record<string, number> = {};
       for (const kind of Object.keys(config) as ActivityKind[]) {
+        if (!hasPermission(actor, activityPermissions[kind])) {
+          counts[kind] = 0;
+          pending[kind] = 0;
+          if (kind === 'tasks' || kind === 'followups') overdue[kind] = 0;
+          continue;
+        }
         const db = this.db(tx, kind), c = config[kind], base = { leadId, deletedAt: null };
         counts[kind] = await db.count({ where: base });
         pending[kind] = await db.count({ where: { ...base, status: { in: [...c.pending] } } });
         if (kind === 'tasks' || kind === 'followups') overdue[kind] = await db.count({ where: { ...base, status: { in: [...c.pending] }, [c.time]: { lt: new Date() } } });
       }
-      counts.quotations = await tx.salesDocument.count({ where: { leadId, deletedAt: null, type: 'QUOTATION' } });
-      counts.invoices = await tx.salesDocument.count({ where: { leadId, deletedAt: null, type: 'INVOICE' } });
-      const invoices = await tx.salesDocument.findMany({ where: { leadId, deletedAt: null, type: 'INVOICE', status: 'ISSUED', nextPaymentDate: { lt: new Date(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) + 'T00:00:00Z') }, dueAmount: { gt: 0 } } });
-      overdue.invoices = invoices.length;
+      counts.quotations = 0;
+      counts.invoices = 0;
+      overdue.invoices = 0;
+      if (hasPermission(actor, 'invoice')) {
+        counts.quotations = await tx.salesDocument.count({ where: { leadId, deletedAt: null, type: 'QUOTATION' } });
+        counts.invoices = await tx.salesDocument.count({ where: { leadId, deletedAt: null, type: 'INVOICE' } });
+        const invoices = await tx.salesDocument.findMany({ where: { leadId, deletedAt: null, type: 'INVOICE', status: 'ISSUED', nextPaymentDate: { lt: new Date(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) + 'T00:00:00Z') }, dueAmount: { gt: 0 } } });
+        overdue.invoices = invoices.length;
+      }
       return { counts, pending, overdue, nextFollowUpAt: lead.nextFollowUpAt };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
 
-  async history(leadId: string, query: ListQueryDto) {
+  async history(leadId: string, query: ListQueryDto, actor: AuthenticatedUser) {
     if (!await this.prisma.lead.findFirst({ where: { id: leadId, deletedAt: null } })) throw new NotFoundException('Lead not found');
-    const where = { leadId, ...(query.search ? { summary: { contains: query.search, mode: 'insensitive' as const } } : {}) };
+    const entityPermissions: Record<HistoryEntity, ModulePermission> = {
+      LEAD: 'lead', FOLLOWUP: 'lead', TASK: 'task', REMINDER: 'reminder',
+      MEETING: 'meeting', QUOTATION: 'invoice', INVOICE: 'invoice', PAYMENT: 'invoice',
+    };
+    const entityTypes = (Object.keys(entityPermissions) as HistoryEntity[])
+      .filter(entity => hasPermission(actor, entityPermissions[entity]));
+    const where = { leadId, entityType: { in: entityTypes }, ...(query.search ? { summary: { contains: query.search, mode: 'insensitive' as const } } : {}) };
     const [items, total] = await Promise.all([
       this.prisma.leadHistory.findMany({ where, skip: (query.page - 1) * query.pageSize, take: query.pageSize, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] }),
       this.prisma.leadHistory.count({ where }),

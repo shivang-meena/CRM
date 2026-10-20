@@ -1,6 +1,19 @@
 export type StaffStatus = 'ACTIVE' | 'INACTIVE';
 export type StaffFilterStatus = 'ALL' | StaffStatus;
 
+export interface StaffPermissions {
+  lead: boolean;
+  task: boolean;
+  reminder: boolean;
+  meeting: boolean;
+  note: boolean;
+  calendar: boolean;
+  customer: boolean;
+  invoice: boolean;
+  staff: boolean;
+  leave: boolean;
+}
+
 export interface StaffMember {
   id: string;
   firstName: string;
@@ -13,6 +26,9 @@ export interface StaffMember {
   department: string | null;
   designation: string | null;
   employeeCode: string | null;
+  canLoginApp: boolean;
+  hasPassword: boolean;
+  permissions: StaffPermissions;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -50,6 +66,9 @@ export interface StaffFormValues {
   department: string;
   designation: string;
   employeeCode: string;
+  password: string;
+  canLoginApp: boolean;
+  permissions: StaffPermissions;
 }
 
 export interface StaffPayload {
@@ -63,6 +82,9 @@ export interface StaffPayload {
   department: string | null;
   designation: string | null;
   employeeCode: string | null;
+  password?: string | null;
+  canLoginApp: boolean;
+  permissions: StaffPermissions;
 }
 
 export interface UpdateStaffPayload extends StaffPayload {

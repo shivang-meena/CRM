@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useModuleQuery } from './useModuleQuery';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   convertLeadRequest, fetchCustomer, fetchCustomerByLead, fetchCustomers,
 } from '@/api/customers';
@@ -6,14 +7,14 @@ import { fetchLead } from '@/api/leads';
 import { CustomerFilters } from '@/types/customer';
 
 export function useCustomers(filters: CustomerFilters) {
-  return useQuery({
+  return useModuleQuery('customer', {
     queryKey: ['customers', filters],
     queryFn: () => fetchCustomers(filters),
   });
 }
 
 export function useCustomer(id: string) {
-  return useQuery({
+  return useModuleQuery('customer', {
     queryKey: ['customer', id],
     queryFn: () => fetchCustomer(id),
     enabled: !!id,
@@ -21,7 +22,7 @@ export function useCustomer(id: string) {
 }
 
 export function useCustomerByLead(leadId: string) {
-  return useQuery({
+  return useModuleQuery('customer', {
     queryKey: ['customer-by-lead', leadId],
     queryFn: () => fetchCustomerByLead(leadId),
     enabled: !!leadId,

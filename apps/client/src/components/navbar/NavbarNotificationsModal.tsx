@@ -4,12 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { errorMessage } from '@/api/client';
 import { useNotifications, useReadNotification } from '@/hooks/useNotifications';
+import { usePermissions } from '@/hooks/usePermissions';
 import { CrmNotification } from '@/types/leadActivities';
 import { formatDateTime } from '@/utils/format';
 import { colors } from '@/theme/colors';
 
 export default function NavbarNotificationsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const router = useRouter();
+  const { canAccess } = usePermissions();
   const [page, setPage] = useState(1);
   const [actionError, setActionError] = useState('');
   const query = useNotifications(page);
@@ -29,7 +31,11 @@ export default function NavbarNotificationsModal({ visible, onClose }: { visible
     try {
       if (!notification.readAt) await read.mutateAsync(notification.id);
       onClose();
-      if (notification.leadId?.trim()) router.replace({ pathname: '/lead/[id]', params: { id: notification.leadId } });
+      if (notification.leadId?.trim() && canAccess('lead')) {
+        router.replace({ pathname: '/lead/[id]', params: { id: notification.leadId } });
+      } else {
+        router.replace('/reminders');
+      }
     } catch (cause) {
       setActionError(errorMessage(cause));
     }

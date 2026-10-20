@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, Pressable, View } from 'react-native';
 import { colors } from '@/theme/colors';
 import { LeadSection, sectionLabels, sectionOrder, SectionSummary } from '@/types/leadActivities';
+import { leadSectionPermissions, usePermissions } from '@/hooks/usePermissions';
 
 type Props = {
   selected: LeadSection;
@@ -18,6 +19,7 @@ export default function LeadSectionTabs({
   loading,
   error,
 }: Props) {
+  const { canAccess } = usePermissions();
   // Badges map to counts for non-deleted records
   const getBadgeCount = (key: LeadSection): number | string | null => {
     if (key === 'details' || key === 'history') return null;
@@ -36,7 +38,7 @@ export default function LeadSectionTabs({
         accessibilityRole="tablist"
         accessibilityLabel="Lead section tabs"
       >
-        {sectionOrder.map((key) => {
+        {sectionOrder.filter(key => canAccess(leadSectionPermissions[key])).map((key) => {
           const active = selected === key;
           const badge = getBadgeCount(key);
 

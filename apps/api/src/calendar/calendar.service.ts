@@ -3,6 +3,8 @@ import { CalendarEventCategory } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Actor, CrmCoreService } from '../crm/crm-core.service';
 import { CalendarItemsQueryDto, CreateCalendarEventDto, UpdateCalendarEventDto } from './dto/calendar.dto';
+import { hasPermission } from '../auth/permissions';
+import type { AuthenticatedUser } from '../auth/permissions';
 
 export type CalendarCategory = 'EVENT' | 'LEAD' | 'REMINDER' | 'MEETING' | 'HOLIDAY' | 'SERVICE';
 export type CalendarSource = 'CALENDAR_EVENT' | 'LEAD_FOLLOWUP' | 'REMINDER' | 'MEETING';
@@ -38,9 +40,14 @@ export class CalendarService {
     return { key: `CALENDAR_EVENT:${row.id}`, sourceId: row.id, source: 'CALENDAR_EVENT', category: row.category as CalendarCategory, title: row.title, description: row.description ?? null, startAt: row.startAt.toISOString(), endAt: row.endAt.toISOString(), allDay: row.allDay, leadId: null, status: null, version: row.version, editable: true };
   }
 
-  async items(query: CalendarItemsQueryDto, actor: Actor) {
+  async items(query: CalendarItemsQueryDto, actor: AuthenticatedUser) {
     const { from, to } = this.range(query);
-    const selected = this.parseCategories(query.categories);
+    const selected = this.parseCategories(query.categories).filter(category => {
+      if (category === 'LEAD') return hasPermission(actor, 'lead');
+      if (category === 'REMINDER') return hasPermission(actor, 'reminder');
+      if (category === 'MEETING') return hasPermission(actor, 'meeting');
+      return true;
+    });
     if (!selected.length) return { items: [] as CalendarItem[] };
     const include = new Set(selected);
     const results: CalendarItem[] = [];

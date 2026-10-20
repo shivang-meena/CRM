@@ -6,6 +6,9 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import type { GstInvoiceSettings, NonGstInvoiceSettings, Prisma } from '@prisma/client';
+import { GstInvoiceSettingsService, gstSettingsSnapshot } from '../settings/gst-invoice-settings.service';
+import { NonGstInvoiceSettingsService, nonGstSettingsSnapshot } from '../settings/non-gst-invoice-settings.service';
 import {
   CreateSalesDocumentDto,
   DiscountTypeDto,
@@ -34,7 +37,7 @@ const DEFAULT_PAYMENT_METHODS = [
 ];
 
 const DEFAULT_TERMS =
-  '1. Goods or services will be delivered after full payment.\n2. For detailed terms & conditions, kindly visit https://crazywebdev.com/terms-and-conditions';
+  '1. Goods or services will be delivered after full payment.';
 
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -50,7 +53,36 @@ function assertFiniteNumber(val: unknown, fieldName: string): number {
 
 @Injectable()
 export class SalesDocumentsService implements OnModuleInit {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gstSettings: GstInvoiceSettingsService,
+    private readonly nonGstSettings: NonGstInvoiceSettingsService,
+  ) {}
+
+  getGstInvoiceSettings() { return this.gstSettings.get(); }
+  getNonGstInvoiceSettings() { return this.nonGstSettings.get(); }
+
+  getInvoiceCompanyProfile() {
+    // Invoice users can read branding and issuer details, not administrative settings.
+    return this.prisma.companyProfile.findUnique({
+      where: { id: 'company' },
+      select: {
+        companyName: true,
+        contactNumber: true,
+        dialCode: true,
+        gstNumber: true,
+        email: true,
+        address: true,
+        logo: true,
+        country: true,
+        state: true,
+        city: true,
+        businessCategory: true,
+        themeColor: true,
+        fontColor: true,
+      },
+    });
+  }
 
   async onModuleInit() {
     const count = await this.prisma.paymentMethodMaster.count({
@@ -440,6 +472,13 @@ export class SalesDocumentsService implements OnModuleInit {
       }
     }
 
+    const companyProfile = await this.getInvoiceCompanyProfile();
+    if (!companyProfile?.companyName.trim()) {
+      throw new BadRequestException(
+        'Save the company profile in General Settings → Web Settings before creating an invoice or quotation.',
+      );
+    }
+
     const customer: any = await this.prisma.customer.findUnique({
       where: { id: dto.customerId },
       include: { lead: true },
@@ -449,15 +488,20 @@ export class SalesDocumentsService implements OnModuleInit {
     }
 
     const activeGstMode = dto.gstMode ?? dto.gstType ?? GstModeDto.NON_GST;
+    const isGstInvoice =
+      dto.type === SalesDocumentTypeDto.INVOICE &&
+      activeGstMode !== GstModeDto.NON_GST;
 
-    const financials = this.calculateDocumentFinancials({
-      items: dto.items,
-      gstMode: activeGstMode,
-      inclusiveGst: Boolean(dto.inclusiveGst),
-      documentType: dto.type,
-      requestedPaymentStatus: dto.paymentStatus,
-      explicitPaidAmount: dto.paidAmount,
-    });
+    const financials = isGstInvoice
+      ? null
+      : this.calculateDocumentFinancials({
+          items: dto.items,
+          gstMode: activeGstMode,
+          inclusiveGst: Boolean(dto.inclusiveGst),
+          documentType: dto.type,
+          requestedPaymentStatus: dto.paymentStatus,
+          explicitPaidAmount: dto.paidAmount,
+        });
 
     // Resolve bank details from configured PaymentMethodMaster if available
     const defaultBankMethod = await this.prisma.paymentMethodMaster.findFirst({
@@ -469,69 +513,177 @@ export class SalesDocumentsService implements OnModuleInit {
       },
     });
 
-    const documentNo = await this.generateNextDocumentNo(dto.type);
+    const documentNo =
+      dto.type === SalesDocumentTypeDto.INVOICE
+        ? ''
+        : await this.generateNextDocumentNo(dto.type);
     const lead = customer.lead || {};
 
-    const created = await this.prisma.salesDocument.create({
-      data: {
-        requestKey: dto.requestKey,
-        documentNo,
-        type: dto.type,
-        status: 'ISSUED',
-        customerId: customer.id,
-        leadId: customer.leadId || null,
-        issueDate: new Date(dto.issueDate),
-        paymentDate:
-          dto.type === SalesDocumentTypeDto.INVOICE && financials.paidAmount > 0 && dto.paymentDate
-            ? new Date(dto.paymentDate)
+    const create = (
+      tx: Prisma.TransactionClient,
+      settings?: GstInvoiceSettings | NonGstInvoiceSettings,
+      gstDocumentNo?: string,
+    ) => {
+      const invoiceSettings = settings;
+      const gstSettings =
+        isGstInvoice && settings && 'gstPercentage' in settings
+          ? settings
+          : undefined;
+      const sgstDefault = gstSettings
+        ? round2(gstSettings.gstPercentage / 2)
+        : 0;
+      const calculated = gstSettings
+        ? this.calculateDocumentFinancials({
+            items: dto.items.map((item) => ({
+              ...item,
+              igstRate: item.igstRate ?? gstSettings.gstPercentage,
+              sgstRate: item.sgstRate ?? sgstDefault,
+              cgstRate:
+                item.cgstRate ??
+                round2(gstSettings.gstPercentage - sgstDefault),
+            })),
+            gstMode: activeGstMode,
+            inclusiveGst: Boolean(dto.inclusiveGst),
+            documentType: dto.type,
+            requestedPaymentStatus: dto.paymentStatus,
+            explicitPaidAmount: dto.paidAmount,
+          })
+        : financials;
+      if (!calculated)
+        throw new BadRequestException('GST Invoice settings are required.');
+      return tx.salesDocument.create({
+        data: {
+          requestKey: dto.requestKey,
+          documentNo: gstDocumentNo ?? documentNo,
+          type: dto.type,
+          status: 'ISSUED',
+          customerId: customer.id,
+          leadId: customer.leadId || null,
+          issueDate: new Date(dto.issueDate),
+          paymentDate:
+            dto.type === SalesDocumentTypeDto.INVOICE &&
+            calculated.paidAmount > 0 &&
+            dto.paymentDate
+              ? new Date(dto.paymentDate)
+              : null,
+          nextPaymentDate: dto.nextPaymentDate
+            ? new Date(dto.nextPaymentDate)
             : null,
-        nextPaymentDate: dto.nextPaymentDate ? new Date(dto.nextPaymentDate) : null,
-        gstMode: activeGstMode,
-        inclusiveGst: financials.effectiveInclusiveGst,
-        currency: dto.currency || 'INR',
-        paymentStatus: financials.derivedPaymentStatus,
-        paymentMethodId: dto.paymentMethodId || defaultBankMethod?.id || null,
-        brochureId: dto.brochureId || null,
-        termsAndConditions: dto.termsAndConditions ?? DEFAULT_TERMS,
-        emailAutomation: Boolean(dto.emailAutomation),
-        whatsappAutomation: Boolean(dto.whatsappAutomation),
+          gstMode: activeGstMode,
+          inclusiveGst: calculated.effectiveInclusiveGst,
+          currency: dto.currency || 'INR',
+          paymentStatus: calculated.derivedPaymentStatus,
+          paymentMethodId: dto.paymentMethodId || defaultBankMethod?.id || null,
+          brochureId: dto.brochureId || null,
+          termsAndConditions:
+            dto.termsAndConditions ??
+            invoiceSettings?.termsAndConditions ??
+            (dto.type === SalesDocumentTypeDto.INVOICE ? '' : DEFAULT_TERMS),
+          emailAutomation: Boolean(dto.emailAutomation),
+          whatsappAutomation: Boolean(dto.whatsappAutomation),
 
-        grossSubtotal: financials.grossSubtotal,
-        subtotal: financials.subtotal,
-        discountTotal: financials.discountTotal,
-        igstTotal: financials.igstTotal,
-        sgstTotal: financials.sgstTotal,
-        cgstTotal: financials.cgstTotal,
-        taxTotal: financials.taxTotal,
-        grandTotal: financials.grandTotal,
-        paidAmount: financials.paidAmount,
-        dueAmount: financials.dueAmount,
+          grossSubtotal: calculated.grossSubtotal,
+          subtotal: calculated.subtotal,
+          discountTotal: calculated.discountTotal,
+          igstTotal: calculated.igstTotal,
+          sgstTotal: calculated.sgstTotal,
+          cgstTotal: calculated.cgstTotal,
+          taxTotal: calculated.taxTotal,
+          grandTotal: calculated.grandTotal,
+          paidAmount: calculated.paidAmount,
+          dueAmount: calculated.dueAmount,
 
-        // Preserve immutable customer & bank snapshots at creation time
-        customerNameSnapshot: customer.name || lead.name || 'Customer',
-        companyNameSnapshot: customer.companyName || lead.companyName || '-',
-        customerPhoneSnapshot: customer.phone || lead.phone || '-',
-        customerEmailSnapshot: customer.email || lead.email || '',
-        customerAddressSnapshot: customer.address || lead.address || '',
-        customerGstinSnapshot: customer.gstin || '',
-        bankName: defaultBankMethod?.bankName || 'HDFC Bank',
-        bankAccountNo: defaultBankMethod?.accountNo || '50200103608173',
-        bankIfsc: defaultBankMethod?.ifscCode || 'HDFC0009621',
+          // Preserve issuer, customer and bank snapshots at creation time.
+          companyProfileSnapshot: companyProfile,
+          sellerCompanyName: companyProfile.companyName,
+          sellerPhone: [companyProfile.dialCode, companyProfile.contactNumber]
+            .filter(Boolean)
+            .join(' '),
+          sellerEmail: companyProfile.email,
+          sellerAddress: [
+            companyProfile.address,
+            companyProfile.city,
+            companyProfile.state,
+            companyProfile.country,
+          ]
+            .filter(Boolean)
+            .join(', '),
+          customerNameSnapshot: customer.name || lead.name || 'Customer',
+          companyNameSnapshot: customer.companyName || lead.companyName || '-',
+          customerPhoneSnapshot: customer.phone || lead.phone || '-',
+          customerEmailSnapshot: customer.email || lead.email || '',
+          customerAddressSnapshot: customer.address || lead.address || '',
+          customerGstinSnapshot: customer.gstin || '',
+          bankName:
+            invoiceSettings?.bankName ??
+            (dto.type === SalesDocumentTypeDto.INVOICE
+              ? ''
+              : defaultBankMethod?.bankName || 'HDFC Bank'),
+          bankAccountNo:
+            invoiceSettings?.accountNo ??
+            (dto.type === SalesDocumentTypeDto.INVOICE
+              ? ''
+              : defaultBankMethod?.accountNo || '50200103608173'),
+          bankIfsc:
+            invoiceSettings?.ifscCode ??
+            (dto.type === SalesDocumentTypeDto.INVOICE
+              ? ''
+              : defaultBankMethod?.ifscCode || 'HDFC0009621'),
+          ...(dto.type === SalesDocumentTypeDto.INVOICE
+            ? { signatoryName: '' }
+            : {}),
+          ...(invoiceSettings
+            ? {
+                ...('gstPercentage' in invoiceSettings
+                  ? {
+                      gstInvoiceSettingsSnapshot:
+                        gstSettingsSnapshot(invoiceSettings),
+                    }
+                  : {
+                      nonGstInvoiceSettingsSnapshot:
+                        nonGstSettingsSnapshot(invoiceSettings),
+                    }),
+                signatoryName: '',
+              }
+            : {}),
 
-        createdById: actor.userId || null,
-        createdByName: actor.userName || 'Subadmin',
-        items: {
-          create: financials.computedItems,
+          createdById: actor.userId || null,
+          createdByName: actor.userName || 'Subadmin',
+          items: {
+            create: calculated.computedItems,
+          },
         },
-      },
-      include: {
-        customer: { include: { lead: true } },
-        brochure: true,
-        paymentMethod: true,
-        items: { orderBy: { sortOrder: 'asc' } },
-      },
-    });
+        include: {
+          customer: { include: { lead: true } },
+          brochure: true,
+          paymentMethod: true,
+          items: { orderBy: { sortOrder: 'asc' } },
+        },
+      });
+    };
 
+    const replay = (tx: Prisma.TransactionClient) =>
+      tx.salesDocument.findUnique({
+        where: { requestKey: dto.requestKey },
+        include: {
+          customer: { include: { lead: true } },
+          brochure: true,
+          paymentMethod: true,
+          items: { orderBy: { sortOrder: 'asc' } },
+        },
+      });
+    const created =
+      dto.type === SalesDocumentTypeDto.INVOICE
+        ? isGstInvoice
+          ? await this.gstSettings.createInvoice(
+              (tx, settings, number) => create(tx, settings, number),
+              replay,
+            )
+          : await this.nonGstSettings.createInvoice(
+              (tx, settings, number) => create(tx, settings, number),
+              replay,
+            )
+        : await create(this.prisma);
     return this.mapDocumentResponse(created);
   }
 
@@ -680,85 +832,125 @@ export class SalesDocumentsService implements OnModuleInit {
       return this.mapDocumentResponse(existingConverted);
     }
 
-    const documentNo = await this.generateNextDocumentNo(SalesDocumentTypeDto.INVOICE);
+    const isGstInvoice = quotation.gstMode !== GstModeDto.NON_GST;
+    const documentNo = '';
 
-    const createdInvoice = await this.prisma.salesDocument.create({
-      data: {
-        documentNo,
-        type: SalesDocumentTypeDto.INVOICE,
-        status: 'ISSUED',
-        sourceQuotationId: quotation.id,
-        customerId: quotation.customerId,
-        leadId: quotation.leadId,
-        issueDate: new Date(),
-        gstMode: quotation.gstMode,
-        inclusiveGst: quotation.inclusiveGst,
-        currency: quotation.currency,
-        paymentStatus: InvoicePaymentStatusDto.UNPAID,
-        paymentMethodId: quotation.paymentMethodId,
-        brochureId: quotation.brochureId,
-        termsAndConditions: quotation.termsAndConditions,
-        emailAutomation: quotation.emailAutomation,
-        whatsappAutomation: quotation.whatsappAutomation,
-        grossSubtotal: quotation.grossSubtotal,
-        subtotal: quotation.subtotal,
-        discountTotal: quotation.discountTotal,
-        igstTotal: quotation.igstTotal,
-        sgstTotal: quotation.sgstTotal,
-        cgstTotal: quotation.cgstTotal,
-        taxTotal: quotation.taxTotal,
-        grandTotal: quotation.grandTotal,
-        paidAmount: 0,
-        dueAmount: quotation.grandTotal,
-        customerNameSnapshot: quotation.customerNameSnapshot,
-        companyNameSnapshot: quotation.companyNameSnapshot,
-        customerPhoneSnapshot: quotation.customerPhoneSnapshot,
-        customerEmailSnapshot: quotation.customerEmailSnapshot,
-        customerAddressSnapshot: quotation.customerAddressSnapshot,
-        customerGstinSnapshot: quotation.customerGstinSnapshot,
-        sellerCompanyName: quotation.sellerCompanyName,
-        sellerPhone: quotation.sellerPhone,
-        sellerEmail: quotation.sellerEmail,
-        sellerAddress: quotation.sellerAddress,
-        bankName: quotation.bankName,
-        bankAccountNo: quotation.bankAccountNo,
-        bankIfsc: quotation.bankIfsc,
-        signatoryName: quotation.signatoryName,
-        createdById: actor.userId || null,
-        createdByName: actor.userName || quotation.createdByName,
-        items: {
-          create: quotation.items.map((item, idx) => ({
-            productName: item.productName,
-            hsnSac: item.hsnSac,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            discountValue: item.discountValue,
-            discountType: item.discountType,
-            discountAmount: item.discountAmount,
-            grossAmount: item.grossAmount,
-            netAmount: item.netAmount,
-            igstRate: item.igstRate,
-            igstAmount: item.igstAmount,
-            sgstRate: item.sgstRate,
-            sgstAmount: item.sgstAmount,
-            cgstRate: item.cgstRate,
-            cgstAmount: item.cgstAmount,
-            taxPercent: item.taxPercent,
-            taxAmount: item.taxAmount,
-            totalAmount: item.totalAmount,
-            comments: item.comments,
-            sortOrder: idx,
-          })),
+    const create = (
+      tx: Prisma.TransactionClient,
+      settings?: GstInvoiceSettings | NonGstInvoiceSettings,
+      gstDocumentNo?: string,
+    ) =>
+      tx.salesDocument.create({
+        data: {
+          documentNo: gstDocumentNo ?? documentNo,
+          type: SalesDocumentTypeDto.INVOICE,
+          status: 'ISSUED',
+          sourceQuotationId: quotation.id,
+          customerId: quotation.customerId,
+          leadId: quotation.leadId,
+          issueDate: new Date(),
+          gstMode: quotation.gstMode,
+          inclusiveGst: quotation.inclusiveGst,
+          currency: quotation.currency,
+          paymentStatus: InvoicePaymentStatusDto.UNPAID,
+          paymentMethodId: quotation.paymentMethodId,
+          brochureId: quotation.brochureId,
+          termsAndConditions: quotation.termsAndConditions,
+          emailAutomation: quotation.emailAutomation,
+          whatsappAutomation: quotation.whatsappAutomation,
+          grossSubtotal: quotation.grossSubtotal,
+          subtotal: quotation.subtotal,
+          discountTotal: quotation.discountTotal,
+          igstTotal: quotation.igstTotal,
+          sgstTotal: quotation.sgstTotal,
+          cgstTotal: quotation.cgstTotal,
+          taxTotal: quotation.taxTotal,
+          grandTotal: quotation.grandTotal,
+          paidAmount: 0,
+          dueAmount: quotation.grandTotal,
+          customerNameSnapshot: quotation.customerNameSnapshot,
+          companyNameSnapshot: quotation.companyNameSnapshot,
+          customerPhoneSnapshot: quotation.customerPhoneSnapshot,
+          customerEmailSnapshot: quotation.customerEmailSnapshot,
+          customerAddressSnapshot: quotation.customerAddressSnapshot,
+          customerGstinSnapshot: quotation.customerGstinSnapshot,
+          sellerCompanyName: quotation.sellerCompanyName,
+          sellerPhone: quotation.sellerPhone,
+          sellerEmail: quotation.sellerEmail,
+          sellerAddress: quotation.sellerAddress,
+          ...(quotation.companyProfileSnapshot
+            ? { companyProfileSnapshot: quotation.companyProfileSnapshot }
+            : {}),
+          bankName: settings?.bankName ?? quotation.bankName,
+          bankAccountNo: settings?.accountNo ?? quotation.bankAccountNo,
+          bankIfsc: settings?.ifscCode ?? quotation.bankIfsc,
+          signatoryName: settings ? '' : quotation.signatoryName,
+          ...(settings
+            ? {
+                ...('gstPercentage' in settings
+                  ? {
+                      gstInvoiceSettingsSnapshot: gstSettingsSnapshot(settings),
+                    }
+                  : {
+                      nonGstInvoiceSettingsSnapshot:
+                        nonGstSettingsSnapshot(settings),
+                    }),
+              }
+            : {}),
+          createdById: actor.userId || null,
+          createdByName: actor.userName || quotation.createdByName,
+          items: {
+            create: quotation.items.map((item, idx) => ({
+              productName: item.productName,
+              hsnSac: item.hsnSac,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              discountValue: item.discountValue,
+              discountType: item.discountType,
+              discountAmount: item.discountAmount,
+              grossAmount: item.grossAmount,
+              netAmount: item.netAmount,
+              igstRate: item.igstRate,
+              igstAmount: item.igstAmount,
+              sgstRate: item.sgstRate,
+              sgstAmount: item.sgstAmount,
+              cgstRate: item.cgstRate,
+              cgstAmount: item.cgstAmount,
+              taxPercent: item.taxPercent,
+              taxAmount: item.taxAmount,
+              totalAmount: item.totalAmount,
+              comments: item.comments,
+              sortOrder: idx,
+            })),
+          },
         },
-      },
-      include: {
-        customer: { include: { lead: true } },
-        brochure: true,
-        paymentMethod: true,
-        items: { orderBy: { sortOrder: 'asc' } },
-      },
-    });
+        include: {
+          customer: { include: { lead: true } },
+          brochure: true,
+          paymentMethod: true,
+          items: { orderBy: { sortOrder: 'asc' } },
+        },
+      });
 
+    const replay = (tx: Prisma.TransactionClient) =>
+      tx.salesDocument.findFirst({
+        where: { sourceQuotationId: quotationId, deletedAt: null },
+        include: {
+          customer: { include: { lead: true } },
+          brochure: true,
+          paymentMethod: true,
+          items: { orderBy: { sortOrder: 'asc' } },
+        },
+      });
+    const createdInvoice = isGstInvoice
+      ? await this.gstSettings.createInvoice(
+          (tx, settings, number) => create(tx, settings, number),
+          replay,
+        )
+      : await this.nonGstSettings.createInvoice(
+          (tx, settings, number) => create(tx, settings, number),
+          replay,
+        );
     return this.mapDocumentResponse(createdInvoice);
   }
 
@@ -930,6 +1122,9 @@ export class SalesDocumentsService implements OnModuleInit {
       sellerPhone: doc.sellerPhone,
       sellerEmail: doc.sellerEmail,
       sellerAddress: doc.sellerAddress,
+      companyProfileSnapshot: doc.companyProfileSnapshot ?? null,
+      gstInvoiceSettingsSnapshot: doc.gstInvoiceSettingsSnapshot ?? null,
+      nonGstInvoiceSettingsSnapshot: doc.nonGstInvoiceSettingsSnapshot ?? null,
       bankName: doc.bankName,
       bankAccountNo: doc.bankAccountNo,
       bankIfsc: doc.bankIfsc,

@@ -11,6 +11,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SalesDocumentsService } from './sales-documents.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequirePermissions } from '../auth/permissions';
 import {
   CreateSalesDocumentDto,
   SalesDocumentQueryDto,
@@ -19,6 +21,8 @@ import {
   UpsertPaymentMethodDto,
 } from './dto/sales-document.dto';
 
+@UseGuards(JwtAuthGuard)
+@RequirePermissions('invoice')
 @Controller('sales-documents')
 export class SalesDocumentsController {
   constructor(private readonly service: SalesDocumentsService) {}
@@ -32,6 +36,17 @@ export class SalesDocumentsController {
   listPaymentMethods(@Query('search') search?: string) {
     return this.service.listPaymentMethods(search);
   }
+
+  @Get('company-profile')
+  companyProfile() {
+    return this.service.getInvoiceCompanyProfile();
+  }
+
+  @Get('gst-settings')
+  gstSettings() { return this.service.getGstInvoiceSettings(); }
+
+  @Get('non-gst-settings')
+  nonGstSettings() { return this.service.getNonGstInvoiceSettings(); }
 
   @Post('payment-methods')
   createPaymentMethod(@Body() dto: UpsertPaymentMethodDto) {

@@ -1,18 +1,22 @@
 import { StaffStatus } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsInt,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   Max,
   MaxLength,
   Min,
+  MinLength,
   registerDecorator,
   ValidationArguments,
   ValidationOptions,
+  ValidateNested,
 } from 'class-validator';
 
 export function isValidCalendarDateString(value: string): boolean {
@@ -75,6 +79,19 @@ export class ListStaffQueryDto {
   pageSize = 10;
 }
 
+export class StaffPermissionsDto {
+  @IsOptional() @IsBoolean() lead?: boolean;
+  @IsOptional() @IsBoolean() task?: boolean;
+  @IsOptional() @IsBoolean() reminder?: boolean;
+  @IsOptional() @IsBoolean() meeting?: boolean;
+  @IsOptional() @IsBoolean() note?: boolean;
+  @IsOptional() @IsBoolean() calendar?: boolean;
+  @IsOptional() @IsBoolean() customer?: boolean;
+  @IsOptional() @IsBoolean() invoice?: boolean;
+  @IsOptional() @IsBoolean() staff?: boolean;
+  @IsOptional() @IsBoolean() leave?: boolean;
+}
+
 export class CreateStaffDto {
   @Transform(trim)
   @IsString()
@@ -131,6 +148,22 @@ export class CreateStaffDto {
   @IsString()
   @MaxLength(50)
   employeeCode?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  @MaxLength(100)
+  password?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  canLoginApp?: boolean;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => StaffPermissionsDto)
+  permissions?: StaffPermissionsDto;
 }
 
 // Edit sends the complete form plus the version that was loaded by the client.

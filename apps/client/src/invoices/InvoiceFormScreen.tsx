@@ -15,6 +15,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
+import { errorMessage } from '@/api/client';
+import { useInvoiceCompanyProfile } from '@/hooks/useInvoiceCompanyProfile';
+import { useInvoiceGstSettings } from '@/hooks/useInvoiceGstSettings';
+import { useInvoiceNonGstSettings } from '@/hooks/useInvoiceNonGstSettings';
+import InvoiceSignature from './InvoiceSignature';
+import InvoiceCompanyDetails from './InvoiceCompanyDetails';
+import { getDocumentCompanyProfile, getDocumentInvoiceSettings } from './companyProfile';
+import { invoiceBranding } from './invoiceBranding';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
 import { useCustomers } from '@/hooks/useCustomers';
 import {
@@ -25,15 +33,15 @@ import {
 } from '@/hooks/useSalesDocuments';
 import {
   calculateInvoicePreview,
+  round2,
   CreateSalesDocumentPayload,
-  DEFAULT_COMPANY_CONFIG,
+  DEFAULT_DOCUMENT_CONFIG,
   DiscountType,
   GstMode,
   InvoicePaymentStatus,
   SalesDocumentItem,
   SalesDocumentRecord,
   SalesDocumentType,
-  STATIC_COMPANY_PROFILE,
   UpdateSalesDocumentPayload,
 } from '@/types/salesDocuments';
 
@@ -42,6 +50,8 @@ interface InvoiceFormScreenProps {
   existingDocument?: SalesDocumentRecord;
   isClone?: boolean;
 }
+
+type InvoiceFormItem = SalesDocumentItem & { useDefaultGstRate?: boolean };
 
 const DISCOUNT_OPTIONS: { label: string; value: DiscountType }[] = [
   { label: 'Overall Discount', value: 'OVERALL' },
@@ -87,6 +97,22 @@ export function InvoiceFormScreen({
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const editingExisting = Boolean(existingDocument && !isClone);
+  const companyQuery = useInvoiceCompanyProfile(!editingExisting);
+  const companyProfile =
+    editingExisting && existingDocument
+      ? getDocumentCompanyProfile(existingDocument)
+      : companyQuery.data;
+  const companyUnavailable = !editingExisting && (
+    companyQuery.isFetching || companyQuery.isError || !companyProfile?.companyName
+  );
+  const [savedDocument, setSavedDocument] = useState<SalesDocumentRecord | null>(null);
+  const previewCompany = savedDocument
+    ? getDocumentCompanyProfile(savedDocument)
+    : companyProfile;
+  const printStyles = useMemo(
+    () => invoiceBranding(styles, previewCompany), [previewCompany],
+  );
 
   const today = useMemo(() => getTodayIstFormatted(), []);
   const [docType] = useState<SalesDocumentType>(
@@ -109,6 +135,28 @@ export function InvoiceFormScreen({
   const [inclusiveGst, setInclusiveGst] = useState<boolean>(
     existingDocument?.inclusiveGst ?? false,
   );
+  const isGstInvoice = docType === 'INVOICE' && gstMode !== 'NON_GST';
+  const gstQuery = useInvoiceGstSettings(isGstInvoice && !editingExisting);
+  const nonGstQuery = useInvoiceNonGstSettings(docType === 'INVOICE' && !isGstInvoice && !editingExisting);
+  const settingsQuery = isGstInvoice ? gstQuery : nonGstQuery;
+  const gstSettings = isGstInvoice ? editingExisting ? existingDocument?.gstInvoiceSettingsSnapshot : gstQuery.data : null;
+  const invoiceSettings = docType === 'INVOICE'
+    ? editingExisting && existingDocument ? getDocumentInvoiceSettings(existingDocument) : settingsQuery.data
+    : null;
+  const invoiceSettingsUnavailable = docType === 'INVOICE' && !editingExisting && (
+    settingsQuery.isFetching || settingsQuery.isError || !invoiceSettings
+  );
+  const documentBank = invoiceSettings ?? {
+    bankName: editingExisting ? existingDocument?.bankName ?? '' : docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.bankName,
+    accountNo: editingExisting ? existingDocument?.bankAccountNo ?? '' : docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.accountNo,
+    ifscCode: editingExisting ? existingDocument?.bankIfsc ?? '' : docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.ifscCode,
+    paymentUpiId: '', signature: '',
+  };
+  const previewInvoiceSettings = savedDocument ? getDocumentInvoiceSettings(savedDocument) : invoiceSettings;
+  const previewBank = docType === 'INVOICE' && savedDocument ? {
+    bankName: savedDocument.bankName, accountNo: savedDocument.bankAccountNo,
+    ifscCode: savedDocument.bankIfsc, paymentUpiId: previewInvoiceSettings?.paymentUpiId ?? '',
+  } : documentBank;
 
   const [currency, setCurrency] = useState<string>(
     existingDocument?.currency ?? 'INR',
@@ -116,7 +164,7 @@ export function InvoiceFormScreen({
   const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
   const [discountDropdownIndex, setDiscountDropdownIndex] = useState<number | null>(null);
 
-  const [items, setItems] = useState<SalesDocumentItem[]>(
+  const [items, setItems] = useState<InvoiceFormItem[]>(
     existingDocument?.items?.length
       ? existingDocument.items.map((it) => ({
           id: it.id,
@@ -135,6 +183,7 @@ export function InvoiceFormScreen({
       : [
           {
             productName: '',
+            useDefaultGstRate: true,
             hsnSac: '9983',
             unitPrice: 0,
             quantity: 1,
@@ -176,10 +225,17 @@ export function InvoiceFormScreen({
   );
   const [nextPaymentDatePickerOpen, setNextPaymentDatePickerOpen] = useState(false);
 
-  const [termsAndConditions, setTermsAndConditions] = useState<string>(
-    existingDocument?.termsAndConditions ??
-      DEFAULT_COMPANY_CONFIG.defaultTerms,
+  const [termsOverride, setTermsAndConditions] = useState<string | null>(
+    existingDocument?.termsAndConditions ?? null,
   );
+  const termsAndConditions = termsOverride ?? invoiceSettings?.termsAndConditions ?? (docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.defaultTerms);
+  const effectiveItems = useMemo(() => items.map(item =>
+    isGstInvoice && !editingExisting && item.useDefaultGstRate && gstSettings
+      ? { ...item, igstRate: gstSettings.gstPercentage,
+          sgstRate: round2(gstSettings.gstPercentage / 2),
+          cgstRate: round2(gstSettings.gstPercentage - round2(gstSettings.gstPercentage / 2)) }
+      : item,
+  ), [items, isGstInvoice, editingExisting, gstSettings]);
   const [emailAutomation, setEmailAutomation] = useState<boolean>(
     existingDocument?.emailAutomation ?? false,
   );
@@ -238,19 +294,22 @@ export function InvoiceFormScreen({
   // Authoritative pure client calculation matching backend
   const calculations = useMemo(() => {
     return calculateInvoicePreview({
-      items,
+      items: effectiveItems,
       gstMode,
       inclusiveGst,
       docType,
       paymentStatus,
       paidAmountInput: Number(paidAmountInput) || 0,
     });
-  }, [items, gstMode, inclusiveGst, docType, paymentStatus, paidAmountInput]);
+  }, [effectiveItems, gstMode, inclusiveGst, docType, paymentStatus, paidAmountInput]);
 
   const handleUpdateItem = (idx: number, patch: Partial<SalesDocumentItem>) => {
     setItems((prev) => {
       const copy = [...prev];
-      copy[idx] = { ...copy[idx], ...patch };
+      copy[idx] = {
+        ...effectiveItems[idx], ...patch,
+        ...(['igstRate', 'sgstRate', 'cgstRate'].some(key => key in patch) ? { useDefaultGstRate: false } : {}),
+      };
       return copy;
     });
   };
@@ -261,6 +320,7 @@ export function InvoiceFormScreen({
       setItems([
         {
           productName: '',
+          useDefaultGstRate: true,
           hsnSac: '9983',
           unitPrice: 0,
           quantity: 1,
@@ -283,6 +343,7 @@ export function InvoiceFormScreen({
       ...prev,
       {
         productName: '',
+        useDefaultGstRate: true,
         hsnSac: '9983',
         unitPrice: 0,
         quantity: 1,
@@ -301,12 +362,23 @@ export function InvoiceFormScreen({
     setPaymentMethodDropdownOpen(false);
     setFormError(null);
 
+    if (companyUnavailable) {
+      setFormError(companyQuery.isFetching
+        ? 'Loading company profile. Please wait.'
+        : 'Save the Company Profile in General Settings → Web Settings before creating this document.');
+      return;
+    }
+    if (invoiceSettingsUnavailable) {
+      setFormError(settingsQuery.isFetching ? 'Loading Invoice Settings. Please wait.' : settingsQuery.isError ? errorMessage(settingsQuery.error) : `Save ${isGstInvoice ? 'GST' : 'Non GST'} Invoice settings in Web Settings → Invoice Settings before creating this invoice.`);
+      return;
+    }
+
     if (!customerId) {
       setFormError('Please select a customer for this document.');
       return;
     }
 
-    const validItems = items.filter((it) => it.productName.trim().length > 0);
+    const validItems = effectiveItems.filter((it) => it.productName.trim().length > 0);
     if (validItems.length === 0) {
       setFormError('Please add at least one line item with a product name.');
       return;
@@ -389,8 +461,9 @@ export function InvoiceFormScreen({
     };
 
     try {
+      let saved: SalesDocumentRecord;
       if (existingDocument && !isClone) {
-        await updateMutation.mutateAsync({
+        saved = await updateMutation.mutateAsync({
           id: existingDocument.id,
           payload: {
             ...payload,
@@ -398,8 +471,9 @@ export function InvoiceFormScreen({
           } as UpdateSalesDocumentPayload,
         });
       } else {
-        await createMutation.mutateAsync(payload);
+        saved = await createMutation.mutateAsync(payload);
       }
+      setSavedDocument(saved);
 
       if (openPreviewAfter) {
         setPreviewModalOpen(true);
@@ -408,8 +482,8 @@ export function InvoiceFormScreen({
           (docType === 'QUOTATION' ? '/invoice/quotation' : '/invoice') as Href,
         );
       }
-    } catch (err: any) {
-      setFormError(err?.message || 'Failed to save document.');
+    } catch (err: unknown) {
+      setFormError(errorMessage(err));
     }
   };
 
@@ -426,30 +500,22 @@ export function InvoiceFormScreen({
         {/* Section 1: Company Branding & Document Date */}
         <View style={[styles.sectionRow, isDesktop && styles.sectionRowDesktop]}>
           <View style={styles.companyBlock}>
-            <View style={styles.logoBox}>
-              <View style={styles.cloudBadge}>
-                <Ionicons name="code-slash" size={24} color="#0B2F7D" />
+            {companyProfile ? <InvoiceCompanyDetails profile={companyProfile} /> : null}
+            {!editingExisting && companyQuery.isFetching ? (
+              <ActivityIndicator accessibilityLabel="Loading company profile" color={colors.primary} />
+            ) : null}
+            {!editingExisting && !companyQuery.isFetching && (companyQuery.isError || !companyProfile) ? (
+              <View style={{ gap: 8 }}>
+                <Text accessibilityRole="alert" style={styles.errorBannerText}>
+                  {companyQuery.isError
+                    ? errorMessage(companyQuery.error)
+                    : 'Save Company Profile in General Settings → Web Settings to create invoices.'}
+                </Text>
+                <Pressable accessibilityRole="button" onPress={() => { void companyQuery.refetch(); }}>
+                  <Text style={styles.outlineActionBtnText}>Reload company profile</Text>
+                </Pressable>
               </View>
-              <Text style={styles.logoTextTitle}>
-                {DEFAULT_COMPANY_CONFIG.brandTitle}
-              </Text>
-              <Text style={styles.logoTextSub}>
-                {DEFAULT_COMPANY_CONFIG.brandSubtitle}
-              </Text>
-            </View>
-
-            <Text style={styles.companyNameHeading}>
-              {DEFAULT_COMPANY_CONFIG.companyName}
-            </Text>
-            <Text style={styles.companyMetaText}>
-              {DEFAULT_COMPANY_CONFIG.phone}
-            </Text>
-            <Text style={styles.companyMetaText}>
-              {DEFAULT_COMPANY_CONFIG.email}
-            </Text>
-            <Text style={styles.companyMetaText}>
-              {DEFAULT_COMPANY_CONFIG.address}
-            </Text>
+            ) : null}
           </View>
 
           <View style={styles.dateBlock}>
@@ -593,21 +659,36 @@ export function InvoiceFormScreen({
               <View style={styles.bankInfoRow}>
                 <Text style={styles.bankInfoKey}>Bank name:</Text>
                 <Text style={styles.bankInfoVal}>
-                  {DEFAULT_COMPANY_CONFIG.bankName}
+                  {documentBank.bankName}
                 </Text>
               </View>
               <View style={styles.bankInfoRow}>
                 <Text style={styles.bankInfoKey}>Account No.:</Text>
                 <Text style={styles.bankInfoVal}>
-                  {DEFAULT_COMPANY_CONFIG.accountNo}
+                  {documentBank.accountNo}
                 </Text>
               </View>
               <View style={styles.bankInfoRow}>
                 <Text style={styles.bankInfoKey}>IFSC Code:</Text>
                 <Text style={styles.bankInfoVal}>
-                  {DEFAULT_COMPANY_CONFIG.ifscCode}
+                  {documentBank.ifscCode}
                 </Text>
               </View>
+              {documentBank.paymentUpiId ? <View style={styles.bankInfoRow}>
+                <Text style={styles.bankInfoKey}>UPI ID:</Text><Text style={styles.bankInfoVal}>{documentBank.paymentUpiId}</Text>
+              </View> : null}
+              {docType === 'INVOICE' && !editingExisting && (settingsQuery.isFetching || settingsQuery.isError || !invoiceSettings) ? (
+                <View style={{ gap: 8, marginTop: 10 }}>
+                  {settingsQuery.isFetching ? <ActivityIndicator accessibilityLabel="Loading Invoice Settings" color={colors.primary} /> : <>
+                    <Text accessibilityRole="alert" style={styles.errorBannerText}>
+                      {settingsQuery.isError ? errorMessage(settingsQuery.error) : `Save ${isGstInvoice ? 'GST' : 'Non GST'} bank details and signature in Web Settings → Invoice Settings.`}
+                    </Text>
+                    <Pressable accessibilityRole="button" onPress={() => { void settingsQuery.refetch(); }}>
+                      <Text style={styles.outlineActionBtnText}>Reload Invoice Settings</Text>
+                    </Pressable>
+                  </>}
+                </View>
+              ) : null}
             </View>
           </View>
         </View>
@@ -711,7 +792,7 @@ export function InvoiceFormScreen({
         <View style={styles.divider} />
 
         {/* Section 4: Dynamic Line Items */}
-        {items.map((item, idx) => {
+        {effectiveItems.map((item, idx) => {
           const lineCalc = calculations.lineBreakdowns[idx] || {
             grossAmount: 0,
             discountAmount: 0,
@@ -1413,12 +1494,15 @@ export function InvoiceFormScreen({
               )}
             </View>
 
-            {/* Static Authorized Signature Box */}
+            {/* Signature uses the applicable invoice settings. */}
             <View style={styles.signatureBox}>
-              <Text style={styles.signatureCursiveText}>
-                {DEFAULT_COMPANY_CONFIG.signatoryName}
-              </Text>
-              <Text style={styles.signatoryLabel}>Authorized Signatory</Text>
+              {docType === 'INVOICE' ? <InvoiceSignature
+                signature={invoiceSettings?.signature}
+                name={editingExisting ? existingDocument?.signatoryName : undefined}
+                color={companyProfile?.fontColor} /> : <>
+                <Text style={styles.signatureCursiveText}>{DEFAULT_DOCUMENT_CONFIG.signatoryName}</Text>
+                <Text style={styles.signatoryLabel}>Authorized Signatory</Text>
+              </>}
             </View>
           </View>
         </View>
@@ -1466,8 +1550,8 @@ export function InvoiceFormScreen({
         {/* Footer Buttons: Generate & Download */}
         <View style={styles.footerActionsRow}>
           <Pressable
-            style={[styles.outlineActionBtn, isSaving && { opacity: 0.6 }]}
-            disabled={isSaving}
+            style={[styles.outlineActionBtn, (isSaving || companyUnavailable || invoiceSettingsUnavailable) && { opacity: 0.6 }]}
+            disabled={isSaving || Boolean(companyUnavailable) || invoiceSettingsUnavailable}
             onPress={() => handleSave(false)}
           >
             {isSaving ? (
@@ -1478,8 +1562,8 @@ export function InvoiceFormScreen({
           </Pressable>
 
           <Pressable
-            style={[styles.outlineActionBtn, isSaving && { opacity: 0.6 }]}
-            disabled={isSaving}
+            style={[styles.outlineActionBtn, (isSaving || companyUnavailable || invoiceSettingsUnavailable) && { opacity: 0.6 }]}
+            disabled={isSaving || Boolean(companyUnavailable) || invoiceSettingsUnavailable}
             onPress={() => {
               if (Platform.OS === 'web' && typeof window !== 'undefined') {
                 setPreviewModalOpen(true);
@@ -1543,19 +1627,10 @@ export function InvoiceFormScreen({
             </View>
 
             <ScrollView style={{ maxHeight: 540 }}>
-              <View style={styles.printableSheet}>
-                <Text style={styles.companyNameText}>
-                  {DEFAULT_COMPANY_CONFIG.companyName}
-                </Text>
-                <Text style={styles.companyMetaText}>
-                  {DEFAULT_COMPANY_CONFIG.address}
-                </Text>
-                <Text style={styles.companyMetaText}>
-                  Phone: {DEFAULT_COMPANY_CONFIG.phone} | Email:{' '}
-                  {DEFAULT_COMPANY_CONFIG.email}
-                </Text>
-                <View style={styles.divider} />
-                <Text style={styles.fieldLabel}>
+              <View style={printStyles.printableSheet}>
+                {previewCompany ? <InvoiceCompanyDetails profile={previewCompany} /> : null}
+                <View style={printStyles.divider} />
+                <Text style={printStyles.fieldLabel}>
                   Billed To:{' '}
                   {selectedCustomer
                     ? `${
@@ -1567,30 +1642,30 @@ export function InvoiceFormScreen({
                       }`
                     : 'Customer'}
                 </Text>
-                <Text style={styles.companyMetaText}>Date: {dateDisplay}</Text>
-                <Text style={styles.companyMetaText}>
-                  GST Mode: {gstMode === 'NON_GST' ? 'Non GST' : gstMode === 'IGST' ? 'IGST (18%)' : 'SGST/CGST (9%+9%)'}{' '}
+                <Text style={printStyles.companyMetaText}>Date: {dateDisplay}</Text>
+                <Text style={printStyles.companyMetaText}>
+                  GST Mode: {gstMode === 'NON_GST' ? 'Non GST' : gstMode === 'IGST' ? 'IGST' : 'SGST/CGST'}{' '}
                   {inclusiveGst && gstMode !== 'NON_GST' ? '(Inclusive GST)' : ''}
                 </Text>
-                <View style={styles.divider} />
+                <View style={printStyles.divider} />
 
                 {/* Items Breakdown Table */}
-                {items.map((it, i) => {
+                {effectiveItems.map((it, i) => {
                   const b = calculations.lineBreakdowns[i] || {
                     taxableAmount: 0,
                     taxAmount: 0,
                     totalAmount: 0,
                   };
                   return (
-                    <View key={i} style={styles.summaryRow}>
-                      <Text style={styles.summaryLabel}>
+                    <View key={i} style={printStyles.summaryRow}>
+                      <Text style={printStyles.summaryLabel}>
                         {i + 1}. {it.productName || 'Item'}{' '}
                         {Boolean(it.hsnSac && gstMode !== 'NON_GST') &&
                           `[HSN: ${it.hsnSac}]`}{' '}
                         (Qty: {it.quantity} × {currencySymbol}
                         {it.unitPrice})
                       </Text>
-                      <Text style={styles.summaryValueBold}>
+                      <Text style={printStyles.summaryValueBold}>
                         {currencySymbol}
                         {b.totalAmount.toFixed(2)}
                       </Text>
@@ -1598,32 +1673,32 @@ export function InvoiceFormScreen({
                   );
                 })}
 
-                <View style={styles.divider} />
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Gross Subtotal:</Text>
-                  <Text style={styles.summaryValue}>
+                <View style={printStyles.divider} />
+                <View style={printStyles.summaryRow}>
+                  <Text style={printStyles.summaryLabel}>Gross Subtotal:</Text>
+                  <Text style={printStyles.summaryValue}>
                     {currencySymbol}
                     {calculations.grossSubtotal.toFixed(2)}
                   </Text>
                 </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Discount:</Text>
-                  <Text style={styles.summaryValue}>
+                <View style={printStyles.summaryRow}>
+                  <Text style={printStyles.summaryLabel}>Discount:</Text>
+                  <Text style={printStyles.summaryValue}>
                     {currencySymbol}
                     {calculations.discountTotal.toFixed(2)}
                   </Text>
                 </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Taxable Base:</Text>
-                  <Text style={styles.summaryValue}>
+                <View style={printStyles.summaryRow}>
+                  <Text style={printStyles.summaryLabel}>Taxable Base:</Text>
+                  <Text style={printStyles.summaryValue}>
                     {currencySymbol}
                     {calculations.taxableSubtotal.toFixed(2)}
                   </Text>
                 </View>
                 {gstMode === 'IGST' && (
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>IGST Total:</Text>
-                    <Text style={styles.summaryValue}>
+                  <View style={printStyles.summaryRow}>
+                    <Text style={printStyles.summaryLabel}>IGST Total:</Text>
+                    <Text style={printStyles.summaryValue}>
                       {currencySymbol}
                       {calculations.igstTotal.toFixed(2)}
                     </Text>
@@ -1631,43 +1706,45 @@ export function InvoiceFormScreen({
                 )}
                 {gstMode === 'SGST_CGST' && (
                   <>
-                    <View style={styles.summaryRow}>
-                      <Text style={styles.summaryLabel}>SGST Total:</Text>
-                      <Text style={styles.summaryValue}>
+                    <View style={printStyles.summaryRow}>
+                      <Text style={printStyles.summaryLabel}>SGST Total:</Text>
+                      <Text style={printStyles.summaryValue}>
                         {currencySymbol}
                         {calculations.sgstTotal.toFixed(2)}
                       </Text>
                     </View>
-                    <View style={styles.summaryRow}>
-                      <Text style={styles.summaryLabel}>CGST Total:</Text>
-                      <Text style={styles.summaryValue}>
+                    <View style={printStyles.summaryRow}>
+                      <Text style={printStyles.summaryLabel}>CGST Total:</Text>
+                      <Text style={printStyles.summaryValue}>
                         {currencySymbol}
                         {calculations.cgstTotal.toFixed(2)}
                       </Text>
                     </View>
                   </>
                 )}
-                <View style={[styles.summaryRow, styles.grandTotalRow]}>
-                  <Text style={styles.grandTotalLabel}>Grand Total:</Text>
-                  <Text style={styles.grandTotalValue}>
+                <View style={[printStyles.summaryRow, printStyles.grandTotalRow]}>
+                  <Text style={printStyles.grandTotalLabel}>Grand Total:</Text>
+                  <Text style={printStyles.grandTotalValue}>
                     {currencySymbol}
                     {calculations.grandTotal.toFixed(2)}
                   </Text>
                 </View>
 
                 {/* Bank Details in Preview */}
-                <View style={styles.divider} />
-                <Text style={[styles.fieldLabel, { marginBottom: 4 }]}>
+                <View style={printStyles.divider} />
+                <Text style={[printStyles.fieldLabel, { marginBottom: 4 }]}>
                   Payment Details:
                 </Text>
-                <Text style={styles.companyMetaText}>
-                  Bank: {DEFAULT_COMPANY_CONFIG.bankName} | A/C:{' '}
-                  {DEFAULT_COMPANY_CONFIG.accountNo} | IFSC:{' '}
-                  {DEFAULT_COMPANY_CONFIG.ifscCode}
+                <Text style={printStyles.companyMetaText}>
+                  Bank: {previewBank.bankName} | A/C:{' '}
+                  {previewBank.accountNo} | IFSC:{' '}
+                  {previewBank.ifscCode}
                 </Text>
-                <Text style={[styles.companyMetaText, { marginTop: 8 }]}>
-                  Authorized Signatory: {DEFAULT_COMPANY_CONFIG.signatoryName}
-                </Text>
+                {previewBank.paymentUpiId ? <Text style={printStyles.companyMetaText}>UPI ID: {previewBank.paymentUpiId}</Text> : null}
+                {docType === 'INVOICE' ? <InvoiceSignature signature={previewInvoiceSettings?.signature}
+                  name={savedDocument?.signatoryName ?? (editingExisting ? existingDocument?.signatoryName : undefined)} color={previewCompany?.fontColor} /> :
+                  <Text style={[printStyles.companyMetaText, { marginTop: 8 }]}>Authorized Signatory: {DEFAULT_DOCUMENT_CONFIG.signatoryName}</Text>}
+                {docType === 'INVOICE' ? <View style={{ marginTop: 12 }}><Text style={printStyles.fieldLabel}>Terms & Conditions</Text><Text style={printStyles.companyMetaText}>{savedDocument?.termsAndConditions ?? termsAndConditions}</Text></View> : null}
               </View>
             </ScrollView>
           </View>

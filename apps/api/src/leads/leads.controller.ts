@@ -2,12 +2,14 @@ import {
   Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequirePermissions } from '../auth/permissions';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { LeadsService } from './leads.service';
 import { VersionDto } from '../crm/crm.dto';
 
 @UseGuards(JwtAuthGuard)
+@RequirePermissions('lead')
 @Controller('leads')
 export class LeadsController {
   constructor(private leads: LeadsService) {}

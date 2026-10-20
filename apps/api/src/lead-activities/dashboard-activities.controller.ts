@@ -1,15 +1,19 @@
-import { BadRequestException, Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { activityPermissions, assertPermissions, RequirePermissions } from '../auth/permissions';
+import type { AuthenticatedUser } from '../auth/permissions';
 import { ListQueryDto } from '../crm/crm.dto';
 import { ActivitiesService, ActivityKind } from './activities.service';
 import { StandaloneActivitiesService } from '../standalone-activities/standalone-activities.service';
 @UseGuards(JwtAuthGuard)
+@RequirePermissions()
 @Controller('dashboard')
 export class DashboardActivitiesController {
   constructor(private service: ActivitiesService, private standalone: StandaloneActivitiesService) {}
-  @Get('lead-activities') list(@Query() query: ListQueryDto) {
+  @Get('lead-activities') list(@Query() query: ListQueryDto, @Req() req: { user: AuthenticatedUser }) {
     if (!['followups','tasks','reminders','meetings'].includes(query.type ?? '')) throw new BadRequestException('Choose an activity type.');
     const kind = query.type as ActivityKind;
+    assertPermissions(req.user, activityPermissions[kind]);
     if (kind !== 'meetings' && kind !== 'reminders') return this.service.list(kind, undefined, query);
     return Promise.all([
       this.service.listAll(kind, undefined, query),

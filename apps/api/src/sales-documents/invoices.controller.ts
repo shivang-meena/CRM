@@ -1,10 +1,12 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequirePermissions } from '../auth/permissions';
 import { Actor } from '../crm/crm-core.service';
 import { ListQueryDto, VersionDto } from '../crm/crm.dto';
 import { ConvertQuotationDto, CreateDocumentDto, PaymentDto, UpdateDocumentDto } from './dto/document.dto';
 import { SalesDocumentsService } from './sales-documents.service';
 @UseGuards(JwtAuthGuard)
+@RequirePermissions('invoice')
 @Controller('leads/:leadId/invoices')
 export class InvoicesController {
   constructor(private service: SalesDocumentsService) {}

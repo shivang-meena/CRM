@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { errorMessage } from '@/api/client';
 import { saveActivity } from '@/api/leadActivities';
 import { useCrmMutation, useSubmissionKey } from '@/hooks/useLeadActivities';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ActivityRecord } from '@/types/leadActivities';
 import { formatDateTime, parseDateTimeInput } from '@/utils/format';
 import { Choices, DateField, Field, FormShell } from './FormControls';
@@ -25,6 +26,7 @@ export default function FollowUpFormModal({
   onSaved,
   onClose,
 }: Props) {
+  const { canAccess } = usePermissions();
   const [title, setTitle] = useState(() => record?.title ?? '');
   const [scheduledAt, setScheduledAt] = useState(() => formatDateTime(record?.scheduledAt));
   const [channel, setChannel] = useState(() => record?.channel ?? 'CALL');
@@ -64,7 +66,7 @@ export default function FollowUpFormModal({
     if (record) {
       if (outcome.trim()) body.outcome = outcome.trim();
     } else {
-      if (reminderAt) {
+      if (canAccess('reminder') && reminderAt) {
         const parsedReminder = parseDateTimeInput(reminderAt);
         if (!parsedReminder.ok || !parsedReminder.value) {
           setError('Enter a valid linked reminder date & time.');
@@ -100,7 +102,7 @@ export default function FollowUpFormModal({
       {record ? (
         <Field label="Outcome" value={outcome} onChange={setOutcome} multiline placeholder="Call outcome or remarks..." />
       ) : (
-        <DateField label="Optional Linked Reminder" value={reminderAt} onChange={setReminderAt} />
+        canAccess('reminder') ? <DateField label="Optional Linked Reminder" value={reminderAt} onChange={setReminderAt} /> : null
       )}
     </FormShell>
   );

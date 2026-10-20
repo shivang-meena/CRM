@@ -4,8 +4,10 @@ import { DocumentCalculationService } from './document-calculation.service';
 import { SalesDocumentsController } from './sales-documents.controller';
 import { QuotationsController } from './quotations.controller';
 import { InvoicesController } from './invoices.controller';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
+  imports: [SettingsModule],
   controllers: [
     SalesDocumentsController,
     QuotationsController,

@@ -1,11 +1,13 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequirePermissions } from '../auth/permissions';
 import { Actor } from '../crm/crm-core.service';
 import { ListQueryDto, VersionDto } from '../crm/crm.dto';
 import { CreateStandaloneMeetingDto, UpdateStandaloneMeetingDto } from './dto/standalone-activity.dto';
 import { StandaloneActivitiesService } from './standalone-activities.service';
 
 @UseGuards(JwtAuthGuard)
+@RequirePermissions('meeting')
 @Controller('meetings')
 export class StandaloneMeetingsController {
   constructor(private service: StandaloneActivitiesService) {}

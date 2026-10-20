@@ -7,10 +7,20 @@ import { useAuth } from '@/context/AuthContext';
 import Button from './Button';
 
 export default function Sidebar({ horizontal }: { horizontal: boolean }) {
-  const { userName, logout } = useAuth();
+  const { userName, role, permissions, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [invoiceExpanded, setInvoiceExpanded] = useState(true);
+  const [settingsExpanded, setSettingsExpanded] = useState(true);
+
+  const hasAccess = (module: 'lead' | 'reminder' | 'meeting' | 'task' | 'note' | 'calendar' | 'customer' | 'invoice' | 'staff' | 'leave') => {
+    if (role === 'admin') return true;
+    if (role === 'staff') {
+      return Boolean(permissions?.[module]);
+    }
+    return false;
+  };
+
 
   const isDashboard = pathname === '/';
   const isLead = pathname === '/leads' || pathname.startsWith('/lead/');
@@ -27,6 +37,8 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
   const isBrochure = pathname === '/invoice/brochure';
   const isAnyInvoice = pathname.startsWith('/invoice');
   const isStaff = pathname === '/staff';
+  const isLeave = pathname === '/leave';
+  const isWebSettings = pathname === '/settings/web' || pathname === '/settings/invoices';
 
   const menuItems = [
     {
@@ -35,6 +47,7 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
       icon: 'business-outline' as const,
       active: isDashboard,
       onPress: () => router.replace('/'),
+      visible: true,
     },
     {
       key: 'leads',
@@ -42,6 +55,7 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
       icon: 'funnel-outline' as const,
       active: isLead,
       onPress: () => router.replace('/leads'),
+      visible: hasAccess('lead'),
     },
     {
       key: 'reminders',
@@ -49,6 +63,7 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
       icon: 'alarm-outline' as const,
       active: isReminder,
       onPress: () => router.replace('/reminders'),
+      visible: hasAccess('reminder'),
     },
     {
       key: 'meetings',
@@ -56,8 +71,10 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
       icon: 'headset-outline' as const,
       active: isMeeting,
       onPress: () => router.replace('/meetings'),
+      visible: hasAccess('meeting'),
     },
-  ];
+  ].filter(i => i.visible);
+
   const productivityItems = [
     {
       key: 'tasks',
@@ -65,6 +82,7 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
       icon: 'checkbox-outline' as const,
       active: isTask,
       onPress: () => router.replace('/tasks'),
+      visible: hasAccess('task'),
     },
     {
       key: 'notes',
@@ -72,6 +90,7 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
       icon: 'bookmark-outline' as const,
       active: isNote,
       onPress: () => router.replace('/notes'),
+      visible: hasAccess('note'),
     },
     {
       key: 'calendar',
@@ -79,8 +98,16 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
       icon: 'calendar-outline' as const,
       active: isCalendar,
       onPress: () => router.replace('/calendar'),
+      visible: hasAccess('calendar'),
     },
-  ];
+  ].filter(i => i.visible);
+
+  const showCustomer = hasAccess('customer');
+  const showInvoice = hasAccess('invoice');
+  const showBusiness = showCustomer || showInvoice;
+  const showStaff = hasAccess('staff');
+  const showLeave = hasAccess('leave');
+  const showHr = showStaff || showLeave;
 
   return (
     <View style={[styles.base, horizontal ? styles.bar : styles.side]}>
@@ -101,7 +128,7 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
         scrollEnabled={!horizontal}
         showsVerticalScrollIndicator={false}
       >
-        {!horizontal && <Text style={styles.sectionHeading}>MAIN</Text>}
+        {!horizontal && menuItems.length > 0 && <Text style={styles.sectionHeading}>MAIN</Text>}
         {menuItems.map((item) => (
           <Pressable
             key={item.key}
@@ -128,7 +155,10 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
             </Text>
           </Pressable>
         ))}
-        {!horizontal && <Text style={[styles.sectionHeading, styles.productivityHeading]}>PRODUCTIVITY</Text>}
+
+        {!horizontal && productivityItems.length > 0 && (
+          <Text style={[styles.sectionHeading, styles.productivityHeading]}>PRODUCTIVITY</Text>
+        )}
         {productivityItems.map((item) => (
           <Pressable
             key={item.key}
@@ -141,61 +171,66 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
             <Text style={[styles.itemText, item.active ? styles.activeItemText : styles.inactiveItemText]}>{item.label}</Text>
           </Pressable>
         ))}
-        {!horizontal && (
+
+        {!horizontal && showBusiness && (
           <Text style={[styles.sectionHeading, styles.productivityHeading]}>BUSINESS</Text>
         )}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Customer"
-          accessibilityState={{ selected: isCustomer }}
-          style={[styles.item, isCustomer ? styles.activeItem : styles.inactiveItem]}
-          onPress={() => router.replace('/customers' as Href)}
-        >
-          <Ionicons name="people-outline" size={19} color={isCustomer ? colors.white : '#432D40'} />
-          <Text style={[styles.itemText, isCustomer ? styles.activeItemText : styles.inactiveItemText]}>
-            Customer
-          </Text>
-        </Pressable>
+        {showCustomer && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Customer"
+            accessibilityState={{ selected: isCustomer }}
+            style={[styles.item, isCustomer ? styles.activeItem : styles.inactiveItem]}
+            onPress={() => router.replace('/customers' as Href)}
+          >
+            <Ionicons name="people-outline" size={19} color={isCustomer ? colors.white : '#432D40'} />
+            <Text style={[styles.itemText, isCustomer ? styles.activeItemText : styles.inactiveItemText]}>
+              Customer
+            </Text>
+          </Pressable>
+        )}
 
         {/* Invoice Accordion */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Invoice"
-          accessibilityState={{ selected: isAnyInvoice, expanded: invoiceExpanded }}
-          style={[styles.item, isAnyInvoice && !invoiceExpanded ? styles.activeItem : styles.inactiveItem]}
-          onPress={() => {
-            if (horizontal) {
-              router.replace('/invoice' as Href);
-            } else {
-              setInvoiceExpanded(!invoiceExpanded);
-            }
-          }}
-        >
-          <Ionicons
-            name="receipt-outline"
-            size={19}
-            color={isAnyInvoice && !invoiceExpanded ? colors.white : '#432D40'}
-          />
-          <Text
-            style={[
-              styles.itemText,
-              { flex: 1 },
-              isAnyInvoice && !invoiceExpanded ? styles.activeItemText : styles.inactiveItemText,
-            ]}
+        {showInvoice && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Invoice"
+            accessibilityState={{ selected: isAnyInvoice, expanded: invoiceExpanded }}
+            style={[styles.item, isAnyInvoice && !invoiceExpanded ? styles.activeItem : styles.inactiveItem]}
+            onPress={() => {
+              if (horizontal) {
+                router.replace('/invoice' as Href);
+              } else {
+                setInvoiceExpanded(!invoiceExpanded);
+              }
+            }}
           >
-            Invoice
-          </Text>
-          {!horizontal && (
             <Ionicons
-              name={invoiceExpanded ? 'chevron-up' : 'chevron-down'}
-              size={16}
-              color={isAnyInvoice && !invoiceExpanded ? colors.white : '#56627C'}
+              name="receipt-outline"
+              size={19}
+              color={isAnyInvoice && !invoiceExpanded ? colors.white : '#432D40'}
             />
-          )}
-        </Pressable>
+            <Text
+              style={[
+                styles.itemText,
+                { flex: 1 },
+                isAnyInvoice && !invoiceExpanded ? styles.activeItemText : styles.inactiveItemText,
+              ]}
+            >
+              Invoice
+            </Text>
+            {!horizontal && (
+              <Ionicons
+                name={invoiceExpanded ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={isAnyInvoice && !invoiceExpanded ? colors.white : '#56627C'}
+              />
+            )}
+          </Pressable>
+        )}
 
         {/* Invoice Sub-Items */}
-        {!horizontal && invoiceExpanded && (
+        {!horizontal && showInvoice && invoiceExpanded && (
           <View style={styles.subItemContainer}>
             {[
               { key: 'list', label: 'List', path: '/invoice' as Href, active: isInvoiceList },
@@ -225,25 +260,76 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
           </View>
         )}
 
-        {!horizontal && (
+        {!horizontal && showHr && (
           <Text style={[styles.sectionHeading, styles.productivityHeading]}>HR</Text>
         )}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Staff"
-          accessibilityState={{ selected: isStaff }}
-          style={[styles.item, isStaff ? styles.activeItem : styles.inactiveItem]}
-          onPress={() => router.replace('/staff' as Href)}
-        >
-          <Ionicons name="people-outline" size={19} color={isStaff ? colors.white : '#432D40'} />
-          <Text style={[styles.itemText, isStaff ? styles.activeItemText : styles.inactiveItemText]}>
-            Staff
-          </Text>
-        </Pressable>
+        {showStaff && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Staff"
+            accessibilityState={{ selected: isStaff }}
+            style={[styles.item, isStaff ? styles.activeItem : styles.inactiveItem]}
+            onPress={() => router.replace('/staff' as Href)}
+          >
+            <Ionicons name="people-outline" size={19} color={isStaff ? colors.white : '#432D40'} />
+            <Text style={[styles.itemText, isStaff ? styles.activeItemText : styles.inactiveItemText]}>
+              Staff
+            </Text>
+          </Pressable>
+        )}
+        {showLeave && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Leave"
+            accessibilityState={{ selected: isLeave }}
+            style={[styles.item, isLeave ? styles.activeItem : styles.inactiveItem]}
+            onPress={() => router.replace('/leave' as Href)}
+          >
+            <Ionicons name="calendar-outline" size={19} color={isLeave ? colors.white : '#432D40'} />
+            <Text style={[styles.itemText, isLeave ? styles.activeItemText : styles.inactiveItemText]}>
+              Leave
+            </Text>
+          </Pressable>
+        )}
+        {role === 'admin' && (
+          <>
+            {!horizontal && <Text style={[styles.sectionHeading, styles.productivityHeading]}>TOOLS & SETTINGS</Text>}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="General Settings"
+              accessibilityState={{ expanded: settingsExpanded, selected: isWebSettings }}
+              style={[styles.item, isWebSettings && (horizontal || !settingsExpanded) ? styles.activeItem : styles.inactiveItem]}
+              onPress={() => horizontal ? router.replace('/settings/web' as Href) : setSettingsExpanded(value => !value)}
+            >
+              <Ionicons name="settings-outline" size={19} color={isWebSettings && (horizontal || !settingsExpanded) ? colors.white : '#432D40'} />
+              <Text style={[styles.itemText, { flex: 1 }, isWebSettings && (horizontal || !settingsExpanded) ? styles.activeItemText : styles.inactiveItemText]}>General Settings</Text>
+              {!horizontal && <Ionicons name={settingsExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#56627C" />}
+            </Pressable>
+            {!horizontal && settingsExpanded && (
+              <View style={styles.subItemContainer}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Web Settings"
+                  accessibilityState={{ selected: isWebSettings }}
+                  style={[styles.subItem, isWebSettings && styles.activeItem]}
+                  onPress={() => router.replace('/settings/web' as Href)}
+                >
+                  <Ionicons name="globe-outline" size={16} color={isWebSettings ? colors.white : '#56627C'} />
+                  <Text style={[styles.subItemText, isWebSettings ? styles.activeItemText : styles.inactiveSubItemText]}>Web Settings</Text>
+                </Pressable>
+              </View>
+            )}
+          </>
+        )}
       </ScrollView>
 
       <View style={horizontal ? styles.userH : styles.userV}>
-        {!horizontal && <Text style={styles.userName}>{userName}</Text>}
+        {!horizontal && (
+          <View style={{ gap: 2 }}>
+            <Text style={styles.userName}>{userName}</Text>
+            <Text style={styles.userRoleBadge}>{role === 'staff' ? 'Staff' : 'Admin'}</Text>
+          </View>
+        )}
         <Button title="Sign Out" variant="outline" onPress={logout} />
       </View>
     </View>
@@ -314,7 +400,14 @@ const styles = StyleSheet.create({
   },
   userV: { gap: 10 },
   userH: {},
-  userName: { color: colors.muted, fontSize: 13 },
+  userName: { color: colors.muted, fontSize: 13, fontWeight: '700' },
+  userRoleBadge: {
+    color: '#372A8B',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
   subItemContainer: {
     paddingLeft: 20,
     gap: 3,

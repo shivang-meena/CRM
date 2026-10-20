@@ -1,11 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useModuleQuery } from './useModuleQuery';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createCalendarEvent, deleteCalendarEvent, fetchCalendarItems, updateCalendarEvent } from '@/api/calendar';
 import { CalendarEventInput, CalendarItemsQuery } from '@/types/calendar';
 
 export function useCalendarItems(query: CalendarItemsQuery) {
   const categories = [...query.categories].sort();
   const canonical = { ...query, categories };
-  return useQuery({ queryKey: ['calendar-items', canonical], queryFn: () => fetchCalendarItems(canonical), refetchInterval: 60000 });
+  return useModuleQuery('calendar', { queryKey: ['calendar-items', canonical], queryFn: () => fetchCalendarItems(canonical), refetchInterval: 60000 });
 }
 
 export function useCalendarActions() {

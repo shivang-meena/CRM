@@ -2,12 +2,14 @@ import {
   Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequirePermissions } from '../auth/permissions';
 import { Actor } from '../crm/crm-core.service';
 import { VersionDto } from '../crm/crm.dto';
 import { CustomerListQueryDto } from './customers.dto';
 import { CustomersService } from './customers.service';
 
 @UseGuards(JwtAuthGuard)
+@RequirePermissions('customer')
 @Controller('customers')
 export class CustomersController {
   constructor(private readonly customers: CustomersService) {}

@@ -1,10 +1,12 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Actor } from '../crm/crm-core.service';
+import { RequirePermissions } from '../auth/permissions';
+import type { AuthenticatedUser as Actor } from '../auth/permissions';
 import { ListQueryDto, VersionDto } from '../crm/crm.dto';
 import { CreateFollowUpDto, UpdateFollowUpDto } from './dto/activity.dto';
 import { ActivitiesService } from './activities.service';
 @UseGuards(JwtAuthGuard)
+@RequirePermissions('lead')
 @Controller('leads/:leadId/followups')
 export class FollowUpsController {
   constructor(private service: ActivitiesService) {}

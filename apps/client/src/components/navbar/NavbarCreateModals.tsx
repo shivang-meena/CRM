@@ -5,6 +5,7 @@ import NoteFormModal from '@/components/notes/NoteFormModal';
 import StandaloneMeetingFormModal from '@/components/meetings/StandaloneMeetingFormModal';
 import StandaloneReminderFormModal from '@/components/reminders/StandaloneReminderFormModal';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useNoteActions } from '@/hooks/useNotes';
 import { useStandaloneActivityActions } from '@/hooks/useStandaloneActivities';
 import { useTaskActions, useTaskLabels } from '@/hooks/useTasks';
@@ -15,10 +16,13 @@ type Props = { action: CreateAction | null; onClose: () => void };
 
 export default function NavbarCreateModals({ action, onClose }: Props) {
   const { userName } = useAuth();
+  const { canAccess } = usePermissions();
   const taskLabels = useTaskLabels();
   const taskActions = useTaskActions();
   const noteActions = useNoteActions();
   const standaloneActions = useStandaloneActivityActions();
+
+  if (action && !canAccess(action)) return null;
 
   return <>
     {action === 'lead' ? <LeadFormModal visible lead={null} defaultAssignee={userName} onClose={onClose} /> : null}

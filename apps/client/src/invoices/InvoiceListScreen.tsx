@@ -14,13 +14,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
+import InvoiceCompanyDetails from './InvoiceCompanyDetails';
+import InvoiceSignature from './InvoiceSignature';
+import { getDocumentCompanyProfile, getDocumentInvoiceSettings } from './companyProfile';
+import { invoiceBranding } from './invoiceBranding';
 import {
   useConvertQuotationToInvoice,
   useDeleteSalesDocument,
   useSalesDocuments,
 } from '@/hooks/useSalesDocuments';
 import {
-  DEFAULT_COMPANY_CONFIG,
+  DEFAULT_DOCUMENT_CONFIG,
   SalesDocumentRecord,
   SalesDocumentType,
 } from '@/types/salesDocuments';
@@ -69,6 +73,14 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [previewRecord, setPreviewRecord] =
     useState<SalesDocumentRecord | null>(null);
+  const previewCompany = useMemo(
+    () => previewRecord ? getDocumentCompanyProfile(previewRecord) : null,
+    [previewRecord],
+  );
+  const previewInvoiceSettings = previewRecord ? getDocumentInvoiceSettings(previewRecord) : null;
+  const printStyles = useMemo(
+    () => invoiceBranding(styles, previewCompany), [previewCompany],
+  );
   const [paymentModalRecord, setPaymentModalRecord] =
     useState<SalesDocumentRecord | null>(null);
 
@@ -503,7 +515,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                             e?.stopPropagation?.();
                             if (row.email) {
                               const docTypeName = mode === 'QUOTATION' ? 'Quotation' : 'Invoice';
-                              const subject = `${docTypeName} #${row.documentNo} from ${row.sellerCompanyName || 'CrazyWebDev Technologies'}`;
+                              const subject = `${docTypeName} #${row.documentNo}${row.sellerCompanyName ? ` from ${row.sellerCompanyName}` : ''}`;
                               const body = `Dear ${row.customerName},\n\nPlease find your ${docTypeName.toLowerCase()} details below:\nDocument No: ${row.documentNo}\nIssue Date: ${formatIstDate(row.issueDate)}\nTotal Amount: ${formatInr(row.grandTotal)}\nDue Amount: ${formatInr(row.dueAmount)}\n\nThank you for your business!`;
                               Linking.openURL(
                                 `mailto:${encodeURIComponent(row.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
@@ -895,149 +907,127 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
             {/* Document Content */}
             {previewRecord && (
               <ScrollView style={{ maxHeight: 600 }}>
-                <View style={styles.printableDocument}>
+                <View style={printStyles.printableDocument}>
                   {/* Top Company & Bank Info Row */}
-                  <View style={styles.docHeaderRow}>
-                    <View style={styles.companyInfoLeft}>
-                      <View style={styles.logoBadgeWrap}>
-                        <Ionicons
-                          name="cloud-outline"
-                          size={18}
-                          color="#0B2F7D"
-                        />
-                        <Text style={styles.logoBadgeText}>
-                          {previewRecord.sellerCompanyName ||
-                            DEFAULT_COMPANY_CONFIG.companyName}
-                        </Text>
-                      </View>
-                      <Text style={styles.docAddressText}>
-                        {previewRecord.sellerAddress ||
-                          DEFAULT_COMPANY_CONFIG.address}
-                      </Text>
-                      <Text style={styles.docMetaText}>
-                        Phone:{' '}
-                        {previewRecord.sellerPhone ||
-                          DEFAULT_COMPANY_CONFIG.phone}{' '}
-                        | Email:{' '}
-                        {previewRecord.sellerEmail ||
-                          DEFAULT_COMPANY_CONFIG.email}
-                      </Text>
+                  <View style={printStyles.docHeaderRow}>
+                    <View style={printStyles.companyInfoLeft}>
+                      {previewCompany ? <InvoiceCompanyDetails profile={previewCompany} /> : null}
                     </View>
 
-                    <View style={styles.bankInfoRight}>
-                      <Text style={styles.bankInfoTitle}>Payment Details</Text>
-                      <Text style={styles.bankDetailLine}>
+                    <View style={printStyles.bankInfoRight}>
+                      <Text style={printStyles.bankInfoTitle}>Payment Details</Text>
+                      <Text style={printStyles.bankDetailLine}>
                         Bank:{' '}
-                        <Text style={styles.bankDetailVal}>
-                          {previewRecord.bankName ||
-                            DEFAULT_COMPANY_CONFIG.bankName}
+                        <Text style={printStyles.bankDetailVal}>
+                          {previewRecord.type === 'INVOICE' ? previewRecord.bankName ?? '' : previewRecord.bankName || DEFAULT_DOCUMENT_CONFIG.bankName}
                         </Text>
                       </Text>
-                      <Text style={styles.bankDetailLine}>
+                      <Text style={printStyles.bankDetailLine}>
                         A/C:{' '}
-                        <Text style={styles.bankDetailVal}>
-                          {previewRecord.bankAccountNo ||
-                            DEFAULT_COMPANY_CONFIG.accountNo}
+                        <Text style={printStyles.bankDetailVal}>
+                          {previewRecord.type === 'INVOICE' ? previewRecord.bankAccountNo ?? '' : previewRecord.bankAccountNo || DEFAULT_DOCUMENT_CONFIG.accountNo}
                         </Text>
                       </Text>
-                      <Text style={styles.bankDetailLine}>
+                      <Text style={printStyles.bankDetailLine}>
                         IFSC:{' '}
-                        <Text style={styles.bankDetailVal}>
-                          {previewRecord.bankIfsc ||
-                            DEFAULT_COMPANY_CONFIG.ifscCode}
+                        <Text style={printStyles.bankDetailVal}>
+                          {previewRecord.type === 'INVOICE' ? previewRecord.bankIfsc ?? '' : previewRecord.bankIfsc || DEFAULT_DOCUMENT_CONFIG.ifscCode}
                         </Text>
                       </Text>
+                      {previewInvoiceSettings?.paymentUpiId ? <Text style={printStyles.bankDetailLine}>
+                        UPI ID: <Text style={printStyles.bankDetailVal}>{previewInvoiceSettings.paymentUpiId}</Text>
+                      </Text> : null}
                     </View>
                   </View>
 
-                  <View style={styles.docDivider} />
+                  <View style={printStyles.docDivider} />
 
                   {/* Document Meta Row */}
-                  <View style={styles.docMetaBar}>
+                  <View style={printStyles.docMetaBar}>
                     <View>
-                      <Text style={styles.metaLabel}>DOCUMENT TYPE</Text>
-                      <Text style={styles.metaValue}>
+                      <Text style={printStyles.metaLabel}>DOCUMENT TYPE</Text>
+                      <Text style={printStyles.metaValue}>
                         {previewRecord.type === 'QUOTATION'
                           ? 'QUOTATION'
                           : 'TAX INVOICE'}
                       </Text>
                     </View>
                     <View>
-                      <Text style={styles.metaLabel}>DOCUMENT NO</Text>
-                      <Text style={styles.metaValue}>
+                      <Text style={printStyles.metaLabel}>DOCUMENT NO</Text>
+                      <Text style={printStyles.metaValue}>
                         {previewRecord.documentNo}
                       </Text>
                     </View>
                     <View>
-                      <Text style={styles.metaLabel}>DATE</Text>
-                      <Text style={styles.metaValue}>
+                      <Text style={printStyles.metaLabel}>DATE</Text>
+                      <Text style={printStyles.metaValue}>
                         {formatIstDate(previewRecord.issueDate)}
                       </Text>
                     </View>
                     {previewRecord.nextPaymentDate && (
                       <View>
-                        <Text style={styles.metaLabel}>NEXT PAYMENT</Text>
-                        <Text style={styles.metaValue}>
+                        <Text style={printStyles.metaLabel}>NEXT PAYMENT</Text>
+                        <Text style={printStyles.metaValue}>
                           {formatIstDate(previewRecord.nextPaymentDate)}
                         </Text>
                       </View>
                     )}
                     <View>
-                      <Text style={styles.metaLabel}>GST MODE</Text>
-                      <Text style={styles.metaValue}>
+                      <Text style={printStyles.metaLabel}>GST MODE</Text>
+                      <Text style={printStyles.metaValue}>
                         {previewRecord.gstMode === 'NON_GST'
                           ? 'Non GST'
                           : previewRecord.gstMode === 'IGST'
-                          ? 'IGST (18%)'
-                          : 'SGST / CGST (9%+9%)'}{' '}
+                          ? 'IGST'
+                          : 'SGST / CGST'}{' '}
                         {previewRecord.inclusiveGst ? '(Inclusive GST)' : ''}
                       </Text>
                     </View>
                   </View>
 
-                  <View style={styles.docDivider} />
+                  <View style={printStyles.docDivider} />
 
                   {/* Customer / Bill To Section */}
-                  <View style={styles.customerBox}>
-                    <Text style={styles.customerHeading}>BILL TO</Text>
-                    <Text style={styles.customerNameMain}>
+                  <View style={printStyles.customerBox}>
+                    <Text style={printStyles.customerHeading}>BILL TO</Text>
+                    <Text style={printStyles.customerNameMain}>
                       {previewRecord.customerName}
                     </Text>
                     {Boolean(previewRecord.companyName) && (
-                      <Text style={styles.customerSubText}>
+                      <Text style={printStyles.customerSubText}>
                         Company: {previewRecord.companyName}
                       </Text>
                     )}
                     {Boolean(previewRecord.mobile) && (
-                      <Text style={styles.customerSubText}>
+                      <Text style={printStyles.customerSubText}>
                         Phone: {previewRecord.mobile}
                       </Text>
                     )}
                     {Boolean(previewRecord.email) && (
-                      <Text style={styles.customerSubText}>
+                      <Text style={printStyles.customerSubText}>
                         Email: {previewRecord.email}
                       </Text>
                     )}
                     {Boolean(previewRecord.address) && (
-                      <Text style={styles.customerSubText}>
+                      <Text style={printStyles.customerSubText}>
                         Address: {previewRecord.address}
                       </Text>
                     )}
                   </View>
 
                   {/* Line Items Table */}
-                  <View style={styles.itemTable}>
-                    <View style={styles.itemTableHeader}>
-                      <Text style={[styles.itemTh, { width: 36 }]}>#</Text>
-                      <Text style={[styles.itemTh, { flex: 3 }]}>Item</Text>
+                  <View style={printStyles.itemTable}>
+                    <View style={printStyles.itemTableHeader}>
+                      <Text style={[printStyles.itemTh, { width: 36 }]}>#</Text>
+                      <Text style={[printStyles.itemTh, { flex: 3 }]}>Item</Text>
                       {previewRecord.gstMode !== 'NON_GST' && (
-                        <Text style={[styles.itemTh, { width: 90 }]}>
+                        <Text style={[printStyles.itemTh, { width: 90 }]}>
                           HSN/SAC
                         </Text>
                       )}
                       <Text
                         style={[
-                          styles.itemTh,
+                          printStyles.itemTh,
                           { width: 80, textAlign: 'right' },
                         ]}
                       >
@@ -1045,7 +1035,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                       </Text>
                       <Text
                         style={[
-                          styles.itemTh,
+                          printStyles.itemTh,
                           { width: 50, textAlign: 'center' },
                         ]}
                       >
@@ -1053,7 +1043,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                       </Text>
                       <Text
                         style={[
-                          styles.itemTh,
+                          printStyles.itemTh,
                           { width: 80, textAlign: 'right' },
                         ]}
                       >
@@ -1061,7 +1051,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                       </Text>
                       <Text
                         style={[
-                          styles.itemTh,
+                          printStyles.itemTh,
                           { width: 90, textAlign: 'right' },
                         ]}
                       >
@@ -1070,7 +1060,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                       {previewRecord.gstMode !== 'NON_GST' && (
                         <Text
                           style={[
-                            styles.itemTh,
+                            printStyles.itemTh,
                             { width: 100, textAlign: 'right' },
                           ]}
                         >
@@ -1079,7 +1069,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                       )}
                       <Text
                         style={[
-                          styles.itemTh,
+                          printStyles.itemTh,
                           { width: 100, textAlign: 'right' },
                         ]}
                       >
@@ -1088,28 +1078,28 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                     </View>
 
                     {previewRecord.items.map((item, idx) => (
-                      <View key={item.id || idx} style={styles.itemTableRow}>
-                        <Text style={[styles.itemTd, { width: 36 }]}>
+                      <View key={item.id || idx} style={printStyles.itemTableRow}>
+                        <Text style={[printStyles.itemTd, { width: 36 }]}>
                           {idx + 1}
                         </Text>
                         <View style={{ flex: 3 }}>
-                          <Text style={styles.itemTdBold}>
+                          <Text style={printStyles.itemTdBold}>
                             {item.productName}
                           </Text>
                           {Boolean(item.comments) && (
-                            <Text style={styles.itemTdComments}>
+                            <Text style={printStyles.itemTdComments}>
                               {item.comments}
                             </Text>
                           )}
                         </View>
                         {previewRecord.gstMode !== 'NON_GST' && (
-                          <Text style={[styles.itemTd, { width: 90 }]}>
+                          <Text style={[printStyles.itemTd, { width: 90 }]}>
                             {item.hsnSac || '-'}
                           </Text>
                         )}
                         <Text
                           style={[
-                            styles.itemTd,
+                            printStyles.itemTd,
                             { width: 80, textAlign: 'right' },
                           ]}
                         >
@@ -1117,7 +1107,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                         </Text>
                         <Text
                           style={[
-                            styles.itemTd,
+                            printStyles.itemTd,
                             { width: 50, textAlign: 'center' },
                           ]}
                         >
@@ -1125,7 +1115,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                         </Text>
                         <Text
                           style={[
-                            styles.itemTd,
+                            printStyles.itemTd,
                             { width: 80, textAlign: 'right' },
                           ]}
                         >
@@ -1135,7 +1125,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                         </Text>
                         <Text
                           style={[
-                            styles.itemTd,
+                            printStyles.itemTd,
                             { width: 90, textAlign: 'right' },
                           ]}
                         >
@@ -1144,7 +1134,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                         {previewRecord.gstMode !== 'NON_GST' && (
                           <Text
                             style={[
-                              styles.itemTd,
+                              printStyles.itemTd,
                               { width: 100, textAlign: 'right' },
                             ]}
                           >
@@ -1153,7 +1143,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                         )}
                         <Text
                           style={[
-                            styles.itemTdBold,
+                            printStyles.itemTdBold,
                             { width: 100, textAlign: 'right' },
                           ]}
                         >
@@ -1164,65 +1154,61 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                   </View>
 
                   {/* Bottom Financial Summary & Signature Row */}
-                  <View style={styles.bottomFinancialRow}>
+                  <View style={printStyles.bottomFinancialRow}>
                     {/* Left: Terms & Signatory */}
                     <View style={{ flex: 1.2 }}>
-                      <Text style={styles.termsHeading}>
+                      <Text style={printStyles.termsHeading}>
                         Terms &amp; Conditions
                       </Text>
-                      <Text style={styles.termsBody}>
-                        {previewRecord.termsAndConditions ||
-                          DEFAULT_COMPANY_CONFIG.defaultTerms}
+                      <Text style={printStyles.termsBody}>
+                        {previewRecord.type === 'INVOICE' ? previewRecord.termsAndConditions ?? '' : previewRecord.termsAndConditions || DEFAULT_DOCUMENT_CONFIG.defaultTerms}
                       </Text>
 
-                      <View style={styles.modalSignatureBox}>
-                        <Text style={styles.modalSignatureCursive}>
-                          {previewRecord.signatoryName ||
-                            DEFAULT_COMPANY_CONFIG.signatoryName}
-                        </Text>
-                        <Text style={styles.modalSignatorySub}>
-                          Authorized Signatory
-                        </Text>
+                      <View style={printStyles.modalSignatureBox}>
+                        {previewRecord.type === 'INVOICE' ? <InvoiceSignature signature={previewInvoiceSettings?.signature} name={previewRecord.signatoryName} color={previewCompany?.fontColor} /> : <>
+                          <Text style={printStyles.modalSignatureCursive}>{previewRecord.signatoryName || DEFAULT_DOCUMENT_CONFIG.signatoryName}</Text>
+                          <Text style={printStyles.modalSignatorySub}>Authorized Signatory</Text>
+                        </>}
                       </View>
                     </View>
 
                     {/* Right: Calculations Breakdown */}
-                    <View style={styles.summaryCard}>
-                      <View style={styles.summaryLine}>
-                        <Text style={styles.summaryLineLabel}>
+                    <View style={printStyles.summaryCard}>
+                      <View style={printStyles.summaryLine}>
+                        <Text style={printStyles.summaryLineLabel}>
                           Gross Subtotal:
                         </Text>
-                        <Text style={styles.summaryLineVal}>
+                        <Text style={printStyles.summaryLineVal}>
                           {formatCurrency(previewRecord.grossSubtotal)}
                         </Text>
                       </View>
 
                       {previewRecord.discountTotal > 0 && (
-                        <View style={styles.summaryLine}>
-                          <Text style={styles.summaryLineLabel}>
+                        <View style={printStyles.summaryLine}>
+                          <Text style={printStyles.summaryLineLabel}>
                             Total Discount:
                           </Text>
-                          <Text style={styles.summaryLineVal}>
+                          <Text style={printStyles.summaryLineVal}>
                             - {formatCurrency(previewRecord.discountTotal)}
                           </Text>
                         </View>
                       )}
 
-                      <View style={styles.summaryLine}>
-                        <Text style={styles.summaryLineLabel}>
+                      <View style={printStyles.summaryLine}>
+                        <Text style={printStyles.summaryLineLabel}>
                           Taxable Subtotal:
                         </Text>
-                        <Text style={styles.summaryLineVal}>
+                        <Text style={printStyles.summaryLineVal}>
                           {formatCurrency(previewRecord.subtotal)}
                         </Text>
                       </View>
 
                       {previewRecord.gstMode === 'IGST' && (
-                        <View style={styles.summaryLine}>
-                          <Text style={styles.summaryLineLabel}>
+                        <View style={printStyles.summaryLine}>
+                          <Text style={printStyles.summaryLineLabel}>
                             IGST Total:
                           </Text>
-                          <Text style={styles.summaryLineVal}>
+                          <Text style={printStyles.summaryLineVal}>
                             {formatCurrency(previewRecord.igstTotal)}
                           </Text>
                         </View>
@@ -1230,19 +1216,19 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
 
                       {previewRecord.gstMode === 'SGST_CGST' && (
                         <>
-                          <View style={styles.summaryLine}>
-                            <Text style={styles.summaryLineLabel}>
+                          <View style={printStyles.summaryLine}>
+                            <Text style={printStyles.summaryLineLabel}>
                               SGST Total:
                             </Text>
-                            <Text style={styles.summaryLineVal}>
+                            <Text style={printStyles.summaryLineVal}>
                               {formatCurrency(previewRecord.sgstTotal)}
                             </Text>
                           </View>
-                          <View style={styles.summaryLine}>
-                            <Text style={styles.summaryLineLabel}>
+                          <View style={printStyles.summaryLine}>
+                            <Text style={printStyles.summaryLineLabel}>
                               CGST Total:
                             </Text>
-                            <Text style={styles.summaryLineVal}>
+                            <Text style={printStyles.summaryLineVal}>
                               {formatCurrency(previewRecord.cgstTotal)}
                             </Text>
                           </View>
@@ -1250,35 +1236,35 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                       )}
 
                       {previewRecord.gstMode !== 'NON_GST' && (
-                        <View style={styles.summaryLine}>
-                          <Text style={styles.summaryLineLabel}>
+                        <View style={printStyles.summaryLine}>
+                          <Text style={printStyles.summaryLineLabel}>
                             Total Tax:
                           </Text>
-                          <Text style={styles.summaryLineVal}>
+                          <Text style={printStyles.summaryLineVal}>
                             {formatCurrency(previewRecord.taxTotal)}
                           </Text>
                         </View>
                       )}
 
-                      <View style={[styles.summaryLine, styles.grandTotalLine]}>
-                        <Text style={styles.grandTotalLabel}>Grand Total:</Text>
-                        <Text style={styles.grandTotalVal}>
+                      <View style={[printStyles.summaryLine, printStyles.grandTotalLine]}>
+                        <Text style={printStyles.grandTotalLabel}>Grand Total:</Text>
+                        <Text style={printStyles.grandTotalVal}>
                           {formatCurrency(previewRecord.grandTotal)}
                         </Text>
                       </View>
 
-                      <View style={styles.summaryLine}>
-                        <Text style={styles.summaryLineLabel}>
+                      <View style={printStyles.summaryLine}>
+                        <Text style={printStyles.summaryLineLabel}>
                           Received Amount:
                         </Text>
-                        <Text style={styles.receivedAmountVal}>
+                        <Text style={printStyles.receivedAmountVal}>
                           {formatCurrency(previewRecord.paidAmount)}
                         </Text>
                       </View>
 
-                      <View style={styles.summaryLine}>
-                        <Text style={styles.dueAmountLabel}>Total Due:</Text>
-                        <Text style={styles.dueAmountVal}>
+                      <View style={printStyles.summaryLine}>
+                        <Text style={printStyles.dueAmountLabel}>Total Due:</Text>
+                        <Text style={printStyles.dueAmountVal}>
                           {formatCurrency(previewRecord.dueAmount)}
                         </Text>
                       </View>

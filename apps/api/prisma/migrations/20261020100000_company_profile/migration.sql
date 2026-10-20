@@ -1,0 +1,23 @@
+CREATE TABLE "company_profile" (
+    "id" TEXT NOT NULL DEFAULT 'company',
+    "companyName" TEXT NOT NULL DEFAULT '',
+    "contactNumber" TEXT NOT NULL DEFAULT '',
+    "dialCode" TEXT NOT NULL DEFAULT '+91',
+    "gstNumber" TEXT NOT NULL DEFAULT '',
+    "email" TEXT NOT NULL DEFAULT '',
+    "address" TEXT NOT NULL DEFAULT '',
+    "logo" TEXT NOT NULL DEFAULT '',
+    "country" TEXT NOT NULL DEFAULT 'India',
+    "state" TEXT NOT NULL DEFAULT '',
+    "city" TEXT NOT NULL DEFAULT '',
+    "businessCategory" TEXT NOT NULL DEFAULT '',
+    "openingTime" TEXT NOT NULL DEFAULT '',
+    "closingTime" TEXT NOT NULL DEFAULT '',
+    "considerOvertime" BOOLEAN NOT NULL DEFAULT false,
+    "themeColor" TEXT NOT NULL DEFAULT '#1966A6',
+    "fontColor" TEXT NOT NULL DEFAULT '#1966A6',
+    "missedFollowUpReminder" BOOLEAN NOT NULL DEFAULT false,
+    "staffWhatsAppDeviceReconnect" BOOLEAN NOT NULL DEFAULT false,
+    "updatedAt" TIMESTAMPTZ(3) NOT NULL,
+    CONSTRAINT "company_profile_pkey" PRIMARY KEY ("id")
+);

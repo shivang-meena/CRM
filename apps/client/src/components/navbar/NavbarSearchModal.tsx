@@ -3,24 +3,27 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
+import { usePermissions } from '@/hooks/usePermissions';
+import type { ModulePermission } from '@/hooks/usePermissions';
 
-type PageShortcut = { label: string; path: '/leads' | '/tasks' | '/reminders' | '/meetings' | '/notes'; icon: React.ComponentProps<typeof Ionicons>['name'] };
+type PageShortcut = { permission: ModulePermission; label: string; path: '/leads' | '/tasks' | '/reminders' | '/meetings' | '/notes'; icon: React.ComponentProps<typeof Ionicons>['name'] };
 
 const pages: PageShortcut[] = [
-  { label: 'Lead', path: '/leads', icon: 'funnel-outline' },
-  { label: 'Task', path: '/tasks', icon: 'calendar-outline' },
-  { label: 'Reminder', path: '/reminders', icon: 'alarm-outline' },
-  { label: 'Meeting', path: '/meetings', icon: 'headset-outline' },
-  { label: 'Note', path: '/notes', icon: 'bookmark' },
+  { permission: 'lead', label: 'Lead', path: '/leads', icon: 'funnel-outline' },
+  { permission: 'task', label: 'Task', path: '/tasks', icon: 'calendar-outline' },
+  { permission: 'reminder', label: 'Reminder', path: '/reminders', icon: 'alarm-outline' },
+  { permission: 'meeting', label: 'Meeting', path: '/meetings', icon: 'headset-outline' },
+  { permission: 'note', label: 'Note', path: '/notes', icon: 'bookmark' },
 ];
 
 export default function NavbarSearchModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const router = useRouter();
+  const { canAccess } = usePermissions();
   const [query, setQuery] = useState('');
   const matches = useMemo(() => {
     const value = query.trim().toLocaleLowerCase();
-    return pages.filter(page => !value || page.label.toLocaleLowerCase().includes(value));
-  }, [query]);
+    return pages.filter(page => canAccess(page.permission) && (!value || page.label.toLocaleLowerCase().includes(value)));
+  }, [query, canAccess]);
 
   function close() {
     setQuery('');

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { errorMessage } from '@/api/client';
 import { saveActivity } from '@/api/leadActivities';
 import { useCrmMutation, useSubmissionKey } from '@/hooks/useLeadActivities';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ActivityRecord } from '@/types/leadActivities';
 import { formatDateTime, parseDateTimeInput } from '@/utils/format';
 import { Choices, DateField, Field, FormShell } from './FormControls';
@@ -41,6 +42,7 @@ export default function MeetingFormModal({
   onSaved,
   onClose,
 }: Props) {
+  const { canAccess } = usePermissions();
   const [title, setTitle] = useState(() => record?.title ?? '');
   const [startAt, setStartAt] = useState(() => formatDateTime(record?.startAt));
   const [endAt, setEndAt] = useState(() => formatDateTime(record?.endAt));
@@ -106,7 +108,7 @@ export default function MeetingFormModal({
     if (record) {
       if (outcome.trim()) body.outcome = outcome.trim();
     } else {
-      if (reminderAt) {
+      if (canAccess('reminder') && reminderAt) {
         const parsedReminder = parseDateTimeInput(reminderAt);
         if (!parsedReminder.ok || !parsedReminder.value) {
           setError('Enter a valid linked reminder date & time.');
@@ -156,7 +158,7 @@ export default function MeetingFormModal({
       {record ? (
         <Field label="Outcome" value={outcome} onChange={setOutcome} multiline placeholder="Meeting outcome / minutes..." />
       ) : (
-        <DateField label="Optional Linked Reminder" value={reminderAt} onChange={setReminderAt} />
+        canAccess('reminder') ? <DateField label="Optional Linked Reminder" value={reminderAt} onChange={setReminderAt} /> : null
       )}
     </FormShell>
   );

@@ -1,9 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useModuleQuery } from './useModuleQuery';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { changeStandaloneActivity, createStandaloneActivity, deleteStandaloneActivity, fetchStandaloneActivities, StandaloneActivityKind, updateStandaloneActivity } from '@/api/standaloneActivities';
 import { ListFilters } from '@/types/leadActivities';
 
 export function useStandaloneActivities(kind: StandaloneActivityKind, filters: ListFilters) {
-  return useQuery({ queryKey: ['standalone-' + kind, filters], queryFn: () => fetchStandaloneActivities(kind, filters), refetchInterval: 60000 });
+  return useModuleQuery(kind === 'meetings' ? 'meeting' : 'reminder', { queryKey: ['standalone-' + kind, filters], queryFn: () => fetchStandaloneActivities(kind, filters), refetchInterval: 60000 });
 }
 
 export function useStandaloneActivityActions() {

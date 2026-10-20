@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { errorMessage } from '@/api/client';
 import { saveActivity } from '@/api/leadActivities';
 import { useCrmMutation, useSubmissionKey } from '@/hooks/useLeadActivities';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ActivityRecord } from '@/types/leadActivities';
 import { formatDateTime, parseDateTimeInput } from '@/utils/format';
 import { Choices, DateField, Field, FormShell } from './FormControls';
@@ -26,6 +27,7 @@ export default function TaskFormModal({
   onSaved,
   onClose,
 }: Props) {
+  const { canAccess } = usePermissions();
   const [title, setTitle] = useState(() => record?.title ?? '');
   const [dueAt, setDueAt] = useState(() => formatDateTime(record?.dueAt));
   const [priority, setPriority] = useState(() => record?.priority ?? 'MEDIUM');
@@ -64,7 +66,7 @@ export default function TaskFormModal({
     };
 
     if (!record) {
-      if (reminderAt) {
+      if (canAccess('reminder') && reminderAt) {
         const parsedReminder = parseDateTimeInput(reminderAt);
         if (!parsedReminder.ok || !parsedReminder.value) {
           setError('Enter a valid linked reminder date & time.');
@@ -99,7 +101,7 @@ export default function TaskFormModal({
       <Field label="Assigned To" value={assignedTo} onChange={setAssignedTo} placeholder={defaultAssignee} />
       <Field label="Description" value={description} onChange={setDescription} multiline placeholder="Work details..." />
       {!record ? (
-        <DateField label="Optional Linked Reminder" value={reminderAt} onChange={setReminderAt} />
+        canAccess('reminder') ? <DateField label="Optional Linked Reminder" value={reminderAt} onChange={setReminderAt} /> : null
       ) : null}
     </FormShell>
   );

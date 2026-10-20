@@ -1,11 +1,13 @@
+import { activityPermissions } from './usePermissions';
+import { useModuleQuery } from './useModuleQuery';
 import { useRef } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchActivities, fetchDashboardActivities, fetchHistory, fetchSectionSummary } from '@/api/leadActivities';
 import { ActivityKind, ListFilters } from '@/types/leadActivities';
-export function useSectionSummary(id: string) { return useQuery({ queryKey: ['lead-sections-summary', id], queryFn: () => fetchSectionSummary(id), enabled: !!id }); }
-export function useActivities(id: string, kind: ActivityKind, filters: ListFilters, enabled = true) { return useQuery({ queryKey: ['lead-' + kind, id, filters], queryFn: () => fetchActivities(id, kind, filters), enabled: !!id && enabled }); }
-export function useHistory(id: string, filters: ListFilters) { return useQuery({ queryKey: ['lead-history', id, filters], queryFn: () => fetchHistory(id, filters), enabled: !!id }); }
-export function useDashboardActivities(kind: ActivityKind, filters: ListFilters) { return useQuery({ queryKey: ['dashboard-lead-activities', kind, filters], queryFn: () => fetchDashboardActivities(kind, filters), refetchInterval: 60000 }); }
+export function useSectionSummary(id: string) { return useModuleQuery('lead', { queryKey: ['lead-sections-summary', id], queryFn: () => fetchSectionSummary(id), enabled: !!id }); }
+export function useActivities(id: string, kind: ActivityKind, filters: ListFilters, enabled = true) { return useModuleQuery(activityPermissions[kind], { queryKey: ['lead-' + kind, id, filters], queryFn: () => fetchActivities(id, kind, filters), enabled: !!id && enabled }); }
+export function useHistory(id: string, filters: ListFilters) { return useModuleQuery('lead', { queryKey: ['lead-history', id, filters], queryFn: () => fetchHistory(id, filters), enabled: !!id }); }
+export function useDashboardActivities(kind: ActivityKind, filters: ListFilters) { return useModuleQuery(activityPermissions[kind], { queryKey: ['dashboard-lead-activities', kind, filters], queryFn: () => fetchDashboardActivities(kind, filters), refetchInterval: 60000 }); }
 export function useCrmMutation<T>(leadId: string, fn: (input: T) => Promise<unknown>) {
   const qc = useQueryClient();
   return useMutation({ mutationFn: fn, onSuccess: async () => {

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
+import { usePermissions } from '@/hooks/usePermissions';
 import { colors } from '@/theme/colors';
 import NavbarNotificationsModal from './navbar/NavbarNotificationsModal';
 import NavbarCreateModals, { CreateAction } from './navbar/NavbarCreateModals';
@@ -21,7 +22,8 @@ const shortcuts: Shortcut[] = [
 
 export default function AppNavbar() {
   const router = useRouter();
-  const { userName, logout } = useAuth();
+  const { userName, role, logout } = useAuth();
+  const { canAccess: hasAccess } = usePermissions();
   const notifications = useNotifications(1);
   const [createAction, setCreateAction] = useState<CreateAction | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -29,6 +31,10 @@ export default function AppNavbar() {
   const [accountOpen, setAccountOpen] = useState(false);
   const unread = notifications.data?.unread ?? 0;
   const initials = userName.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || '?';
+
+
+  const visibleShortcuts = shortcuts.filter(s => hasAccess(s.action));
+  const showInvoiceShortcut = hasAccess('invoice');
 
   function openCreate(action: CreateAction) { setSearchOpen(false); setNotificationsOpen(false); setAccountOpen(false); setCreateAction(action); }
 
@@ -56,23 +62,26 @@ export default function AppNavbar() {
   return <>
     <View style={styles.navbar}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shortcuts} style={styles.shortcutScroll}>
-        {shortcuts.map((shortcut, index) => <React.Fragment key={shortcut.action}><Pressable accessibilityRole="button" accessibilityLabel={`Create ${shortcut.label}`} onPress={() => openCreate(shortcut.action)} style={({ pressed }) => [styles.shortcut, createAction === shortcut.action && styles.activeShortcut, pressed && styles.pressed]}><Ionicons name={shortcut.icon} size={15} color={shortcut.color} /><Text style={styles.shortcutText}>{shortcut.label}</Text></Pressable><View style={styles.divider} /></React.Fragment>)}
-        <Pressable accessibilityRole="button" accessibilityLabel="Invoices" onPress={() => router.push('/invoice' as Href)} style={({ pressed }) => [styles.shortcut, pressed && styles.pressed]}><Ionicons name="receipt-outline" size={15} color="#2BB5F5" /><Text style={styles.shortcutText}>Invoice</Text></Pressable>
+        {visibleShortcuts.map((shortcut) => <React.Fragment key={shortcut.action}><Pressable accessibilityRole="button" accessibilityLabel={`Create ${shortcut.label}`} onPress={() => openCreate(shortcut.action)} style={({ pressed }) => [styles.shortcut, createAction === shortcut.action && styles.activeShortcut, pressed && styles.pressed]}><Ionicons name={shortcut.icon} size={15} color={shortcut.color} /><Text style={styles.shortcutText}>{shortcut.label}</Text></Pressable><View style={styles.divider} /></React.Fragment>)}
+        {showInvoiceShortcut && (
+          <Pressable accessibilityRole="button" accessibilityLabel="Invoices" onPress={() => router.push('/invoice' as Href)} style={({ pressed }) => [styles.shortcut, pressed && styles.pressed]}><Ionicons name="receipt-outline" size={15} color="#2BB5F5" /><Text style={styles.shortcutText}>Invoice</Text></Pressable>
+        )}
       </ScrollView>
       <View style={styles.utilities}>
         <Pressable accessibilityRole="button" accessibilityLabel="Document utility not configured" disabled style={styles.utility}><Ionicons name="document-text-outline" size={16} color={colors.purple} /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Window utility not configured" disabled style={styles.utility}><Ionicons name="copy-outline" size={16} color="#F28A24" /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Search pages" onPress={openSearch} style={styles.utility}><Ionicons name="search-outline" size={17} color="#D33F9C" /></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={`Notifications${unread ? `, ${unread} unread` : ''}`} onPress={openNotifications} style={styles.utility}><Ionicons name="notifications-outline" size={18} color="#9D87D8" />{unread > 0 ? <View style={styles.badge}><Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text></View> : null}</Pressable>
+        {hasAccess('reminder') ? <Pressable accessibilityRole="button" accessibilityLabel={`Notifications${unread ? `, ${unread} unread` : ''}`} onPress={openNotifications} style={styles.utility}><Ionicons name="notifications-outline" size={18} color="#9D87D8" />{unread > 0 ? <View style={styles.badge}><Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text></View> : null}</Pressable> : null}
         <Pressable accessibilityRole="button" accessibilityLabel="Open account menu" onPress={openAccount} style={styles.account}><View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text></View><Text style={styles.userName} numberOfLines={1}>{userName || 'Account'}</Text><Ionicons name="chevron-down-outline" size={13} color={colors.muted} /></Pressable>
       </View>
     </View>
     <NavbarSearchModal visible={searchOpen} onClose={() => setSearchOpen(false)} />
-    <NavbarNotificationsModal visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
+    {hasAccess('reminder') ? <NavbarNotificationsModal visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} /> : null}
     <NavbarCreateModals action={createAction} onClose={() => setCreateAction(null)} />
     <Modal visible={accountOpen} transparent animationType="fade" onRequestClose={() => setAccountOpen(false)}>
-      <View style={styles.accountOverlay}><View style={styles.accountMenu} accessibilityViewIsModal><View style={styles.accountHeader}><View style={styles.avatarLarge}><Text style={styles.avatarLargeText}>{initials}</Text></View><View style={styles.accountInfo}><Text style={styles.accountName}>{userName || 'Account'}</Text><Text style={styles.accountSession}>Signed in</Text></View></View><Pressable accessibilityRole="button" onPress={async () => { await logout(); setAccountOpen(false); }} style={styles.signOut}><Ionicons name="log-out-outline" size={17} color={colors.danger} /><Text style={styles.signOutText}>Sign Out</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setAccountOpen(false)} style={styles.accountClose}><Text style={styles.accountCloseText}>Close</Text></Pressable></View></View>
+      <View style={styles.accountOverlay}><View style={styles.accountMenu} accessibilityViewIsModal><View style={styles.accountHeader}><View style={styles.avatarLarge}><Text style={styles.avatarLargeText}>{initials}</Text></View><View style={styles.accountInfo}><Text style={styles.accountName}>{userName || 'Account'}</Text><Text style={styles.accountSession}>{role === 'staff' ? 'Staff Session' : 'Admin Session'}</Text></View></View><Pressable accessibilityRole="button" onPress={async () => { await logout(); setAccountOpen(false); }} style={styles.signOut}><Ionicons name="log-out-outline" size={17} color={colors.danger} /><Text style={styles.signOutText}>Sign Out</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setAccountOpen(false)} style={styles.accountClose}><Text style={styles.accountCloseText}>Close</Text></Pressable></View></View>
     </Modal>
+
   </>;
 }
 

@@ -13,8 +13,10 @@ import { StandaloneActivitiesModule } from './standalone-activities/standalone-a
 import { CalendarModule } from './calendar/calendar.module';
 import { CustomersModule } from './customers/customers.module';
 import { StaffModule } from './staff/staff.module';
+import { LeaveModule } from './leave/leave.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, CrmCoreModule, AuthModule, LeadsModule, LeadActivitiesModule, SalesDocumentsModule, NotificationsModule, TasksModule, NotesModule, StandaloneActivitiesModule, CalendarModule, CustomersModule, StaffModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, CrmCoreModule, AuthModule, LeadsModule, LeadActivitiesModule, SalesDocumentsModule, NotificationsModule, TasksModule, NotesModule, StandaloneActivitiesModule, CalendarModule, CustomersModule, StaffModule, LeaveModule, SettingsModule],
 })
 export class AppModule {}

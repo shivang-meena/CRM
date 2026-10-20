@@ -1,9 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useModuleQuery } from './useModuleQuery';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createStaff, fetchStaff, updateStaff, updateStaffStatus } from '@/api/staff';
 import { StaffFilters, StaffPayload, StaffStatus, UpdateStaffPayload } from '@/types/staff';
 
 export function useStaffList(filters: StaffFilters) {
-  return useQuery({ queryKey: ['staff', filters], queryFn: () => fetchStaff(filters) });
+  return useModuleQuery('staff', { queryKey: ['staff', filters], queryFn: () => fetchStaff(filters) });
 }
 
 export function useCreateStaff() {

@@ -9,6 +9,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
 import { useAuth } from '@/context/AuthContext';
+import { leadSectionPermissions, usePermissions } from '@/hooks/usePermissions';
 import { useDeleteLead, useLead } from '@/hooks/useLeads';
 import { useSectionSummary } from '@/hooks/useLeadActivities';
 import { LeadSection } from '@/types/leadActivities';
@@ -39,6 +40,7 @@ export default function LeadDetails() {
   const { id, section } = useLocalSearchParams<{ id: string; section?: string }>();
   const router = useRouter();
   const { userName } = useAuth();
+  const { canAccess } = usePermissions();
 
   const validSections: LeadSection[] = [
     'details',
@@ -54,7 +56,8 @@ export default function LeadDetails() {
     ? (section as LeadSection)
     : 'details';
 
-  const [selectedSection, setSelectedSection] = useState<LeadSection>(initialSection);
+  const [requestedSection, setSelectedSection] = useState<LeadSection>(initialSection);
+  const selectedSection = canAccess(leadSectionPermissions[requestedSection]) ? requestedSection : 'details';
 
   // Queries
   const { data: lead, isLoading: leadLoading, isError: leadError, refetch: refetchLead } = useLead(id);
@@ -185,7 +188,7 @@ export default function LeadDetails() {
 
       {/* Edit Lead Modal */}
       <LeadFormModal
-        visible={editLeadOpen}
+        visible={editLeadOpen && canAccess('lead')}
         lead={lead ?? null}
         defaultAssignee={userName}
         onClose={() => setEditLeadOpen(false)}
@@ -193,7 +196,7 @@ export default function LeadDetails() {
 
       {/* Delete Lead Confirm Dialog */}
       <ConfirmDialog
-        visible={deleteConfirmOpen}
+        visible={deleteConfirmOpen && canAccess('lead')}
         title="Delete lead?"
         message={`This will archive ${lead?.name ?? 'this lead'} and retain all its linked records.`}
         loading={del.isPending}
@@ -204,7 +207,7 @@ export default function LeadDetails() {
       {/* Add FollowUp Modal */}
       {followUpOpen && lead ? (
         <FollowUpFormModal
-          visible={followUpOpen}
+          visible={followUpOpen && canAccess('lead')}
           leadId={lead.id}
           defaultAssignee={lead.assignedTo || userName}
           onSaved={() => {
@@ -218,7 +221,7 @@ export default function LeadDetails() {
       {/* Add Task Modal */}
       {taskOpen && lead ? (
         <TaskFormModal
-          visible={taskOpen}
+          visible={taskOpen && canAccess('task')}
           leadId={lead.id}
           defaultAssignee={lead.assignedTo || userName}
           onSaved={() => {
@@ -232,7 +235,7 @@ export default function LeadDetails() {
       {/* Add Reminder Modal */}
       {reminderOpen && lead ? (
         <ReminderFormModal
-          visible={reminderOpen}
+          visible={reminderOpen && canAccess('reminder')}
           leadId={lead.id}
           onSaved={() => {
             setReminderOpen(false);
@@ -245,7 +248,7 @@ export default function LeadDetails() {
       {/* Add Meeting Modal */}
       {meetingOpen && lead ? (
         <MeetingFormModal
-          visible={meetingOpen}
+          visible={meetingOpen && canAccess('meeting')}
           leadId={lead.id}
           defaultAssignee={lead.assignedTo || userName}
           onSaved={() => {
@@ -259,7 +262,7 @@ export default function LeadDetails() {
       {/* Create Quotation Modal */}
       {quotationOpen && lead ? (
         <SalesDocumentFormModal
-          visible={quotationOpen}
+          visible={quotationOpen && canAccess('invoice')}
           leadId={lead.id}
           type="QUOTATION"
           lead={lead}
@@ -274,7 +277,7 @@ export default function LeadDetails() {
       {/* Create Invoice Modal */}
       {invoiceOpen && lead ? (
         <SalesDocumentFormModal
-          visible={invoiceOpen}
+          visible={invoiceOpen && canAccess('invoice')}
           leadId={lead.id}
           type="INVOICE"
           lead={lead}

@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RequirePermissions } from '../auth/permissions';
 import { Actor } from '../crm/crm-core.service';
 import { VersionDto } from '../crm/crm.dto';
 import {
@@ -9,6 +10,7 @@ import {
 import { TasksService } from './tasks.service';
 
 @UseGuards(JwtAuthGuard)
+@RequirePermissions('task')
 @Controller('tasks')
 export class TasksController {
   constructor(private service: TasksService) {}
@@ -26,6 +28,7 @@ export class TasksController {
 }
 
 @UseGuards(JwtAuthGuard)
+@RequirePermissions('task')
 @Controller('task-labels')
 export class TaskLabelsController {
   constructor(private service: TasksService) {}
@@ -34,6 +37,7 @@ export class TaskLabelsController {
 }
 
 @UseGuards(JwtAuthGuard)
+@RequirePermissions('task')
 @Controller('task-recurrence-series')
 export class TaskRecurrenceSeriesController {
   constructor(private service: TasksService) {}
