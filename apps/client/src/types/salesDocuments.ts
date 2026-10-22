@@ -21,6 +21,9 @@ export interface SalesDocumentItem {
   id?: string;
   productName: string;
   hsnSac: string;
+  hsnMasterId?: string;
+  hsnDescription?: string;
+  applyHsnMaster?: boolean;
   unitPrice: number;
   quantity: number;
   discountValue: number;
@@ -230,11 +233,13 @@ export interface SalesDocumentRecord {
   status: string;
   sourceQuotationId: string | null;
   customerId: string;
+  customerState?: string;
   companyName: string;
   customerName: string;
   mobile: string;
   email: string;
   address: string;
+  state?: string;
   issueDate: string;
   paymentDate?: string | null;
   nextPaymentDate: string | null;
@@ -281,6 +286,7 @@ export interface CreateSalesDocumentPayload {
   requestKey: string;
   type: SalesDocumentType;
   customerId: string;
+  customerState?: string;
   issueDate: string;
   paymentDate?: string | null;
   nextPaymentDate?: string | null;

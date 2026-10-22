@@ -1,0 +1,58 @@
+# Dependencies
+**/node_modules/**
+**/package-lock.json
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# Build artifacts
+**/dist/**
+**/build/**
+**/.expo/**
+**/web-build/**
+
+# Logs
+**/*.log
+**/*.log.*
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# Environment & credentials
+**/.env
+**/.env.*
+**/*.env
+**/*.pem
+**/*.key
+
+# Editor / Tooling
+**/.git/**
+**/.vscode/**
+**/.idea/**
+**/.claude/**
+
+# Media & Binary assets
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.webp
+**/*.ico
+**/*.svg
+**/*.pdf
+**/*.ttf
+**/*.woff
+**/*.woff2
+
+# Database / lockfiles
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+**/migration_lock.toml
+
+# Repomix outputs & codebase dumps
+**/repomix-output.*
+**/repomix-output.xml
+**/repomix-output.txt
+**/repomix-output.md
+**/codebase.md

@@ -7,6 +7,7 @@ import { colors } from '@/theme/colors';
 import { errorMessage } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import { useDeleteLead, useLeads, useUpdateLead } from '@/hooks/useLeads';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { Lead, LeadStatus, STATUS_LIST } from '@/types/lead';
 import { LeadDndProvider } from '@/context/LeadDndContext';
 import ActionMenu from '@/components/ActionMenu';
@@ -29,6 +30,12 @@ export default function LeadsBoard() {
   }, [searchText]);
 
   const { data, isLoading, isError, error, refetch } = useLeads(search);
+  const statusesQuery = useLeadStatuses();
+  const activeStatuses = statusesQuery.data?.filter((s) => s.isActive) ?? [];
+  const columns = activeStatuses.length > 0
+    ? activeStatuses.map((s) => ({ key: (s.code || s.name) as LeadStatus, label: s.name }))
+    : STATUS_LIST;
+
   const del = useDeleteLead();
   const updateLead = useUpdateLead();
 
@@ -85,12 +92,12 @@ export default function LeadsBoard() {
       ) : (
         <LeadDndProvider onDropLead={handleDropLead}>
           <ScrollView horizontal contentContainerStyle={styles.board}>
-            {STATUS_LIST.map((s) => (
+            {columns.map((s) => (
               <KanbanColumn
                 key={s.key}
                 statusKey={s.key}
                 title={s.label}
-                leads={leads.filter((l) => l.status === s.key)}
+                leads={leads.filter((l) => l.status === s.key || (l.status && l.status.toLowerCase() === s.label.toLowerCase()))}
                 maxHeight={Math.max(height - 220, 240)}
                 onOpen={(l) => setSelectedLeadModalId(l.id)}
                 onMenu={(l) => setMenuLead(l)}
@@ -141,7 +148,7 @@ export default function LeadsBoard() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: colors.white },
+  page: { flex: 1, backgroundColor: '#F7F9FC' },
   topbar: {
     flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12,
     padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border,

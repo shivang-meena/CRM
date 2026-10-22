@@ -28,7 +28,7 @@ export const ui = StyleSheet.create({
   choice: { padding: 10, minHeight: 44, borderRadius: 8, borderWidth: 1, borderColor: colors.border, justifyContent: 'center' }, choiceOn: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
   overlay: { flex: 1, padding: 12, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center' },
   modal: { width: '100%', maxWidth: 820, maxHeight: '94%', borderRadius: 12, backgroundColor: colors.white, overflow: 'hidden' },
-  heading: { padding: 16, fontWeight: '800', color: colors.primaryText, backgroundColor: colors.primary, fontSize: 17 },
+  heading: { padding: 16, fontWeight: '800', color: colors.white, backgroundColor: '#0B2F7D', fontSize: 17 },
   body: { padding: 16, gap: 14 }, footer: { padding: 16, gap: 10, borderTopWidth: 1, borderTopColor: colors.border },
   error: { color: colors.danger, fontSize: 13 }, panel: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 14, gap: 10, backgroundColor: colors.white },
 });

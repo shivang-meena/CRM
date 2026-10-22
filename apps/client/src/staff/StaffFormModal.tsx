@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   },
   permissionLabel: { color: colors.text, fontSize: 13, fontWeight: '600' },
   switchTrack: { width: 36, height: 20, borderRadius: 10, padding: 2, justifyContent: 'center' },
-  switchTrackActive: { backgroundColor: '#372A8B' },
+  switchTrackActive: { backgroundColor: '#0B2F7D' },
   switchTrackInactive: { backgroundColor: '#CBD5E1' },
   switchThumb: { width: 16, height: 16, borderRadius: 8, backgroundColor: colors.white },
   switchThumbActive: { alignSelf: 'flex-end' },

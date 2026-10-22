@@ -10,7 +10,7 @@ export function setOnUnauthorized(fn: (() => void) | null) {
 }
 
 export const api = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000',
+  baseURL: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001',
   timeout: 15000,
 });
 export const apiClient = api;

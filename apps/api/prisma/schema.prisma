@@ -31,9 +31,12 @@ model Lead {
   phone           String
   email           String?
   address         String?
+  state           String?
   comment         String?
   reference       String?
-  status          LeadStatus @default(NEW)
+  serviceId       String?
+  service         ServiceMaster? @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  status          String     @default("NEW")
   source          LeadSource @default(CUSTOMER_REFERENCE)
   label           String?
   estimatedAmount Decimal    @default(0) @db.Decimal(14, 2)
@@ -55,7 +58,39 @@ model Lead {
   customer        Customer?
 
   @@index([status])
+  @@index([serviceId])
   @@map("leads")
+}
+
+model ServiceMaster {
+  id             String   @id @default(uuid())
+  name           String
+  normalizedName String   @unique
+  hsnSac         String   @default("")
+  description    String?  @default("")
+  igstRate       Decimal  @default(0) @db.Decimal(5, 2)
+  sgstRate       Decimal  @default(0) @db.Decimal(5, 2)
+  cgstRate       Decimal  @default(0) @db.Decimal(5, 2)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  leads          Lead[]
+
+  @@map("service_masters")
+}
+
+model LeadStatusMaster {
+  id             String   @id @default(uuid())
+  name           String
+  normalizedName String   @unique
+  code           String?  @unique
+  color          String   @default("#0284c7")
+  order          Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("lead_status_masters")
 }
 
 model Customer {
@@ -433,6 +468,7 @@ model SalesDocument {
   customerPhoneSnapshot   String?
   customerEmailSnapshot   String?
   customerAddressSnapshot String?
+  customerStateSnapshot   String?
   customerGstinSnapshot   String?
   sellerCompanyName       String                @default("")
   sellerPhone             String                @default("")
@@ -468,6 +504,8 @@ model SalesDocumentItem {
   salesDocument   SalesDocument @relation(fields: [salesDocumentId], references: [id], onDelete: Cascade)
   productName     String
   hsnSac          String?
+  hsnMasterId     String? // Source reference; invoice values remain snapshots.
+  hsnDescription  String?
   quantity        Int           @default(1)
   unitPrice       Decimal       @default(0) @db.Decimal(12, 2)
   discountValue   Decimal       @default(0) @db.Decimal(12, 2)
@@ -489,6 +527,20 @@ model SalesDocumentItem {
 
   @@index([salesDocumentId])
   @@map("sales_document_items")
+}
+
+model HsnMaster {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  description String
+  igstRate    Decimal  @db.Decimal(5, 2)
+  sgstRate    Decimal  @db.Decimal(5, 2)
+  cgstRate    Decimal  @db.Decimal(5, 2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("hsn_master")
 }
 
 model PaymentMethodMaster {

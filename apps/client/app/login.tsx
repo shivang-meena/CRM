@@ -74,8 +74,8 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  card: { width: '100%', maxWidth: 380, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 24, gap: 14 },
+  page: { flex: 1, backgroundColor: '#F7F9FC', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  card: { width: '100%', maxWidth: 380, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 24, gap: 14, backgroundColor: colors.white },
   logo: { width: 56, height: 56, borderRadius: 6, overflow: 'hidden', backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
   logoImg: { width: 56, height: 56 },
   title: { fontSize: 22, fontWeight: '800', color: colors.text },

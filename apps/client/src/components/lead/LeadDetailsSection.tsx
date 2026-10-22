@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Lead, sourceLabel, statusLabel } from '@/types/lead';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { formatDateTime, formatINR } from '@/utils/format';
 import { colors } from '@/theme/colors';
 import Button from '@/components/Button';
@@ -36,6 +37,11 @@ type Props = {
 export default function LeadDetailsSection({ lead, onEdit, onDelete, onCancel }: Props) {
   const { width } = useWindowDimensions();
   const wide = width >= 900;
+  const statusesQuery = useLeadStatuses();
+  const matchedStatus = statusesQuery.data?.find(
+    (s) => s.code === lead.status || s.name.toLowerCase() === (lead.status || '').toLowerCase()
+  );
+  const statusName = matchedStatus?.name ?? statusLabel(lead.status);
 
   return (
     <View style={styles.container}>
@@ -43,6 +49,7 @@ export default function LeadDetailsSection({ lead, onEdit, onDelete, onCancel }:
         <Card title="Lead Information" wide={wide}>
           <Item label="Name" value={lead.name} />
           <Item label="Company Name" value={lead.companyName} />
+          <Item label="Service" value={lead.service?.name} />
           <Item label="Phone" value={lead.phone} />
           <Item label="Email Address" value={lead.email} />
           <Item label="Address" value={lead.address} />
@@ -53,7 +60,7 @@ export default function LeadDetailsSection({ lead, onEdit, onDelete, onCancel }:
         <Card title="General Information" wide={wide}>
           <Item label="Date" value={formatDateTime(lead.createdAt)} />
           <Item label="Follow Up Date" value={formatDateTime(lead.nextFollowUpAt)} />
-          <Item label="Status" value={statusLabel(lead.status)} />
+          <Item label="Status" value={statusName} />
           <Item label="Source" value={sourceLabel(lead.source)} />
           <Item label="Labels">
             {lead.label ? (
@@ -97,12 +104,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardHead: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.navy,
     paddingVertical: 12,
     alignItems: 'center',
   },
   cardTitle: {
-    color: colors.primaryText,
+    color: colors.white,
     fontWeight: '800',
     fontSize: 15,
   },

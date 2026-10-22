@@ -16,7 +16,7 @@ export default function AppLayout() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.white }}>
+      <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.canvas }}>
         <ActivityIndicator color={colors.primary} />
       </View>
     );
@@ -42,11 +42,11 @@ export default function AppLayout() {
   const blocked = isUnauthorized();
 
   return (
-    <View style={{ flex: 1, flexDirection: wide ? 'row' : 'column', backgroundColor: colors.white }}>
+    <View style={{ flex: 1, flexDirection: wide ? 'row' : 'column', backgroundColor: colors.canvas }}>
       <Sidebar horizontal={!wide} />
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: colors.canvas }}>
         <AppNavbar />
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, backgroundColor: colors.canvas }}>
           {blocked ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 }}>
               <Ionicons name="lock-closed-outline" size={48} color={colors.danger} />

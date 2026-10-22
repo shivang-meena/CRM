@@ -4,6 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
 import { errorMessage } from '@/api/client';
 import { useCreateLead, useUpdateLead } from '@/hooks/useLeads';
+import { useModuleQuery } from '@/hooks/useModuleQuery';
+import { fetchLeadServices, LEAD_SERVICES_KEY } from '@/api/serviceMaster';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
+import { ProfileSelect } from '@/settings/ProfileFields';
+import { INDIA_STATES } from '@/settings/profileOptions';
 import {
   Lead, LeadInput, LeadSource, LeadStatus, SOURCE_LIST, STATUS_LIST,
 } from '@/types/lead';
@@ -21,20 +26,23 @@ type Props = {
 
 type FormState = {
   name: string; companyName: string; phone: string; email: string;
-  address: string; comment: string; reference: string;
+  address: string; state: string; comment: string; reference: string;
+  serviceId: string;
   status: LeadStatus; source: LeadSource; label: string;
   estimatedAmount: string; rating: number; followUp: string; assignedTo: string;
 };
 
 const emptyForm = (assignee: string): FormState => ({
-  name: '', companyName: '', phone: '', email: '', address: '', comment: '', reference: '',
+  name: '', companyName: '', phone: '', email: '', address: '', state: '', comment: '', reference: '',
+  serviceId: '',
   status: 'NEW', source: 'CUSTOMER_REFERENCE', label: '',
   estimatedAmount: '', rating: 0, followUp: '', assignedTo: assignee,
 });
 
 const fromLead = (l: Lead): FormState => ({
   name: l.name, companyName: l.companyName ?? '', phone: l.phone, email: l.email ?? '',
-  address: l.address ?? '', comment: l.comment ?? '', reference: l.reference ?? '',
+  address: l.address ?? '', state: l.state ?? '', comment: l.comment ?? '', reference: l.reference ?? '',
+  serviceId: l.serviceId ?? '',
   status: l.status, source: l.source, label: l.label ?? '',
   estimatedAmount: String(l.estimatedAmount), rating: l.rating,
   followUp: formatDateTime(l.nextFollowUpAt), assignedTo: l.assignedTo,
@@ -89,6 +97,13 @@ function ChipRow<T extends string>(props: {
 export default function LeadFormModal({ visible, lead, defaultAssignee, onClose }: Props) {
   const create = useCreateLead();
   const update = useUpdateLead();
+  const services = useModuleQuery('lead', { queryKey: LEAD_SERVICES_KEY, queryFn: fetchLeadServices, enabled: visible });
+  const statusesQuery = useLeadStatuses();
+  const activeStatuses = statusesQuery.data?.filter((s) => s.isActive) ?? [];
+  const statusOptions = activeStatuses.length > 0
+    ? activeStatuses.map((s) => ({ key: (s.code || s.name) as LeadStatus, label: s.name }))
+    : STATUS_LIST;
+
   const [f, setF] = useState<FormState>(emptyForm(defaultAssignee));
   const [err, setErr] = useState('');
   const [showPicker, setShowPicker] = useState(false);
@@ -98,9 +113,13 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
     if (visible) {
       setErr('');
       setShowPicker(false);
-      setF(lead ? fromLead(lead) : emptyForm(defaultAssignee));
+      const initial = lead ? fromLead(lead) : emptyForm(defaultAssignee);
+      if (!lead && statusOptions.length > 0) {
+        initial.status = statusOptions[0].key;
+      }
+      setF(initial);
     }
-  }, [visible, lead, defaultAssignee]);
+  }, [visible, lead, defaultAssignee, statusOptions.length]);
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF((p) => ({ ...p, [k]: v }));
 
@@ -119,8 +138,10 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
       phone: f.phone.trim(),
       email: f.email.trim(),
       address: f.address.trim(),
+      state: f.state.trim() || undefined,
       comment: f.comment.trim(),
       reference: f.reference.trim(),
+      serviceId: f.serviceId || null,
       status: f.status,
       source: f.source,
       label: f.label.trim(),
@@ -149,12 +170,37 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
           <ScrollView contentContainerStyle={styles.body}>
             <TextField label="Name *" value={f.name} onChangeText={(v) => set('name', v)} />
             <TextField label="Company Name" value={f.companyName} onChangeText={(v) => set('companyName', v)} />
+            <View style={styles.field}>
+              <ProfileSelect
+                label="Service"
+                allowCustom={false}
+                value={services.data?.find((row) => row.id === f.serviceId)?.name || (f.serviceId === lead?.serviceId ? lead.service?.name : '') || ''}
+                options={(services.data ?? []).map((row) => row.name)}
+                onChange={(name) => set('serviceId', services.data?.find((row) => row.name === name)?.id ?? '')}
+              />
+              {services.isLoading ? <Text style={styles.label}>Loading services...</Text> : null}
+              {services.isError ? <>
+                <Text accessibilityRole="alert" style={styles.err}>{errorMessage(services.error)}</Text>
+                <Button title="Retry Services" variant="outline" onPress={() => { void services.refetch(); }} />
+              </> : null}
+              {services.isSuccess && !services.data?.length ? <Text style={styles.label}>No active services. Add services in General Settings.</Text> : null}
+              {f.serviceId ? <Button title="Clear Service" variant="outline" onPress={() => set('serviceId', '')} /> : null}
+            </View>
             <TextField label="Phone *" value={f.phone} onChangeText={(v) => set('phone', v)} keyboardType="phone-pad" />
             <TextField label="Email" value={f.email} onChangeText={(v) => set('email', v)} keyboardType="email-address" />
             <TextField label="Address" value={f.address} onChangeText={(v) => set('address', v)} multiline />
+            <View style={styles.field}>
+              <ProfileSelect
+                label="State"
+                allowCustom={true}
+                value={f.state}
+                options={INDIA_STATES}
+                onChange={(val) => set('state', val)}
+              />
+            </View>
             <TextField label="Comment" value={f.comment} onChangeText={(v) => set('comment', v)} multiline />
             <TextField label="Reference" value={f.reference} onChangeText={(v) => set('reference', v)} />
-            <ChipRow label="Status" options={STATUS_LIST} value={f.status} onChange={(v) => set('status', v)} />
+            <ChipRow label="Status" options={statusOptions} value={f.status} onChange={(v) => set('status', v)} />
             <ChipRow label="Source" options={SOURCE_LIST} value={f.source} onChange={(v) => set('source', v)} />
             <TextField label="Label" value={f.label} onChangeText={(v) => set('label', v)} />
             <TextField label="Estimated Amount (₹)" value={f.estimatedAmount} onChangeText={(v) => set('estimatedAmount', v)} keyboardType="numeric" />
@@ -213,8 +259,8 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 12 },
   box: { width: '100%', maxWidth: 640, maxHeight: '92%', backgroundColor: colors.white, borderRadius: 8, overflow: 'hidden' },
-  titleBar: { backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 14 },
-  titleText: { color: colors.primaryText, fontWeight: '800', fontSize: 16 },
+  titleBar: { backgroundColor: colors.navy, paddingHorizontal: 16, paddingVertical: 14 },
+  titleText: { color: colors.white, fontWeight: '800', fontSize: 16 },
   body: { padding: 16, gap: 14 },
   field: { gap: 6 },
   label: { fontSize: 13, fontWeight: '700', color: colors.text },

@@ -17,6 +17,7 @@ import { errorMessage } from "@/api/client";
 import { CompanyProfile, EMPTY_COMPANY_PROFILE } from "@/types/companyProfile";
 import CompanyLogo from "./CompanyLogo";
 import WebSettingsTabs from './WebSettingsTabs';
+import ServiceMasterEditor from './ServiceMasterEditor';
 import { INVOICE_COMPANY_PROFILE_KEY } from '@/hooks/useInvoiceCompanyProfile';
 import ProfileColorPicker from "./ProfileColorPicker";
 import {
@@ -55,7 +56,7 @@ function SectionHeading({
         <Ionicons
           name={icon}
           size={badge ? 18 : 19}
-          color={badge ? "#FFFFFF" : "#51419B"}
+          color={badge ? "#FFFFFF" : "#1D5FD6"}
         />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
@@ -68,40 +69,7 @@ function SectionHeading({
   );
 }
 
-function NotificationToggle({
-  title,
-  description,
-  icon,
-  value,
-  onChange,
-}: {
-  title: string;
-  description: string;
-  icon: IconName;
-  value: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <View style={styles.notification}>
-      <View style={styles.notificationIcon}>
-        <Ionicons name={icon} size={19} color="#51419B" />
-      </View>
-      <View style={styles.notificationText}>
-        <View style={styles.notificationTitleRow}>
-          <Text style={styles.notificationTitle}>{title}</Text>
-          <Switch
-            accessibilityLabel={title}
-            value={value}
-            onValueChange={onChange}
-            trackColor={{ false: "#DFDFE2", true: "#6655AC" }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
-        <Text style={styles.subtitle}>{description}</Text>
-      </View>
-    </View>
-  );
-}
+
 
 function validate(profile: CompanyProfile): Errors {
   const errors: Errors = {};
@@ -153,7 +121,7 @@ export default function CompanyProfileScreen() {
   if (profileQuery.isPending)
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color="#40348B" />
+        <ActivityIndicator color="#0B2F7D" />
         <Text style={styles.subtitle}>Loading company profile...</Text>
       </View>
     );
@@ -507,35 +475,9 @@ function CompanyProfileForm({
             </View>
           </View>
         </View>
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <SectionHeading
-              title="Notifications & Devices"
-              subtitle="Control missed lead reminders and connected staff devices."
-              icon="notifications-outline"
-              badge
-            />
-          </View>
-          <View style={styles.notificationRow}>
-            <NotificationToggle
-              title="Missed Follow-Up Reminder"
-              description="Notify staff when scheduled follow-ups are missed during the day."
-              icon="notifications-outline"
-              value={profile.missedFollowUpReminder}
-              onChange={(value) => update("missedFollowUpReminder", value)}
-            />
-            <NotificationToggle
-              title="Staff WhatsApp Device Reconnect"
-              description="Staff can reconnect to WhatsApp if they are disconnected."
-              icon="phone-portrait-outline"
-              value={profile.staffWhatsAppDeviceReconnect}
-              onChange={(value) =>
-                update("staffWhatsAppDeviceReconnect", value)
-              }
-            />
-          </View>
-        </View>
+
       </View>
+      <ServiceMasterEditor />
     </ScrollView>
   );
 }
@@ -562,7 +504,7 @@ function TextInputPhone({
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#FCFBFE" },
+  page: { flex: 1, backgroundColor: "#F7F9FC" },
   pageContent: { padding: 14, paddingBottom: 30, gap: 14 },
   loading: {
     flex: 1,
@@ -570,7 +512,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
     gap: 14,
-    backgroundColor: "#FCFBFE",
+    backgroundColor: "#F7F9FC",
   },
   topTabs: {
     minHeight: 58,
@@ -587,7 +529,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderBottomWidth: 2,
-    borderBottomColor: "#51419B",
+    borderBottomColor: "#1D5FD6",
     paddingHorizontal: 5,
   },
   tabText: { fontSize: 14, color: "#514059", fontWeight: "600" },
@@ -602,7 +544,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#40348B",
+    backgroundColor: "#0B2F7D",
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -613,7 +555,7 @@ const styles = StyleSheet.create({
     minWidth: 66,
     paddingHorizontal: 18,
     paddingVertical: 8,
-    backgroundColor: "#40348B",
+    backgroundColor: "#0B2F7D",
     borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
@@ -643,7 +585,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#963787",
+    backgroundColor: "#0F3A8C",
   },
   sectionTitle: { fontSize: 13, fontWeight: "600", color: "#514059" },
   subtitle: { fontSize: 11, color: "#777079", lineHeight: 16 },

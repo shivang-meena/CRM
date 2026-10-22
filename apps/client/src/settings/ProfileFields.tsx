@@ -12,7 +12,7 @@ import {
 import type { TextInputProps } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-const PURPLE = "#40348B";
+const PURPLE = "#0B2F7D";
 
 export function FieldLabel({
   label,
@@ -84,6 +84,7 @@ export function ProfileSelect({
   required,
   error,
   allowCustom = true,
+  placeholder,
 }: {
   label: string;
   value: string;
@@ -92,6 +93,7 @@ export function ProfileSelect({
   required?: boolean;
   error?: string;
   allowCustom?: boolean;
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");

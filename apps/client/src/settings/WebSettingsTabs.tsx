@@ -39,7 +39,7 @@ export default function WebSettingsTabs({
           <Ionicons
             name={tab.icon}
             size={17}
-            color={active === tab.key ? '#51419B' : '#69616E'}
+            color={active === tab.key ? '#1D5FD6' : '#69616E'}
           />
           <Text style={styles.text}>{tab.label}</Text>
         </Pressable>
@@ -69,6 +69,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  active: { borderBottomColor: '#51419B' },
+  active: { borderBottomColor: '#1D5FD6' },
   text: { fontSize: 13, color: '#514059', fontWeight: '600' },
 });

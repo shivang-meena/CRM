@@ -1,4 +1,4 @@
-export type LeadStatus = 'NEW' | 'PROCESSING' | 'CLOSE_BY' | 'CONFIRM' | 'CANCEL';
+export type LeadStatus = 'NEW' | 'PROCESSING' | 'CLOSE_BY' | 'CONFIRM' | 'CANCEL' | (string & {});
 export type LeadSource =
   | 'CUSTOMER_REFERENCE' | 'WEBSITE' | 'CALL' | 'WHATSAPP' | 'SOCIAL_MEDIA' | 'OTHER';
 
@@ -10,8 +10,11 @@ export interface Lead {
   phone: string;
   email: string | null;
   address: string | null;
+  state?: string | null;
   comment: string | null;
   reference: string | null;
+  serviceId?: string | null;
+  service?: { id: string; name: string; isActive: boolean } | null;
   status: LeadStatus;
   source: LeadSource;
   label: string | null;
@@ -32,8 +35,10 @@ export interface LeadInput {
   companyName?: string;
   email?: string;
   address?: string;
+  state?: string;
   comment?: string;
   reference?: string;
+  serviceId?: string | null;
   status?: LeadStatus;
   source?: LeadSource;
   label?: string;
@@ -60,5 +65,9 @@ export const SOURCE_LIST: { key: LeadSource; label: string }[] = [
   { key: 'OTHER', label: 'Other' },
 ];
 
-export const statusLabel = (k: LeadStatus) => STATUS_LIST.find((s) => s.key === k)?.label ?? k;
+export const statusLabel = (k: LeadStatus | string, customList?: { key: string; label: string }[]) => {
+  const list = customList ?? STATUS_LIST;
+  const found = list.find((s) => s.key === k || s.label.toLowerCase() === (k || '').toLowerCase());
+  return found?.label ?? k;
+};
 export const sourceLabel = (k: LeadSource) => SOURCE_LIST.find((s) => s.key === k)?.label ?? k;

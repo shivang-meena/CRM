@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SalesDocumentsService } from './sales-documents.service';
+import { HsnMasterService } from '../settings/hsn-master.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequirePermissions } from '../auth/permissions';
 import {
@@ -25,7 +26,10 @@ import {
 @RequirePermissions('invoice')
 @Controller('sales-documents')
 export class SalesDocumentsController {
-  constructor(private readonly service: SalesDocumentsService) {}
+  constructor(private readonly service: SalesDocumentsService, private readonly hsnMaster: HsnMasterService) {}
+
+  @Get('hsn-master')
+  listHsnMaster() { return this.hsnMaster.list(true); }
 
   @Get()
   list(@Query() query: SalesDocumentQueryDto) {

@@ -343,7 +343,7 @@ export default function RemindersScreen() {
             style={[styles.iconBtnWhite, searchToggle && styles.btnActiveWhite]}
             onPress={() => setSearchToggle((prev) => !prev)}
           >
-            <Ionicons name="search-outline" size={18} color="#372A8B" />
+            <Ionicons name="search-outline" size={18} color="#0B2F7D" />
           </Pressable>
 
           {/* + Add Reminder Button */}
@@ -385,11 +385,11 @@ export default function RemindersScreen() {
             style={[styles.filterBtn, showFilterMenu && styles.btnActiveWhite]}
             onPress={() => setShowFilterMenu((prev) => !prev)}
           >
-            <Ionicons name="options-outline" size={16} color="#372A8B" />
+            <Ionicons name="options-outline" size={16} color="#0B2F7D" />
             <Text style={styles.filterBtnText}>
               {statusFilter === 'ALL' ? 'Filter' : statusFilter}
             </Text>
-            <Ionicons name="chevron-down" size={14} color="#372A8B" />
+            <Ionicons name="chevron-down" size={14} color="#0B2F7D" />
           </Pressable>
         </View>
       </View>
@@ -514,7 +514,7 @@ export default function RemindersScreen() {
             {/* Table Body */}
             {activitiesQuery.isLoading ? (
               <View style={styles.loadingBox}>
-                <ActivityIndicator size="small" color="#372A8B" />
+                <ActivityIndicator size="small" color="#0B2F7D" />
                 <Text style={styles.loadingText}>Loading reminders...</Text>
               </View>
             ) : items.length === 0 ? (
@@ -563,7 +563,7 @@ export default function RemindersScreen() {
                         <Ionicons
                           name={isExpanded ? 'chevron-down' : 'chevron-forward'}
                           size={15}
-                          color={isExpanded ? '#372A8B' : '#64748B'}
+                          color={isExpanded ? '#0B2F7D' : '#64748B'}
                         />
                       </Pressable>
 
@@ -600,7 +600,7 @@ export default function RemindersScreen() {
                             <Ionicons
                               name={item.status === 'DISMISSED' ? 'bookmark' : 'bookmark-outline'}
                               size={16}
-                              color={item.status === 'DISMISSED' ? '#372A8B' : '#94A3B8'}
+                              color={item.status === 'DISMISSED' ? '#0B2F7D' : '#94A3B8'}
                             />
                           </Pressable>
                         </View>
@@ -904,7 +904,7 @@ export default function RemindersScreen() {
                     style={styles.datePickerTrigger}
                     onPress={() => setIsPickerOpen(true)}
                   >
-                    <Ionicons name="calendar-outline" size={18} color="#372A8B" />
+                    <Ionicons name="calendar-outline" size={18} color="#0B2F7D" />
                     <Text style={styles.datePickerText}>
                       {formDateTime || 'Choose date & time'}
                     </Text>
@@ -1057,7 +1057,7 @@ const detailStyles = StyleSheet.create({
     flexShrink: 1,
   },
   typeBadge: {
-    backgroundColor: '#281E5D',
+    backgroundColor: '#0B2F7D',
     paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 4,
@@ -1072,7 +1072,7 @@ const detailStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: '#F7F9FC',
   },
   topbar: {
     flexDirection: 'row',
@@ -1086,7 +1086,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#281E5D',
+    color: '#0E1B3D',
     letterSpacing: -0.3,
   },
   headerActions: {
@@ -1106,7 +1106,7 @@ const styles = StyleSheet.create({
   },
   btnActiveWhite: {
     backgroundColor: '#EEF2FF',
-    borderColor: '#372A8B',
+    borderColor: '#0B2F7D',
   },
   addReminderBtn: {
     flexDirection: 'row',
@@ -1115,7 +1115,7 @@ const styles = StyleSheet.create({
     height: 38,
     paddingHorizontal: 14,
     borderRadius: 6,
-    backgroundColor: '#281E5D',
+    backgroundColor: '#0B2F7D',
   },
   addReminderText: {
     color: colors.white,
@@ -1126,7 +1126,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 6,
-    backgroundColor: '#281E5D',
+    backgroundColor: '#0B2F7D',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1155,7 +1155,7 @@ const styles = StyleSheet.create({
   filterBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#372A8B',
+    color: '#0B2F7D',
   },
   searchBarContainer: {
     flexDirection: 'row',
@@ -1197,8 +1197,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   filterChipActive: {
-    backgroundColor: '#372A8B',
-    borderColor: '#372A8B',
+    backgroundColor: '#0B2F7D',
+    borderColor: '#0B2F7D',
   },
   filterChipText: {
     fontSize: 12,
@@ -1224,7 +1224,7 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#281E5D',
+    backgroundColor: '#0B2F7D',
     paddingVertical: 12,
     paddingHorizontal: 12,
   },
@@ -1322,8 +1322,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#372A8B',
-    borderColor: '#372A8B',
+    backgroundColor: '#0B2F7D',
+    borderColor: '#0B2F7D',
   },
   cellTextDark: {
     fontSize: 12.5,
@@ -1370,7 +1370,7 @@ const styles = StyleSheet.create({
   },
   purpleDivider: {
     height: 3,
-    backgroundColor: '#372A8B',
+    backgroundColor: '#0B2F7D',
     width: '100%',
   },
   paginationFooter: {
@@ -1465,7 +1465,7 @@ const styles = StyleSheet.create({
   pageSizeMenuTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#281E5D',
+    color: '#0B2F7D',
     marginBottom: 4,
   },
   pageSizeOption: {
@@ -1481,7 +1481,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   pageSizeOptionTextActive: {
-    color: '#372A8B',
+    color: '#0B2F7D',
     fontWeight: '700',
   },
   modalOverlay: {
@@ -1503,7 +1503,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#281E5D',
+    backgroundColor: '#0B2F7D',
     paddingHorizontal: 18,
     paddingVertical: 14,
   },
@@ -1576,15 +1576,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   leadChipActive: {
-    borderColor: '#372A8B',
-    backgroundColor: '#EEF2FF',
+    borderColor: '#0B2F7D',
+    backgroundColor: '#E4EFFD',
   },
   leadChipText: {
     fontSize: 12,
     color: colors.text,
   },
   leadChipTextActive: {
-    color: '#372A8B',
+    color: '#0B2F7D',
     fontWeight: '700',
   },
   formErrorText: {

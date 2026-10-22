@@ -371,7 +371,7 @@ export default function DocumentDetailsModal({
 
 const styles = StyleSheet.create({
   modalHeader: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.navy,
     paddingHorizontal: 16,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: colors.primaryText,
+    color: colors.white,
   },
   titleRow: {
     flexDirection: 'row',

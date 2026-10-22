@@ -68,7 +68,7 @@ export default function DashboardComposer({ kind, entry, defaultDate, onSave, on
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(30,24,58,0.28)', padding: 20, alignItems: 'center', justifyContent: 'center' },
+  overlay: { flex: 1, backgroundColor: 'rgba(11,47,69,0.45)', padding: 20, alignItems: 'center', justifyContent: 'center' },
   dialog: { width: '100%', maxWidth: 460, maxHeight: '90%', backgroundColor: '#FFFFFF', borderRadius: 12, overflow: 'hidden' },
   header: { padding: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: palette.border },
   heading: { fontSize: 18, fontWeight: '600', color: palette.text },

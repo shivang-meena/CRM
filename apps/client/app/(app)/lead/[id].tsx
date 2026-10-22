@@ -295,10 +295,10 @@ export default function LeadDetails() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: '#F7F9FC',
   },
   titleBar: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.navy,
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: 'row',
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   titleText: {
-    color: colors.primaryText,
+    color: colors.white,
     fontWeight: '800',
     fontSize: 16,
   },

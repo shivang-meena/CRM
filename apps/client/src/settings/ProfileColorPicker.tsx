@@ -9,8 +9,8 @@ export type ColorPickerProps = {
 };
 export const COLOR_PRESETS = [
   "#1966A6",
-  "#40348B",
-  "#C72588",
+  "#0B2F7D",
+  "#1D5FD6",
   "#169D8F",
   "#15803D",
   "#E9A324",

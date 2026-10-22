@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   },
   image: { width: 150, height: 100 },
   upload: {
-    backgroundColor: '#40348B',
+    backgroundColor: '#0B2F7D',
     borderRadius: 4,
     paddingVertical: 7,
     paddingHorizontal: 17,

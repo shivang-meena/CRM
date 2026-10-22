@@ -120,7 +120,7 @@ export default function LeadDetailsModal({ visible, leadId, onClose }: Props) {
 
           {leadLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#372A8B" />
+              <ActivityIndicator size="large" color="#0B2F7D" />
               <Text style={styles.loadingText}>Loading lead details...</Text>
             </View>
           ) : leadError || !lead ? (
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   titleBar: {
-    backgroundColor: '#281E5D',
+    backgroundColor: '#0B2F7D',
     paddingHorizontal: 18,
     paddingVertical: 14,
     flexDirection: 'row',

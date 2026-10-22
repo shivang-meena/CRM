@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   errorText: { color: colors.danger, fontSize: 12, flex: 1 }, retry: { color: colors.primaryText, fontWeight: '800', fontSize: 12 },
   tableShell: { flex: 1, margin: 14, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 7, overflow: 'hidden', position: 'relative' },
   tableScroll: { minWidth: '100%' }, table: { minWidth: 680, flex: 1 },
-  headerRow: { minHeight: 38, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary },
+  headerRow: { minHeight: 38, flexDirection: 'row', alignItems: 'center', backgroundColor: '#0B2F7D' },
   dataRow: { minHeight: 54, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border },
   headerCell: { color: colors.white, fontSize: 11, fontWeight: '800', paddingHorizontal: 9 }, cell: { color: colors.text, fontSize: 12, paddingHorizontal: 9 }, noCell: { width: 60 }, actionsCell: { width: 105 }, noteCell: { width: 390 }, typeCell: { width: 125 },
   actionButtons: { flexDirection: 'row', alignItems: 'center', gap: 12 },

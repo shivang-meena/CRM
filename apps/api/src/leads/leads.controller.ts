@@ -19,6 +19,11 @@ export class LeadsController {
     return this.leads.findAll(search);
   }
 
+  @Get('services')
+  services() {
+    return this.leads.listServices();
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.leads.findOne(id);

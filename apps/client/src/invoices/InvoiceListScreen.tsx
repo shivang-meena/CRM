@@ -1086,6 +1086,9 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                           <Text style={printStyles.itemTdBold}>
                             {item.productName}
                           </Text>
+                          {previewRecord.gstMode !== 'NON_GST' && item.hsnDescription ? (
+                            <Text style={printStyles.itemTdComments}>{item.hsnDescription}</Text>
+                          ) : null}
                           {Boolean(item.comments) && (
                             <Text style={printStyles.itemTdComments}>
                               {item.comments}
@@ -1283,12 +1286,12 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: '#F7F9FC',
   },
   pageContent: {
     padding: 20,
     gap: 16,
-    backgroundColor: colors.white,
+    backgroundColor: '#F7F9FC',
   },
   topHeaderCard: {
     backgroundColor: colors.white,
@@ -1354,7 +1357,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 6,
-    backgroundColor: '#2B2D6E',
+    backgroundColor: '#0B2F7D',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1387,7 +1390,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   createPrimaryBtn: {
-    backgroundColor: '#2B2D6E',
+    backgroundColor: '#0B2F7D',
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 6,
@@ -1461,7 +1464,7 @@ const styles = StyleSheet.create({
   tableHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#28104E',
+    backgroundColor: '#0B2F7D',
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderTopLeftRadius: 8,

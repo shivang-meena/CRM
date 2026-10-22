@@ -54,8 +54,8 @@ export default function NoteFormModal({ visible, note, onClose, onSave }: {
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 16 },
   modal: { width: '100%', maxWidth: 560, maxHeight: '90%', backgroundColor: colors.white, borderRadius: 10, overflow: 'hidden' },
-  header: { padding: 16, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { color: colors.primaryText, fontSize: 17, fontWeight: '800' },
+  header: { padding: 16, backgroundColor: colors.navy, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  title: { color: colors.white, fontSize: 17, fontWeight: '800' },
   body: { padding: 16, gap: 8 },
   label: { color: colors.text, fontSize: 12, fontWeight: '800' },
   input: { minHeight: 170, borderWidth: 1, borderColor: colors.border, borderRadius: 7, padding: 12, color: colors.text, textAlignVertical: 'top', fontSize: 14 },

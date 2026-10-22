@@ -1,6 +1,6 @@
-import { LeadSource, LeadStatus } from '@prisma/client';
+import { LeadSource } from '@prisma/client';
 import {
-  IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min,
+  IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, Min,
 } from 'class-validator';
 
 export class CreateLeadDto {
@@ -10,12 +10,14 @@ export class CreateLeadDto {
   @IsOptional() @IsString() companyName?: string;
   @IsOptional() @IsString() email?: string;
   @IsOptional() @IsString() address?: string;
+  @IsOptional() @IsString() state?: string;
   @IsOptional() @IsString() comment?: string;
   @IsOptional() @IsString() reference?: string;
+  @IsOptional() @IsUUID() serviceId?: string | null;
   @IsOptional() @IsString() label?: string;
   @IsOptional() @IsString() assignedTo?: string;
 
-  @IsOptional() @IsEnum(LeadStatus) status?: LeadStatus;
+  @IsOptional() @IsString() status?: string;
   @IsOptional() @IsEnum(LeadSource) source?: LeadSource;
 
   @IsOptional() @IsNumber() @Min(0) estimatedAmount?: number;

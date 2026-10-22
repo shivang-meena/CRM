@@ -11,7 +11,7 @@ type Props = {
 };
 
 const variants = {
-  primary: { bg: colors.primary, border: colors.primary, text: colors.primaryText },
+  primary: { bg: colors.primary, border: colors.primary, text: colors.white },
   outline: { bg: colors.white, border: colors.primary, text: colors.primaryText },
   danger: { bg: colors.white, border: colors.danger, text: colors.danger },
 };

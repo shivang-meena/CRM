@@ -15,6 +15,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import WebSettingsTabs from './WebSettingsTabs';
 import GstSignatureUpload from './GstSignatureUpload';
 import { ProfileField, fieldStyles } from './ProfileFields';
+import ServiceMasterEditor from './ServiceMasterEditor';
 
 const KEY = ['settings', 'invoices'] as const;
 type Kind = 'gst' | 'nonGst';
@@ -90,7 +91,7 @@ export default function InvoiceSettingsScreen() {
   if (query.isPending || query.isFetching)
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#40348B" />
+        <ActivityIndicator color="#0B2F7D" />
         <Text style={styles.subtitle}>Loading Invoice Settings...</Text>
       </View>
     );
@@ -266,14 +267,14 @@ function InvoiceSettingsForm({ initial }: { initial: InvoiceSettings }) {
             </View>
             <View>
               <Text accessibilityRole="header" style={styles.title}>
-                Currency &amp; Tax Code
+                Currency &amp; HSN Master
               </Text>
-              <Text style={styles.subtitle}>Set default invoice currency and HSN/SAC code.</Text>
+              <Text style={styles.subtitle}>Set invoice currency and manage HSN/SAC master data.</Text>
             </View>
           </View>
         </View>
-        <View style={[styles.sharedFields, width < 1050 && styles.stack]}>
-          <View style={styles.sharedField}>
+        <View style={[styles.sharedFields, width < 1050 && styles.stack, currencyDropdownOpen && { zIndex: 100 }]}>
+          <View style={[styles.sharedField, currencyDropdownOpen && { zIndex: 100 }]}>
             <Text style={fieldStyles.label}>Invoice Currency:</Text>
             <Pressable
               accessibilityRole="button"
@@ -314,15 +315,8 @@ function InvoiceSettingsForm({ initial }: { initial: InvoiceSettings }) {
               </View>
             ) : null}
           </View>
-          <View style={styles.sharedField}>
-            <ProfileField
-              label="HSN Code:"
-              value={forms.gst.hsnSac}
-              onChange={(value) => updateShared('hsnSac', value)}
-              maxLength={20}
-            />
-          </View>
         </View>
+        <ServiceMasterEditor />
       </View>
       <ConfirmDialog
         visible={Boolean(resetKind)}
@@ -380,9 +374,8 @@ function InvoiceSettingsSection({
   const rows: (keyof Draft | null)[][] = gst
     ? [
         ['invoicePrefix', 'invoiceStart'],
-        ['gstPercentage', 'bankName'],
-        ['accountNo', 'ifscCode'],
-        ['paymentUpiId', null],
+        ['bankName', 'accountNo'],
+        ['ifscCode', 'paymentUpiId'],
       ]
     : [
         ['invoicePrefix', 'invoiceStart'],
@@ -471,7 +464,7 @@ function InvoiceSettingsSection({
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#FCFBFE' },
+  page: { flex: 1, backgroundColor: '#F7F9FC' },
   content: { padding: 14, paddingBottom: 30, gap: 14 },
   center: {
     flex: 1,
@@ -482,7 +475,7 @@ const styles = StyleSheet.create({
   },
   toolbar: { alignItems: 'flex-end' },
   button: {
-    backgroundColor: '#40348B',
+    backgroundColor: '#0B2F7D',
     minHeight: 35,
     borderRadius: 4,
     paddingHorizontal: 17,
@@ -516,7 +509,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 7,
-    backgroundColor: '#963787',
+    backgroundColor: '#0F3A8C',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -534,8 +527,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 24,
     alignItems: 'flex-start',
+    position: 'relative',
+    zIndex: 1,
   },
-  sharedField: { flex: 1, position: 'relative', zIndex: 2 },
+  sharedField: { flex: 1, position: 'relative', zIndex: 1 },
   currencySelector: {
     minHeight: 38,
     borderWidth: 1,
@@ -552,14 +547,22 @@ const styles = StyleSheet.create({
     top: 60,
     left: 0,
     right: 0,
-    zIndex: 10,
+    zIndex: 1000,
+    elevation: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#DED9E4',
     borderRadius: 5,
-    boxShadow: '0 2px 6px rgba(45,29,65,0.12)',
+    overflow: 'hidden',
+    boxShadow: '0 4px 16px rgba(45,29,65,0.18)',
   },
-  currencyOption: { paddingHorizontal: 12, paddingVertical: 10 },
+  currencyOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F3F7',
+  },
   currencyOptionText: { color: '#514059', fontSize: 12 },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 24 },
   stack: { flexDirection: 'column', alignItems: 'stretch' },

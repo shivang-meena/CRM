@@ -353,7 +353,7 @@ export function BrochureScreen() {
             {/* Table Body Rows */}
             {isLoading ? (
               <View style={styles.emptyOrLoadingRow}>
-                <ActivityIndicator color="#28104E" size="small" />
+                <ActivityIndicator color="#0B2F7D" size="small" />
                 <Text style={styles.emptyText}>Loading brochures...</Text>
               </View>
             ) : paginatedBrochures.length === 0 ? (
@@ -682,7 +682,7 @@ export function BrochureScreen() {
                     onPress={handleTriggerFilePicker}
                     style={styles.filePickerBtn}
                   >
-                    <Ionicons color="#28104E" name="cloud-upload-outline" size={17} />
+                    <Ionicons color="#0B2F7D" name="cloud-upload-outline" size={17} />
                     <Text style={styles.filePickerBtnText}>
                       {fileUrl ? 'Change File' : 'Choose File'}
                     </Text>
@@ -691,7 +691,7 @@ export function BrochureScreen() {
                   <View style={styles.fileStatusBox}>
                     {fileUrl ? (
                       <View style={styles.attachedFilePill}>
-                        <Ionicons color="#28104E" name="document-attach-outline" size={15} />
+                        <Ionicons color="#0B2F7D" name="document-attach-outline" size={15} />
                         <Text numberOfLines={1} style={styles.attachedFileName}>
                           {fileName || 'File Attached'}
                         </Text>
@@ -750,7 +750,7 @@ export default BrochureScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7F9FC',
     padding: 16,
     gap: 14,
   },
@@ -812,7 +812,7 @@ const styles = StyleSheet.create({
     height: 36,
     paddingHorizontal: 14,
     borderRadius: 6,
-    backgroundColor: '#28104E',
+    backgroundColor: '#0B2F7D',
     justifyContent: 'center',
   },
   addBrochureBtnText: {
@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
   },
   tableHeaderRow: {
     flexDirection: 'row',
-    backgroundColor: '#28104E',
+    backgroundColor: '#0B2F7D',
     minHeight: 40,
     alignItems: 'center',
   },
@@ -1010,7 +1010,7 @@ const styles = StyleSheet.create({
   },
   rowsDropdownItemTextActive: {
     fontWeight: '700',
-    color: '#28104E',
+    color: '#0B2F7D',
   },
   paginationRangeText: {
     fontSize: 12,
@@ -1163,7 +1163,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   dropdownOptionSelected: {
-    backgroundColor: '#F3E8FF',
+    backgroundColor: '#E4EFFD',
   },
   dropdownOptionText: {
     fontSize: 13,
@@ -1171,7 +1171,7 @@ const styles = StyleSheet.create({
   },
   dropdownOptionTextSelected: {
     fontWeight: '700',
-    color: '#28104E',
+    color: '#0B2F7D',
   },
   fileUploadRow: {
     flexDirection: 'row',
@@ -1187,13 +1187,13 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#28104E',
-    backgroundColor: '#F5F3FF',
+    borderColor: '#0B2F7D',
+    backgroundColor: '#E4EFFD',
   },
   filePickerBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#28104E',
+    color: '#0B2F7D',
   },
   fileStatusBox: {
     flex: 1,
@@ -1249,7 +1249,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     height: 36,
     borderRadius: 6,
-    backgroundColor: '#28104E',
+    backgroundColor: '#0B2F7D',
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 80,

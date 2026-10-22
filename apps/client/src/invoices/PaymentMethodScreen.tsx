@@ -188,8 +188,8 @@ export function PaymentMethodScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: colors.white },
-  pageContent: { padding: 20, gap: 16, backgroundColor: colors.white },
+  page: { flex: 1, backgroundColor: '#F7F9FC' },
+  pageContent: { padding: 20, gap: 16, backgroundColor: '#F7F9FC' },
   topHeaderCard: {
     backgroundColor: colors.white,
     borderWidth: 1,
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#2B2D6E',
+    backgroundColor: '#0B2F7D',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 6,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   },
   tableHeaderRow: {
     flexDirection: 'row',
-    backgroundColor: '#2B2D6E',
+    backgroundColor: '#0B2F7D',
     paddingVertical: 12,
     paddingHorizontal: 16,
   },

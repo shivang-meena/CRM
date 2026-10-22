@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   placeholder: { fontSize: 11, color: "#A69AAA" },
   actions: { flexDirection: "row", alignItems: "center", gap: 14 },
   upload: {
-    backgroundColor: "#40348B",
+    backgroundColor: "#0B2F7D",
     borderRadius: 4,
     paddingVertical: 7,
     paddingHorizontal: 17,

@@ -44,6 +44,22 @@ export enum InvoicePaymentStatusDto {
 }
 
 export class SalesDocumentItemInputDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  hsnMasterId?: string;
+
+  @IsOptional()
+  @IsString()
+  hsnDescription?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  applyHsnMaster?: boolean;
+
   @IsString()
   @IsNotEmpty()
   productName!: string;
@@ -107,6 +123,10 @@ export class CreateSalesDocumentDto {
   @IsString()
   @IsNotEmpty()
   customerId!: string;
+
+  @IsOptional()
+  @IsString()
+  customerState?: string;
 
   @IsString()
   @IsNotEmpty()

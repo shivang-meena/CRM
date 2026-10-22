@@ -138,7 +138,7 @@ export default function DateTimePickerModal({ visible, value, onSelect, onClose,
               <Ionicons
                 name={step === 'date' ? 'calendar-outline' : 'time-outline'}
                 size={18}
-                color={colors.primaryText}
+                color={colors.white}
               />
               <Text style={styles.titleText}>
                 {step === 'date'
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   titleBar: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.navy,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   titleText: {
-    color: colors.primaryText,
+    color: colors.white,
     fontWeight: '800',
     fontSize: 16,
   },

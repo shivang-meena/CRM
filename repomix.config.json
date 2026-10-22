@@ -1,0 +1,45 @@
+{
+  "output": {
+    "filePath": "repomix-output.md",
+    "style": "markdown",
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "showLineNumbers": false,
+    "topFilesLength": 20
+  },
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/.expo/**",
+      "**/*.log",
+      "**/*.log.*",
+      "**/npm-debug.log*",
+      "**/yarn-debug.log*",
+      "**/yarn-error.log*",
+      "**/pnpm-debug.log*",
+      "**/package-lock.json",
+      "**/yarn.lock",
+      "**/pnpm-lock.yaml",
+      "**/.env*",
+      "**/.vscode/**",
+      "**/.idea/**",
+      "**/.claude/**",
+      "**/*.png",
+      "**/*.jpg",
+      "**/*.jpeg",
+      "**/*.ico",
+      "**/*.svg",
+      "**/*.webp",
+      "**/*.pdf",
+      "**/*.ttf",
+      "**/*.woff*",
+      "**/repomix-output.*",
+      "**/codebase.md",
+      "**/migration_lock.toml"
+    ]
+  }
+}

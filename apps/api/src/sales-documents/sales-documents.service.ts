@@ -6,6 +6,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { HsnMasterService } from '../settings/hsn-master.service';
 import type {
   GstInvoiceSettings,
   NonGstInvoiceSettings,
@@ -69,6 +70,7 @@ export class SalesDocumentsService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly gstSettings: GstInvoiceSettingsService,
     private readonly nonGstSettings: NonGstInvoiceSettingsService,
+    private readonly hsnMaster: HsnMasterService,
   ) {}
 
   getGstInvoiceSettings() {
@@ -323,6 +325,8 @@ export class SalesDocumentsService implements OnModuleInit {
       return {
         productName,
         hsnSac: hsnSac || null,
+        hsnMasterId: item.hsnMasterId || null,
+        hsnDescription: item.hsnDescription?.trim() || null,
         quantity,
         unitPrice,
         discountValue,
@@ -534,10 +538,12 @@ export class SalesDocumentsService implements OnModuleInit {
       dto.type === SalesDocumentTypeDto.INVOICE &&
       activeGstMode !== GstModeDto.NON_GST;
 
+    const resolvedItems = await this.hsnMaster.resolveItems(dto.items, activeGstMode);
+
     const financials = isGstInvoice
       ? null
       : this.calculateDocumentFinancials({
-          items: dto.items,
+          items: resolvedItems,
           gstMode: activeGstMode,
           inclusiveGst: Boolean(dto.inclusiveGst),
           documentType: dto.type,
@@ -567,24 +573,9 @@ export class SalesDocumentsService implements OnModuleInit {
       gstDocumentNo?: string,
     ) => {
       const invoiceSettings = settings;
-      const gstSettings =
-        isGstInvoice && settings && 'gstPercentage' in settings
-          ? settings
-          : undefined;
-      const sgstDefault = gstSettings
-        ? round2(gstSettings.gstPercentage / 2)
-        : 0;
-      const calculated = gstSettings
+      const calculated = isGstInvoice
         ? this.calculateDocumentFinancials({
-            items: dto.items.map((item) => ({
-              ...item,
-              hsnSac: item.hsnSac?.trim() || invoiceSettings?.hsnSac || '9983',
-              igstRate: item.igstRate ?? gstSettings.gstPercentage,
-              sgstRate: item.sgstRate ?? sgstDefault,
-              cgstRate:
-                item.cgstRate ??
-                round2(gstSettings.gstPercentage - sgstDefault),
-            })),
+            items: resolvedItems,
             gstMode: activeGstMode,
             inclusiveGst: Boolean(dto.inclusiveGst),
             documentType: dto.type,
@@ -656,6 +647,7 @@ export class SalesDocumentsService implements OnModuleInit {
           customerPhoneSnapshot: customer.phone || lead.phone || '-',
           customerEmailSnapshot: customer.email || lead.email || '',
           customerAddressSnapshot: customer.address || lead.address || '',
+          customerStateSnapshot: dto.customerState || lead.state || '',
           customerGstinSnapshot: customer.gstin || '',
           bankName:
             invoiceSettings?.bankName ??
@@ -737,6 +729,7 @@ export class SalesDocumentsService implements OnModuleInit {
   ) {
     const existing = await this.prisma.salesDocument.findFirst({
       where: { id, deletedAt: null },
+      include: { items: true },
     });
     if (!existing) {
       throw new NotFoundException('Sales document not found.');
@@ -756,8 +749,9 @@ export class SalesDocumentsService implements OnModuleInit {
     }
 
     const activeGstMode = dto.gstMode ?? dto.gstType ?? GstModeDto.NON_GST;
+    const resolvedItems = await this.hsnMaster.resolveItems(dto.items, activeGstMode, existing.items, existing.gstMode);
     const financials = this.calculateDocumentFinancials({
-      items: dto.items,
+      items: resolvedItems,
       gstMode: activeGstMode,
       inclusiveGst: Boolean(dto.inclusiveGst),
       documentType: dto.type,
@@ -825,6 +819,10 @@ export class SalesDocumentsService implements OnModuleInit {
             customer.address ||
             lead.address ||
             existing.customerAddressSnapshot,
+          customerStateSnapshot:
+            dto.customerState ||
+            lead.state ||
+            existing.customerStateSnapshot,
 
           version: { increment: 1 },
           items: {
@@ -926,6 +924,7 @@ export class SalesDocumentsService implements OnModuleInit {
           customerPhoneSnapshot: quotation.customerPhoneSnapshot,
           customerEmailSnapshot: quotation.customerEmailSnapshot,
           customerAddressSnapshot: quotation.customerAddressSnapshot,
+          customerStateSnapshot: quotation.customerStateSnapshot,
           customerGstinSnapshot: quotation.customerGstinSnapshot,
           sellerCompanyName: quotation.sellerCompanyName,
           sellerPhone: quotation.sellerPhone,
@@ -956,6 +955,8 @@ export class SalesDocumentsService implements OnModuleInit {
             create: quotation.items.map((item, idx) => ({
               productName: item.productName,
               hsnSac: item.hsnSac,
+              hsnMasterId: item.hsnMasterId,
+              hsnDescription: item.hsnDescription,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               discountValue: item.discountValue,
@@ -1137,6 +1138,10 @@ export class SalesDocumentsService implements OnModuleInit {
         doc.customer?.address ||
         lead?.address ||
         '',
+      state:
+        doc.customerStateSnapshot ||
+        lead?.state ||
+        '',
       issueDate: doc.issueDate.toISOString(),
       paymentDate: doc.paymentDate ? doc.paymentDate.toISOString() : null,
       nextPaymentDate: doc.nextPaymentDate
@@ -1185,6 +1190,8 @@ export class SalesDocumentsService implements OnModuleInit {
         id: item.id,
         productName: item.productName,
         hsnSac: item.hsnSac || '',
+        hsnMasterId: item.hsnMasterId || undefined,
+        hsnDescription: item.hsnDescription || '',
         quantity: item.quantity,
         unitPrice: Number(item.unitPrice),
         discountValue: Number(item.discountValue),

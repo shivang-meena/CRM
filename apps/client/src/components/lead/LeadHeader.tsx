@@ -1,11 +1,19 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Lead, statusLabel } from '@/types/lead';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { formatDateTime, formatINR } from '@/utils/format';
 import { colors } from '@/theme/colors';
 import Stars from '@/components/Stars';
 
 export default function LeadHeader({ lead }: { lead: Lead }) {
+  const statusesQuery = useLeadStatuses();
+  const matchedStatus = statusesQuery.data?.find(
+    (s) => s.code === lead.status || s.name.toLowerCase() === (lead.status || '').toLowerCase()
+  );
+  const statusName = matchedStatus?.name ?? statusLabel(lead.status);
+  const statusColor = matchedStatus?.color;
+
   return (
     <View style={styles.header}>
       <View style={styles.row}>
@@ -15,8 +23,8 @@ export default function LeadHeader({ lead }: { lead: Lead }) {
         <View style={styles.titleInfo}>
           <View style={styles.nameRow}>
             <Text style={styles.name}>{lead.name}</Text>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>{statusLabel(lead.status)}</Text>
+            <View style={[styles.statusBadge, statusColor && { backgroundColor: statusColor + '1A' }]}>
+              <Text style={[styles.statusText, statusColor && { color: statusColor }]}>{statusName}</Text>
             </View>
           </View>
           {lead.companyName ? <Text style={styles.company}>{lead.companyName}</Text> : null}

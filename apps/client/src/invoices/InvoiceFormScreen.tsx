@@ -1,6 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import { fetchInvoiceHsnMaster, INVOICE_HSN_MASTER_KEY } from '@/api/hsnMaster';
+import { ProfileSelect } from '@/settings/ProfileFields';
+import { INDIA_STATES } from '@/settings/profileOptions';
 import { Href, useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
 import { errorMessage } from '@/api/client';
@@ -16,7 +20,6 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useBrochures, useCreateSalesDocument, usePaymentMethods, useUpdateSalesDocument } from '@/hooks/useSalesDocuments';
 import {
   calculateInvoicePreview,
-  round2,
   CreateSalesDocumentPayload,
   DEFAULT_DOCUMENT_CONFIG,
   DiscountType,
@@ -34,7 +37,7 @@ interface InvoiceFormScreenProps {
   isClone?: boolean;
 }
 
-type InvoiceFormItem = SalesDocumentItem & { useDefaultGstRate?: boolean };
+type InvoiceFormItem = SalesDocumentItem;
 
 const DISCOUNT_OPTIONS: { label: string; value: DiscountType }[] = [
   { label: 'Overall Discount', value: 'OVERALL' },
@@ -88,16 +91,31 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
   const [docType] = useState<SalesDocumentType>(existingDocument?.type ?? initialType);
   const [dateDisplay, setDateDisplay] = useState<string>(existingDocument ? isoToDdmmyyyy(existingDocument.issueDate) : today.display);
   const [customerId, setCustomerId] = useState<string>(existingDocument?.customerId ?? '');
+  const [customerState, setCustomerState] = useState<string>(
+    existingDocument?.customerState ?? (existingDocument as any)?.state ?? ''
+  );
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
 
+  const applyGstModeForState = (cState: string, compState?: string) => {
+    const sellerState = (compState || companyProfile?.state || '').trim().toLowerCase();
+    const buyerState = (cState || '').trim().toLowerCase();
+    if (sellerState && buyerState) {
+      if (sellerState === buyerState) {
+        setGstMode('SGST_CGST');
+      } else {
+        setGstMode('IGST');
+      }
+    }
+  };
+
   const [gstMode, setGstMode] = useState<GstMode>(existingDocument?.gstMode ?? (existingDocument as any)?.gstType ?? 'NON_GST');
   const [inclusiveGst, setInclusiveGst] = useState<boolean>(existingDocument?.inclusiveGst ?? false);
+  const hsnQuery = useQuery({ queryKey: INVOICE_HSN_MASTER_KEY, queryFn: fetchInvoiceHsnMaster });
   const isGstInvoice = docType === 'INVOICE' && gstMode !== 'NON_GST';
   const gstQuery = useInvoiceGstSettings(isGstInvoice && !editingExisting);
   const nonGstQuery = useInvoiceNonGstSettings(docType === 'INVOICE' && !isGstInvoice && !editingExisting);
   const settingsQuery = isGstInvoice ? gstQuery : nonGstQuery;
-  const gstSettings = isGstInvoice ? (editingExisting ? existingDocument?.gstInvoiceSettingsSnapshot : gstQuery.data) : null;
   const invoiceSettings = docType === 'INVOICE' ? (editingExisting && existingDocument ? getDocumentInvoiceSettings(existingDocument) : settingsQuery.data) : null;
   const invoiceSettingsUnavailable = docType === 'INVOICE' && !editingExisting && (settingsQuery.isFetching || settingsQuery.isError || !invoiceSettings);
   const documentBank = invoiceSettings ?? {
@@ -118,7 +136,8 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
         }
       : documentBank;
 
-  const [currency, setCurrency] = useState<string>(existingDocument?.currency ?? 'INR');
+  const [currencyOverride, setCurrency] = useState<string | null>(existingDocument?.currency ?? null);
+  const currency = currencyOverride ?? invoiceSettings?.invoiceCurrency ?? 'INR';
   const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
   const [discountDropdownIndex, setDiscountDropdownIndex] = useState<number | null>(null);
 
@@ -127,7 +146,9 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
       ? existingDocument.items.map((it) => ({
           id: it.id,
           productName: it.productName,
-          hsnSac: it.hsnSac || '9983',
+          hsnSac: it.hsnSac || '',
+          hsnMasterId: it.hsnMasterId,
+          hsnDescription: it.hsnDescription || '',
           unitPrice: it.unitPrice,
           quantity: it.quantity,
           discountValue: it.discountValue,
@@ -140,25 +161,18 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
       : [
           {
             productName: '',
-            useDefaultGstRate: true,
-            hsnSac: '9983',
+            hsnSac: '',
             unitPrice: 0,
             quantity: 1,
             discountValue: 0,
             discountType: 'OVERALL',
-            igstRate: 18,
-            sgstRate: 9,
-            cgstRate: 9,
+            igstRate: 0,
+            sgstRate: 0,
+            cgstRate: 0,
             comments: '',
           },
         ],
   );
-
-  useEffect(() => {
-    if (docType !== 'INVOICE' || editingExisting || !invoiceSettings) return;
-    setCurrency(invoiceSettings.invoiceCurrency);
-    setItems((current) => current.map((item) => (!item.productName.trim() && item.hsnSac === '9983' ? { ...item, hsnSac: invoiceSettings.hsnSac } : item)));
-  }, [docType, editingExisting, invoiceSettings]);
 
   const [paymentStatus, setPaymentStatus] = useState<InvoicePaymentStatus>(existingDocument?.paymentStatus === 'HALF_PAID' ? 'PARTIALLY_PAID' : (existingDocument?.paymentStatus ?? 'UNPAID'));
   const [paidAmountInput, setPaidAmountInput] = useState<string>(existingDocument?.paidAmount ? String(existingDocument.paidAmount) : '0');
@@ -174,17 +188,12 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
   const termsAndConditions = termsOverride ?? invoiceSettings?.termsAndConditions ?? (docType === 'INVOICE' ? '' : DEFAULT_DOCUMENT_CONFIG.defaultTerms);
   const effectiveItems = useMemo(
     () =>
-      items.map((item) =>
-        isGstInvoice && !editingExisting && item.useDefaultGstRate && gstSettings
-          ? {
-              ...item,
-              igstRate: gstSettings.gstPercentage,
-              sgstRate: round2(gstSettings.gstPercentage / 2),
-              cgstRate: round2(gstSettings.gstPercentage - round2(gstSettings.gstPercentage / 2)),
-            }
-          : item,
-      ),
-    [items, isGstInvoice, editingExisting, gstSettings],
+      items.map((item) => {
+        if (!item.hsnMasterId || (editingExisting && gstMode === existingDocument?.gstMode && !item.applyHsnMaster)) return item;
+        const master = hsnQuery.data?.find((entry) => entry.id === item.hsnMasterId);
+        return master ? { ...item, hsnSac: master.code, hsnDescription: master.description, igstRate: master.igstRate, sgstRate: master.sgstRate, cgstRate: master.cgstRate } : item;
+      }),
+    [items, editingExisting, gstMode, existingDocument?.gstMode, hsnQuery.data],
   );
   const [emailAutomation, setEmailAutomation] = useState<boolean>(existingDocument?.emailAutomation ?? false);
   const [whatsappAutomation, setWhatsappAutomation] = useState<boolean>(existingDocument?.whatsappAutomation ?? false);
@@ -250,7 +259,6 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
       copy[idx] = {
         ...effectiveItems[idx],
         ...patch,
-        ...(['igstRate', 'sgstRate', 'cgstRate'].some((key) => key in patch) ? { useDefaultGstRate: false } : {}),
       };
       return copy;
     });
@@ -262,15 +270,14 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
       setItems([
         {
           productName: '',
-          useDefaultGstRate: true,
-          hsnSac: invoiceSettings?.hsnSac ?? '9983',
+          hsnSac: '',
           unitPrice: 0,
           quantity: 1,
           discountValue: 0,
           discountType: 'OVERALL',
-          igstRate: 18,
-          sgstRate: 9,
-          cgstRate: 9,
+          igstRate: 0,
+          sgstRate: 0,
+          cgstRate: 0,
           comments: '',
         },
       ]);
@@ -285,15 +292,14 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
       ...prev,
       {
         productName: '',
-        useDefaultGstRate: true,
-        hsnSac: invoiceSettings?.hsnSac ?? '9983',
+        hsnSac: '',
         unitPrice: 0,
         quantity: 1,
         discountValue: 0,
         discountType: 'OVERALL',
-        igstRate: 18,
-        sgstRate: 9,
-        cgstRate: 9,
+        igstRate: 0,
+        sgstRate: 0,
+        cgstRate: 0,
         comments: '',
       },
     ]);
@@ -331,6 +337,18 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
     }
 
     if (gstMode !== 'NON_GST') {
+      const needsMaster = validItems.filter((item) => {
+        const original = editingExisting ? existingDocument?.items.find((row) => row.id === item.id) : undefined;
+        return !original || item.applyHsnMaster || gstMode !== existingDocument?.gstMode || original.hsnMasterId !== item.hsnMasterId;
+      });
+      if (needsMaster.length && (hsnQuery.isPending || hsnQuery.isError)) {
+        setFormError(hsnQuery.isError ? errorMessage(hsnQuery.error) : 'Loading HSN master. Please wait.');
+        return;
+      }
+      if (needsMaster.some((item) => !hsnQuery.data?.some((entry) => entry.id === item.hsnMasterId))) {
+        setFormError('Select an active HSN from HSN Master for each item. Add entries in Invoice Settings first.');
+        return;
+      }
       const missingHsn = validItems.some((it) => !it.hsnSac?.trim());
       if (missingHsn) {
         setFormError('HSN/SAC Code is required for all items in GST mode.');
@@ -360,6 +378,7 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
       requestKey: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       type: docType,
       customerId,
+      customerState: customerState.trim() || undefined,
       issueDate: ddmmyyyyToIso(dateDisplay),
       paymentDate,
       nextPaymentDate,
@@ -375,8 +394,12 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
       emailAutomation,
       whatsappAutomation,
       items: validItems.map((it) => ({
+        id: editingExisting ? it.id : undefined,
         productName: it.productName.trim(),
-        hsnSac: gstMode === 'NON_GST' ? '' : it.hsnSac?.trim() || invoiceSettings?.hsnSac || '9983',
+        hsnSac: gstMode === 'NON_GST' ? '' : it.hsnSac.trim(),
+        hsnMasterId: gstMode === 'NON_GST' ? undefined : it.hsnMasterId,
+        hsnDescription: gstMode === 'NON_GST' ? '' : it.hsnDescription,
+        applyHsnMaster: it.applyHsnMaster,
         unitPrice: Number(it.unitPrice) || 0,
         quantity: Math.max(1, Number(it.quantity) || 1),
         discountValue: Number(it.discountValue) || 0,
@@ -493,7 +516,33 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
                             key={cust.id}
                             style={[styles.dropdownOption, isSelected && styles.dropdownOptionActive]}
                             onPress={() => {
+                              const cState = cust.lead?.state || cust.state || '';
                               setCustomerId(cust.id);
+                              if (cState) {
+                                setCustomerState(cState);
+                                applyGstModeForState(cState);
+                              }
+                              if (!editingExisting && cust.lead?.service) {
+                                const s = cust.lead.service;
+                                setItems((prev) => {
+                                  if (prev.length === 1 && !prev[0].productName.trim()) {
+                                    return [
+                                      {
+                                        ...prev[0],
+                                        productName: s.name,
+                                        hsnSac: (s as any).hsnSac || '',
+                                        hsnDescription: (s as any).description || s.name,
+                                        hsnMasterId: s.id,
+                                        igstRate: Number((s as any).igstRate ?? 18),
+                                        sgstRate: Number((s as any).sgstRate ?? 9),
+                                        cgstRate: Number((s as any).cgstRate ?? 9),
+                                        applyHsnMaster: true,
+                                      },
+                                    ];
+                                  }
+                                  return prev;
+                                });
+                              }
                               setCustomerDropdownOpen(false);
                             }}
                           >
@@ -509,19 +558,50 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
             </View>
 
             {Boolean(selectedCustomer) && (
-              <View style={styles.customerSummaryPill}>
-                <Ionicons name="person-circle-outline" size={16} color={colors.primary} />
-                <Text style={styles.customerSummaryText}>
-                  {[
-                    selectedCustomer.companyName || selectedCustomer.lead?.companyName,
-                    selectedCustomer.name || selectedCustomer.lead?.name,
-                    selectedCustomer.phone || selectedCustomer.lead?.phone,
-                    selectedCustomer.address || selectedCustomer.lead?.address,
-                  ]
-                    .filter(Boolean)
-                    .join(' • ')}
-                </Text>
-              </View>
+              <>
+                <View style={styles.customerSummaryPill}>
+                  <Ionicons name="person-circle-outline" size={16} color={colors.primary} />
+                  <Text style={styles.customerSummaryText}>
+                    {[
+                      selectedCustomer.companyName || selectedCustomer.lead?.companyName,
+                      selectedCustomer.name || selectedCustomer.lead?.name,
+                      selectedCustomer.phone || selectedCustomer.lead?.phone,
+                      selectedCustomer.address || selectedCustomer.lead?.address,
+                    ]
+                      .filter(Boolean)
+                      .join(' • ')}
+                  </Text>
+                </View>
+
+                <View style={{ gap: 6, marginTop: 8 }}>
+                  <ProfileSelect
+                    label="Customer State (for GST auto-calculation)"
+                    allowCustom={true}
+                    value={customerState}
+                    options={INDIA_STATES}
+                    onChange={(val) => {
+                      setCustomerState(val);
+                      applyGstModeForState(val);
+                    }}
+                  />
+                  {Boolean(companyProfile?.state) && Boolean(customerState) && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Ionicons
+                        name={customerState.trim().toLowerCase() === companyProfile?.state?.trim().toLowerCase() ? 'business' : 'airplane'}
+                        size={14}
+                        color={colors.primary}
+                      />
+                      <Text style={{ fontSize: 11, color: colors.primaryText }}>
+                        Company: <Text style={{ fontWeight: '700' }}>{companyProfile?.state}</Text> | Customer: <Text style={{ fontWeight: '700' }}>{customerState}</Text>
+                        {' → '}
+                        <Text style={{ fontWeight: '700', color: customerState.trim().toLowerCase() === companyProfile?.state?.trim().toLowerCase() ? '#15803D' : '#1D4ED8' }}>
+                          {customerState.trim().toLowerCase() === companyProfile?.state?.trim().toLowerCase() ? 'Intra-state (CGST + SGST applied)' : 'Inter-state (IGST applied)'}
+                        </Text>
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </>
             )}
           </View>
 
@@ -666,25 +746,64 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
 
               {/* Row 1: Item Product Name + HSN Code (when GST mode active) */}
               <View style={[styles.itemTopRow, isDesktop && styles.itemTopRowDesktop]}>
-                <View style={{ flex: 3.5 }}>
-                  <Text style={styles.fieldLabel}>
-                    Item <Text style={styles.requiredStar}>*</Text>
-                  </Text>
-                  <TextInput
-                    style={styles.textInput}
+                <View style={{ flex: 3.5, gap: 6 }}>
+                  <ProfileSelect
+                    label="Service / Product Name"
+                    required
+                    allowCustom={true}
                     value={item.productName}
-                    onChangeText={(val) => handleUpdateItem(idx, { productName: val })}
-                    placeholder="Product Name"
-                    placeholderTextColor={colors.textMuted}
+                    options={(hsnQuery.data ?? []).map((entry) => (entry as any).name || entry.description || entry.code)}
+                    onChange={(val) => {
+                      const match = (hsnQuery.data ?? []).find(
+                        (entry) => ((entry as any).name || entry.description || entry.code) === val
+                      );
+                      if (match) {
+                        handleUpdateItem(idx, {
+                          productName: (match as any).name || match.description || match.code,
+                          hsnMasterId: match.id,
+                          hsnSac: match.code,
+                          hsnDescription: match.description,
+                          igstRate: match.igstRate,
+                          sgstRate: match.sgstRate,
+                          cgstRate: match.cgstRate,
+                          applyHsnMaster: true,
+                        });
+                      } else {
+                        handleUpdateItem(idx, { productName: val });
+                      }
+                    }}
+                    placeholder="Select service or enter product name"
                   />
                 </View>
 
                 {gstMode !== 'NON_GST' && (
-                  <View style={{ flex: 1, minWidth: 150 }}>
-                    <Text style={styles.fieldLabel}>
-                      HSN Code <Text style={styles.requiredStar}>*</Text>
-                    </Text>
-                    <TextInput style={styles.textInput} value={item.hsnSac} onChangeText={(val) => handleUpdateItem(idx, { hsnSac: val })} placeholder="9983" placeholderTextColor={colors.textMuted} />
+                  <View style={{ flex: 2, minWidth: 180, gap: 6 }}>
+                    <ProfileSelect
+                      label="HSN Code"
+                      required
+                      allowCustom={false}
+                      value={item.hsnSac ? `${item.hsnSac}${item.hsnDescription ? ` — ${item.hsnDescription}` : ''}` : ''}
+                      options={(hsnQuery.data ?? []).map((entry) => `${entry.code} — ${(entry as any).name || entry.description}`)}
+                      onChange={(value) => {
+                        const master = hsnQuery.data?.find((entry) => `${entry.code} — ${(entry as any).name || entry.description}` === value);
+                        if (master) {
+                          handleUpdateItem(idx, {
+                            productName: item.productName || (master as any).name || '',
+                            hsnMasterId: master.id,
+                            hsnSac: master.code,
+                            hsnDescription: master.description,
+                            igstRate: master.igstRate,
+                            sgstRate: master.sgstRate,
+                            cgstRate: master.cgstRate,
+                            applyHsnMaster: true,
+                          });
+                        }
+                      }}
+                    />
+                    {item.hsnDescription ? <Text style={styles.fieldLabel}>HSN Description: {item.hsnDescription}</Text> : null}
+                    {hsnQuery.isPending ? <Text style={styles.fieldLabel}>Loading services & HSN...</Text> : hsnQuery.isError ? (
+                      <Pressable accessibilityRole="button" onPress={() => { void hsnQuery.refetch(); }}><Text style={styles.fieldLabel}>Could not load services. Tap to retry.</Text></Pressable>
+                    ) : !hsnQuery.data?.length ? <Text style={styles.fieldLabel}>Add active services in Invoice Settings → Services & HSN Master.</Text> : null}
                   </View>
                 )}
               </View>
@@ -836,11 +955,8 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
                         style={styles.suffixedInput}
                         keyboardType="numeric"
                         value={String(item.igstRate)}
-                        onChangeText={(val) =>
-                          handleUpdateItem(idx, {
-                            igstRate: Number(val.replace(/[^0-9.]/g, '')) || 0,
-                          })
-                        }
+                        editable={false}
+                        accessibilityLabel={`IGST rate from HSN for item ${idx + 1}`}
                       />
                       <Text style={styles.suffixPercentText}>%</Text>
                     </View>
@@ -877,11 +993,8 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
                         style={styles.suffixedInput}
                         keyboardType="numeric"
                         value={String(item.sgstRate)}
-                        onChangeText={(val) =>
-                          handleUpdateItem(idx, {
-                            sgstRate: Number(val.replace(/[^0-9.]/g, '')) || 0,
-                          })
-                        }
+                        editable={false}
+                        accessibilityLabel={`SGST rate from HSN for item ${idx + 1}`}
                       />
                       <Text style={styles.suffixPercentText}>%</Text>
                     </View>
@@ -894,11 +1007,8 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
                         style={styles.suffixedInput}
                         keyboardType="numeric"
                         value={String(item.cgstRate)}
-                        onChangeText={(val) =>
-                          handleUpdateItem(idx, {
-                            cgstRate: Number(val.replace(/[^0-9.]/g, '')) || 0,
-                          })
-                        }
+                        editable={false}
+                        accessibilityLabel={`CGST rate from HSN for item ${idx + 1}`}
                       />
                       <Text style={styles.suffixPercentText}>%</Text>
                     </View>
@@ -1362,6 +1472,7 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
                       <Text style={printStyles.summaryLabel}>
                         {i + 1}. {it.productName || 'Item'} {Boolean(it.hsnSac && gstMode !== 'NON_GST') && `[HSN: ${it.hsnSac}]`} (Qty: {it.quantity} × {currencySymbol}
                         {it.unitPrice})
+                        {gstMode !== 'NON_GST' && it.hsnDescription ? `\n${it.hsnDescription}` : ''}
                       </Text>
                       <Text style={printStyles.summaryValueBold}>
                         {currencySymbol}
@@ -1462,11 +1573,11 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: '#F7F9FC',
   },
   pageContent: {
     padding: 24,
-    backgroundColor: colors.white,
+    backgroundColor: '#F7F9FC',
   },
   mainCard: {
     backgroundColor: colors.white,

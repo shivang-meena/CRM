@@ -3,7 +3,11 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { Ionicons } from '@expo/vector-icons';
 
 export const dashboardColors = {
-  purple: '#41358F', text: '#432D40', muted: '#9293A5', border: '#F0EFF5', background: '#FCFCFE',
+  purple: '#0B2F7D',
+  text: '#0E1B3D',
+  muted: '#56627C',
+  border: '#DCE3F0',
+  background: '#F7F9FC',
 };
 export type IconName = React.ComponentProps<typeof Ionicons>['name'];
 type Props = {
@@ -56,7 +60,7 @@ export default function DashboardPanel(props: Props) {
 
 const styles = StyleSheet.create({
   panel: { height: 302, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: dashboardColors.border, borderRadius: 10,
-    overflow: 'hidden', boxShadow: '0 1px 5px rgba(32, 24, 65, 0.04)' },
+    overflow: 'hidden', boxShadow: '0 2px 8px rgba(11,47,125,0.06)' },
   notesPanel: { height: 248 },
   header: { minHeight: 48, paddingHorizontal: 14, paddingVertical: 9, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12,
     borderBottomWidth: 1, borderBottomColor: dashboardColors.border },
