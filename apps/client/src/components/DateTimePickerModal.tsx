@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   dayTextSelected: {
-    color: colors.primaryText,
+    color: colors.white,
     fontWeight: '800',
   },
   summaryBox: {
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   timePartTextActive: {
-    color: colors.primaryText,
+    color: colors.white,
   },
   colonText: {
     fontSize: 20,
@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   ampmTextActive: {
-    color: colors.primaryText,
+    color: colors.white,
     fontWeight: '800',
   },
   modeIndicatorRow: {
@@ -693,7 +693,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   clockNumTextSelected: {
-    color: colors.primaryText,
+    color: colors.white,
     fontWeight: '800',
   },
   footer: {

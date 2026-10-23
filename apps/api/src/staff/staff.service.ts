@@ -29,7 +29,6 @@ export class StaffService {
       hasPassword: !!record.passwordHash,
       permissions: {
         lead: record.permLead,
-        task: record.permTask,
         reminder: record.permReminder,
         meeting: record.permMeeting,
         note: record.permNote,
@@ -147,7 +146,6 @@ export class StaffService {
           passwordHash,
           canLoginApp: dto.canLoginApp ?? false,
           permLead: dto.permissions?.lead ?? true,
-          permTask: dto.permissions?.task ?? true,
           permReminder: dto.permissions?.reminder ?? true,
           permMeeting: dto.permissions?.meeting ?? true,
           permNote: dto.permissions?.note ?? true,
@@ -195,7 +193,6 @@ export class StaffService {
           passwordHash,
           canLoginApp: dto.canLoginApp ?? existing.canLoginApp,
           permLead: dto.permissions?.lead ?? existing.permLead,
-          permTask: dto.permissions?.task ?? existing.permTask,
           permReminder: dto.permissions?.reminder ?? existing.permReminder,
           permMeeting: dto.permissions?.meeting ?? existing.permMeeting,
           permNote: dto.permissions?.note ?? existing.permNote,

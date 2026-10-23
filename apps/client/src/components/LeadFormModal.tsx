@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: colors.white },
   chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 13, color: colors.text },
-  chipTextOn: { color: colors.primaryText, fontWeight: '700' },
+  chipTextOn: { color: colors.white, fontWeight: '700' },
   footer: { padding: 16, borderTopWidth: 1, borderTopColor: colors.border, gap: 10 },
   err: { color: colors.danger, fontSize: 13 },
   btnRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },

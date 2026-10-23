@@ -3,7 +3,6 @@ export type StaffFilterStatus = 'ALL' | StaffStatus;
 
 export interface StaffPermissions {
   lead: boolean;
-  task: boolean;
   reminder: boolean;
   meeting: boolean;
   note: boolean;

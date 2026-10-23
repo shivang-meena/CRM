@@ -49,7 +49,6 @@ model Lead {
   deletedAt       DateTime?  @db.Timestamptz(3)
   version         Int        @default(1)
   followups       LeadFollowUp[]
-  tasks           LeadTask[]
   meetings        LeadMeeting[]
   reminders       LeadReminder[]
   history         LeadHistory[]
@@ -77,6 +76,22 @@ model ServiceMaster {
   leads          Lead[]
 
   @@map("service_masters")
+}
+
+model ProductMaster {
+  id             String   @id @default(uuid())
+  name           String
+  normalizedName String   @unique
+  hsnSac         String   @default("")
+  description    String?  @default("")
+  igstRate       Decimal  @default(0) @db.Decimal(5, 2)
+  sgstRate       Decimal  @default(0) @db.Decimal(5, 2)
+  cgstRate       Decimal  @default(0) @db.Decimal(5, 2)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("product_masters")
 }
 
 model LeadStatusMaster {
@@ -125,19 +140,6 @@ enum ActivityOrigin {
   LEGACY
 }
 
-enum TaskPriority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
 enum MeetingMode {
   ONLINE
   PHONE
@@ -166,7 +168,6 @@ enum CalendarEventCategory {
 enum HistoryEntity {
   LEAD
   FOLLOWUP
-  TASK
   REMINDER
   MEETING
   QUOTATION
@@ -215,38 +216,6 @@ enum PaymentMethod {
   OTHER
 }
 
-enum StandaloneTaskPriority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum StandaloneTaskStatus {
-  NEW
-  IN_FEEDBACK
-  COMPLETED
-  REJECTED
-  PROCESSING
-}
-
-enum TaskRecurrenceFrequency {
-  DAILY
-  WEEKLY
-  MONTHLY
-}
-
-enum TaskHistoryAction {
-  CREATED
-  UPDATED
-  STATUS_CHANGED
-  LABEL_CHANGED
-  DELETED
-  RECURRENCE_STARTED
-  RECURRENCE_UPDATED
-  RECURRENCE_STOPPED
-  OCCURRENCE_GENERATED
-}
-
 model LeadFollowUp {
   id String @id @default(uuid())
   leadId String
@@ -276,34 +245,6 @@ model LeadFollowUp {
   @@index([leadId, deletedAt, scheduledAt])
   @@index([leadId, status, scheduledAt])
   @@map("lead_followups")
-}
-
-model LeadTask {
-  id String @id @default(uuid())
-  leadId String
-  createdById String
-  createdByName String
-  updatedById String?
-  updatedByName String?
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
-  deletedAt DateTime? @db.Timestamptz(3)
-  version Int @default(1)
-  requestKey String?
-  requestHash String?
-  title String
-  description String?
-  dueAt DateTime @db.Timestamptz(3)
-  priority TaskPriority @default(MEDIUM)
-  status TaskStatus @default(TODO)
-  assignedTo String
-  completedAt DateTime? @db.Timestamptz(3)
-  lead Lead @relation(fields: [leadId], references: [id], onDelete: Restrict)
-  reminders LeadReminder[]
-  @@unique([createdById, requestKey])
-  @@index([leadId, deletedAt, dueAt])
-  @@index([status, dueAt])
-  @@map("lead_tasks")
 }
 
 model LeadMeeting {
@@ -359,13 +300,11 @@ model LeadReminder {
   recipientId String
   status ReminderStatus @default(PENDING)
   followUpId String?
-  taskId String?
   meetingId String?
   triggeredAt DateTime? @db.Timestamptz(3)
   dismissedAt DateTime? @db.Timestamptz(3)
   lead Lead? @relation(fields: [leadId], references: [id], onDelete: Restrict)
   followUp LeadFollowUp? @relation(fields: [followUpId], references: [id], onDelete: Restrict)
-  task LeadTask? @relation(fields: [taskId], references: [id], onDelete: Restrict)
   meeting LeadMeeting? @relation(fields: [meetingId], references: [id], onDelete: Restrict)
   notification CrmNotification?
   @@unique([createdById, requestKey])
@@ -416,6 +355,11 @@ enum DiscountType {
   OVERALL
   PERCENTAGE
   FLAT_PER_UNIT
+}
+
+enum SalesItemType {
+  SERVICE
+  PRODUCT
 }
 
 enum InvoicePaymentStatus {
@@ -505,6 +449,7 @@ model SalesDocumentItem {
   productName     String
   hsnSac          String?
   hsnMasterId     String? // Source reference; invoice values remain snapshots.
+  itemType        SalesItemType?
   hsnDescription  String?
   quantity        Int           @default(1)
   unitPrice       Decimal       @default(0) @db.Decimal(12, 2)
@@ -626,100 +571,6 @@ model CrmNotification {
   @@map("crm_notifications")
 }
 
-model TaskLabel {
-  id              String                    @id @default(uuid())
-  name            String
-  normalizedName  String
-  colour          String
-  createdAt       DateTime                  @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime                  @updatedAt @db.Timestamptz(3)
-  deletedAt       DateTime?                 @db.Timestamptz(3)
-  tasks           Task[]
-  recurrenceSeries TaskRecurrenceSeries[]
-
-  @@index([normalizedName, deletedAt])
-  @@map("task_labels")
-}
-
-model TaskRecurrenceSeries {
-  id                String                  @id @default(uuid())
-  subject           String
-  description       String?
-  priority          StandaloneTaskPriority  @default(LOW)
-  labelId           String?
-  assignedTo        String
-  createdById       String
-  createdByName     String
-  frequency         TaskRecurrenceFrequency
-  interval          Int                     @default(1)
-  timezone          String                  @default("Asia/Kolkata")
-  anchorStartAt     DateTime                @db.Timestamptz(3)
-  durationMinutes   Int
-  recurrenceEndsAt  DateTime?               @db.Timestamptz(3)
-  nextOccurrenceAt  DateTime                @db.Timestamptz(3)
-  active            Boolean                 @default(true)
-  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime                @updatedAt @db.Timestamptz(3)
-  version           Int                     @default(1)
-  label             TaskLabel?              @relation(fields: [labelId], references: [id], onDelete: Restrict)
-  tasks             Task[]
-
-  @@index([active, nextOccurrenceAt])
-  @@index([labelId, active])
-  @@map("task_recurrence_series")
-}
-
-model Task {
-  id                String                  @id @default(uuid())
-  subject           String
-  description       String?
-  priority          StandaloneTaskPriority  @default(LOW)
-  status            StandaloneTaskStatus     @default(NEW)
-  labelId           String?
-  startAt           DateTime                @db.Timestamptz(3)
-  endAt             DateTime                @db.Timestamptz(3)
-  assignedTo        String
-  createdById       String
-  createdByName     String
-  updatedById       String?
-  updatedByName     String?
-  completedAt       DateTime?               @db.Timestamptz(3)
-  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime                @updatedAt @db.Timestamptz(3)
-  deletedAt         DateTime?               @db.Timestamptz(3)
-  version           Int                     @default(1)
-  requestKey        String?
-  requestHash       String?
-  recurrenceSeriesId String?
-  occurrenceAt      DateTime?               @db.Timestamptz(3)
-  label             TaskLabel?              @relation(fields: [labelId], references: [id], onDelete: Restrict)
-  recurrenceSeries  TaskRecurrenceSeries?   @relation(fields: [recurrenceSeriesId], references: [id], onDelete: Restrict)
-  history           TaskHistory[]
-
-  @@unique([createdById, requestKey])
-  @@unique([recurrenceSeriesId, occurrenceAt])
-  @@index([status, deletedAt, endAt])
-  @@index([assignedTo, deletedAt, endAt])
-  @@index([labelId, deletedAt])
-  @@index([deletedAt, endAt])
-  @@index([recurrenceSeriesId, occurrenceAt])
-  @@map("tasks")
-}
-
-model TaskHistory {
-  id          String            @id @default(uuid())
-  taskId      String
-  action      TaskHistoryAction
-  actorId     String
-  actorName   String
-  changes     Json?
-  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
-  task        Task              @relation(fields: [taskId], references: [id], onDelete: Restrict)
-
-  @@index([taskId, createdAt, id])
-  @@map("task_history")
-}
-
 model Note {
   id          String    @id @default(uuid())
   content     String
@@ -784,7 +635,6 @@ model StaffMember {
   canLoginApp    Boolean     @default(false)
   // Module permissions
   permLead       Boolean     @default(true)
-  permTask       Boolean     @default(true)
   permReminder   Boolean     @default(true)
   permMeeting    Boolean     @default(true)
   permNote       Boolean     @default(true)

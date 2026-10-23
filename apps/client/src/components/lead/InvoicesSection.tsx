@@ -34,6 +34,14 @@ export default function InvoicesSection({ leadId, summary }: Props) {
 
   const overdueCount = summary?.overdue.invoices ?? 0;
 
+  function getBalance(doc: SalesDocument): number | string {
+    // The lead-level invoice endpoint returns `dueAmount`; the newer document
+    // shape uses `balance`. Support both so a missing legacy field is not
+    // rendered as a malformed currency amount.
+    const response = doc as SalesDocument & { dueAmount?: number | string | null };
+    return doc.balance ?? response.dueAmount ?? 0;
+  }
+
   return (
     <View style={styles.container}>
       <View style={ui.panel}>
@@ -145,7 +153,7 @@ export default function InvoicesSection({ leadId, summary }: Props) {
                 </View>
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>Balance Due:</Text>
-                  <Text style={[styles.totalVal, { color: colors.danger }]}>{formatMoney(doc.balance)}</Text>
+                  <Text style={[styles.totalVal, { color: colors.danger }]}>{formatMoney(getBalance(doc))}</Text>
                 </View>
                 {doc.notes ? (
                   <Text style={styles.notesText} numberOfLines={2}>
@@ -155,7 +163,7 @@ export default function InvoicesSection({ leadId, summary }: Props) {
               </View>
 
               <View style={styles.cardFooter}>
-                {doc.status === 'ISSUED' && parseFloat(doc.balance) > 0 ? (
+                {doc.status === 'ISSUED' && Number(getBalance(doc)) > 0 ? (
                   <Button
                     title="Record Payment"
                     variant="outline"

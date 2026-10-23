@@ -32,9 +32,9 @@ export class ReminderWorkerService implements OnModuleInit, OnModuleDestroy {
             if (!lead) return;
           }
           await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "lead_reminders" WHERE "id" = ${candidate.id} FOR UPDATE`);
-          const reminder = await tx.leadReminder.findUnique({ where: { id: candidate.id }, include: { followUp: true, task: true, meeting: true } });
+          const reminder = await tx.leadReminder.findUnique({ where: { id: candidate.id }, include: { followUp: true, meeting: true } });
           if (!reminder || reminder.deletedAt || reminder.status !== 'PENDING' || reminder.remindAt > new Date()) return;
-          const target = reminder.followUp ?? reminder.task ?? reminder.meeting;
+          const target = reminder.followUp ?? reminder.meeting;
           const active = !target || !target.deletedAt && ['PENDING','TODO','IN_PROGRESS','SCHEDULED'].includes(target.status);
           const actor = { id: 'system', name: 'Reminder service' };
           if (!active) {

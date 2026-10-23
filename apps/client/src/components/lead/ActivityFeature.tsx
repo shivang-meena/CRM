@@ -13,7 +13,6 @@ import { saveActivity, changeActivity } from '@/api/leadActivities';
 
 const specs = {
   followups: { label: 'FollowUp', date: 'scheduledAt', dateLabel: 'Follow-up date & time', choices: { Channel: ['CALL','WHATSAPP','EMAIL','VISIT','OTHER'], Status: ['PENDING','COMPLETED','CANCELLED'] } },
-  tasks: { label: 'Task', date: 'dueAt', dateLabel: 'Due date & time', choices: { Priority: ['LOW','MEDIUM','HIGH'], Status: ['TODO','IN_PROGRESS','COMPLETED','CANCELLED'] } },
   reminders: { label: 'Reminder', date: 'remindAt', dateLabel: 'Reminder date & time', choices: { Status: ['PENDING','TRIGGERED','DISMISSED','CANCELLED'] } },
   meetings: { label: 'Meeting', date: 'startAt', dateLabel: 'Meeting start', choices: { Mode: ['ONLINE','PHONE','IN_PERSON'], Status: ['SCHEDULED','COMPLETED','CANCELLED'] } },
 } as const;
@@ -26,10 +25,10 @@ function initialDraft(kind: ActivityKind, row?: ActivityRecord): Draft {
     agenda: row?.agenda ?? '', outcome: row?.outcome ?? '', message: row?.message ?? '',
     [s.date]: formatDateTime((row?.[s.date] as string | undefined) ?? ''),
     endAt: formatDateTime(row?.endAt), channel: row?.channel ?? 'CALL',
-    priority: row?.priority ?? 'MEDIUM', status: row?.status ?? 'TODO',
+    status: row?.status ?? 'PENDING',
     mode: row?.mode ?? 'ONLINE', location: row?.location ?? '', meetingUrl: row?.meetingUrl ?? '',
     attendeesText: row?.attendees?.map(x => x.email ? x.name + ' <' + x.email + '>' : x.name).join(', ') ?? '',
-    followUpId: row?.followUpId ?? '', taskId: row?.taskId ?? '', meetingId: row?.meetingId ?? '',
+    followUpId: row?.followUpId ?? '', meetingId: row?.meetingId ?? '',
   };
 }
 function toIso(value: string): string | null {
@@ -68,13 +67,12 @@ function ChoiceField({ label, value, options, onChange }: { label: string; value
 function ActivityForm({ leadId, kind, row, actor, onSaved, onClose }: { leadId: string; kind: ActivityKind; row?: ActivityRecord; actor: string; onSaved: () => void; onClose: () => void }) {
   const [draft, setDraft] = useState(() => initialDraft(kind, row));
   const [error, setError] = useState('');
-  const [linkType, setLinkType] = useState<'none' | 'followups' | 'tasks' | 'meetings'>(() => row?.followUpId ? 'followups' : row?.taskId ? 'tasks' : row?.meetingId ? 'meetings' : 'none');
+  const [linkType, setLinkType] = useState<'none' | 'followups' | 'meetings'>(() => row?.followUpId ? 'followups' : row?.meetingId ? 'meetings' : 'none');
   const s = specs[kind];
   const set = (key: string, value: string) => setDraft(current => ({ ...current, [key]: value }));
   const followups = useActivities(leadId, 'followups', { pageSize: 100, status: 'PENDING' }, kind === 'reminders' && linkType === 'followups');
-  const tasks = useActivities(leadId, 'tasks', { pageSize: 100, status: 'TODO' }, kind === 'reminders' && linkType === 'tasks');
   const meetings = useActivities(leadId, 'meetings', { pageSize: 100, status: 'SCHEDULED' }, kind === 'reminders' && linkType === 'meetings');
-  const choices = linkType === 'followups' ? followups.data?.items ?? [] : linkType === 'tasks' ? tasks.data?.items ?? [] : linkType === 'meetings' ? meetings.data?.items ?? [] : [];
+  const choices = linkType === 'followups' ? followups.data?.items ?? [] : linkType === 'meetings' ? meetings.data?.items ?? [] : [];
   const mutation = useCrmMutation(leadId, (body: Record<string, unknown>) => saveActivity(leadId, kind, body, row));
   const keyFor = useSubmissionKey();
   async function save() {
@@ -84,7 +82,6 @@ function ActivityForm({ leadId, kind, row, actor, onSaved, onClose }: { leadId: 
     const time = toIso(draft[s.date]);
     if (!time) return setError('Enter a valid date and time using the calendar.');
     if (kind === 'followups') body = { ...body, description: draft.description.trim(), channel: draft.channel, scheduledAt: time };
-    if (kind === 'tasks') body = { ...body, description: draft.description.trim(), dueAt: time, priority: draft.priority, status: draft.status };
     if (kind === 'meetings') {
       const end = toIso(draft.endAt);
       if (!end || new Date(end) <= new Date(time)) return setError('Meeting end time must be after its start.');
@@ -93,7 +90,8 @@ function ActivityForm({ leadId, kind, row, actor, onSaved, onClose }: { leadId: 
       body = { ...body, agenda: draft.agenda.trim(), startAt: time, endAt: end, timezone: 'Asia/Kolkata', mode: draft.mode, location: draft.location.trim(), meetingUrl: draft.meetingUrl.trim(), attendees: parseAttendees(draft.attendeesText) };
     }
     if (kind === 'reminders') {
-      body = { title: draft.title.trim(), message: draft.message.trim(), remindAt: time, ...(linkType !== 'none' && draft[linkType === 'followups' ? 'followUpId' : linkType === 'tasks' ? 'taskId' : 'meetingId'] ? { [linkType === 'followups' ? 'followUpId' : linkType === 'tasks' ? 'taskId' : 'meetingId']: draft[linkType === 'followups' ? 'followUpId' : linkType === 'tasks' ? 'taskId' : 'meetingId'] } : {}) };
+      const linkedField = linkType === 'followups' ? 'followUpId' : 'meetingId';
+      body = { title: draft.title.trim(), message: draft.message.trim(), remindAt: time, ...(linkType !== 'none' && draft[linkedField] ? { [linkedField]: draft[linkedField] } : {}) };
     }
     const reminderAt = draft.reminderAt ? toIso(draft.reminderAt) : null;
     if (draft.reminderAt && !reminderAt) return setError('Choose a valid linked reminder date.');
@@ -108,8 +106,7 @@ function ActivityForm({ leadId, kind, row, actor, onSaved, onClose }: { leadId: 
     <DateField label={s.dateLabel} value={draft[s.date]} onChange={v => set(s.date, v)} />
     {kind === 'meetings' ? <><DateField label="Meeting end" value={draft.endAt} onChange={v => set('endAt', v)} /><Field label="Agenda" value={draft.agenda} onChange={v => set('agenda', v)} multiline /><ChoiceField label="Meeting mode" value={draft.mode} options={fields.Mode} onChange={v => set('mode', v)} />{draft.mode === 'IN_PERSON' ? <Field label="Location *" value={draft.location} onChange={v => set('location', v)} /> : null}{draft.mode === 'ONLINE' ? <Field label="Meeting link" value={draft.meetingUrl} onChange={v => set('meetingUrl', v)} /> : null}<Field label="Attendees (comma-separated names or Name <email>)" value={draft.attendeesText} onChange={v => set('attendeesText', v)} multiline /></> : null}
     {kind === 'followups' ? <><ChoiceField label="Contact channel" value={draft.channel} options={fields.Channel} onChange={v => set('channel', v)} /><Field label="Notes" value={draft.description} onChange={v => set('description', v)} multiline />{row ? <Field label="Outcome" value={draft.outcome} onChange={v => set('outcome', v)} multiline /> : null}</> : null}
-    {kind === 'tasks' ? <><ChoiceField label="Priority" value={draft.priority} options={fields.Priority} onChange={v => set('priority', v)} /><ChoiceField label="Status" value={draft.status} options={fields.Status} onChange={v => set('status', v)} /><Field label="Description" value={draft.description} onChange={v => set('description', v)} multiline /></> : null}
-    {kind === 'reminders' ? <><Field label="Message" value={draft.message} onChange={v => set('message', v)} multiline /><ChoiceField label="Link to an activity (optional)" value={linkType} options={['none','followups','tasks','meetings']} onChange={v => { setLinkType(v as typeof linkType); set('followUpId',''); set('taskId',''); set('meetingId',''); }} />{linkType !== 'none' ? choices.length ? <View style={ui.field}><Text style={ui.label}>Select activity</Text><ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={ui.row}>{choices.map(c => { const cur = draft[linkType === 'followups' ? 'followUpId' : linkType === 'tasks' ? 'taskId' : 'meetingId'] === c.id; return <Pressable key={c.id} accessibilityRole="button" accessibilityState={{ selected: cur }} style={[ui.choice, cur && ui.choiceOn]} onPress={() => set(linkType === 'followups' ? 'followUpId' : linkType === 'tasks' ? 'taskId' : 'meetingId', cur ? '' : c.id)}><Text style={ui.text}>{c.title}</Text></Pressable>; })}</View></ScrollView></View> : <Text style={ui.muted}>{followups.isLoading || tasks.isLoading || meetings.isLoading ? 'Loading activities…' : 'No pending activities available.'}</Text> : null}</> : null}
+    {kind === 'reminders' ? <><Field label="Message" value={draft.message} onChange={v => set('message', v)} multiline /><ChoiceField label="Link to an activity (optional)" value={linkType} options={['none','followups','meetings']} onChange={v => { setLinkType(v as typeof linkType); set('followUpId',''); set('meetingId',''); }} />{linkType !== 'none' ? choices.length ? <View style={ui.field}><Text style={ui.label}>Select activity</Text><ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={ui.row}>{choices.map(c => { const field = linkType === 'followups' ? 'followUpId' : 'meetingId'; const cur = draft[field] === c.id; return <Pressable key={c.id} accessibilityRole="button" accessibilityState={{ selected: cur }} style={[ui.choice, cur && ui.choiceOn]} onPress={() => set(field, cur ? '' : c.id)}><Text style={ui.text}>{c.title}</Text></Pressable>; })}</View></ScrollView></View> : <Text style={ui.muted}>{followups.isLoading || meetings.isLoading ? 'Loading activities…' : 'No pending activities available.'}</Text> : null}</> : null}
     {kind !== 'reminders' && !row ? <DateField label="Optional linked reminder · IST" value={draft.reminderAt ?? ''} onChange={v => set('reminderAt', v)} /> : null}
   </FormShell>;
 }
@@ -142,12 +139,11 @@ export function ActivitySection({ leadId, kind, summary }: { leadId: string; kin
   const { userName } = useAuth();
   const query = useActivities(leadId, kind, filters);
   function setFilter(next: Partial<ListFilters>) { setFilters(f => ({ ...f, ...next, page: 1 })); }
-  const overdueCount = kind === 'meetings' || kind === 'reminders' ? undefined : summary?.overdue[kind];
+  const overdueCount = kind === 'followups' ? summary?.overdue.followups : undefined;
   return <View style={{ gap: 12 }}>
     <View style={ui.panel}>
       <View style={ui.row}><TextInput accessibilityLabel="Search activities" placeholder="Search title" value={searchText} onChangeText={setSearchText} style={[ui.input,{flex:1,minWidth:150}]} /><Button title="Search" variant="outline" onPress={() => setFilter({ search: searchText.trim() || undefined })} /><Button title="Clear" variant="outline" onPress={() => { setSearchText(''); setStatus(''); setOverdue(''); setFilters({page:1,pageSize:20}); }} /></View>
       {kind === 'followups' ? <View style={ui.row}><ChoiceField label="Status" value={status} options={['','PENDING','COMPLETED','CANCELLED']} onChange={v => { setStatus(v); setFilter({status:v || undefined}); }} />{overdueCount !== undefined ? <Pressable accessibilityRole="button" onPress={() => { const v = overdue === 'true' ? '' : 'true'; setOverdue(v); setFilter({overdue:v || undefined}); }} style={[ui.choice, overdue === 'true' && ui.choiceOn]}><Text style={ui.text}>Overdue{overdueCount ? ' · ' + overdueCount : ''}</Text></Pressable> : null}</View> : null}
-      {kind === 'tasks' ? <View style={ui.row}><ChoiceField label="Status" value={status} options={['','TODO','IN_PROGRESS','COMPLETED','CANCELLED']} onChange={v => { setStatus(v); setFilter({status:v || undefined}); }} />{overdueCount !== undefined ? <Pressable accessibilityRole="button" onPress={() => { const v = overdue === 'true' ? '' : 'true'; setOverdue(v); setFilter({overdue:v || undefined}); }} style={[ui.choice, overdue === 'true' && ui.choiceOn]}><Text style={ui.text}>Overdue{overdueCount ? ' · ' + overdueCount : ''}</Text></Pressable> : null}</View> : null}
     </View>
     {query.isLoading ? <ActivityIndicator color={colors.primary} /> : query.isError ? <View accessibilityRole="alert" style={ui.panel}><Text style={ui.error}>{errorMessage(query.error)}</Text><Button title="Retry" variant="outline" onPress={() => { void query.refetch(); }} /></View> : !query.data?.items.length ? <View style={ui.panel}><Text style={ui.muted}>No {specs[kind].label.toLowerCase()} records yet.</Text></View> : <View style={{ gap: 9 }}>
       {query.data.items.map(row => {
@@ -158,7 +154,7 @@ export function ActivitySection({ leadId, kind, summary }: { leadId: string; kin
           {date ? <Text style={ui.text}>{formatDateTime(date)} · IST</Text> : null}
           {row.endAt ? <Text style={ui.muted}>Ends {formatDateTime(row.endAt)} IST · {labelFor(row.mode ?? '')}</Text> : null}
           {row.assignedTo ? <Text style={ui.muted}>Assigned to {row.assignedTo}</Text> : null}
-          {row.channel || row.priority ? <Text style={ui.muted}>{labelFor(row.channel ?? row.priority ?? '')}</Text> : null}
+          {row.channel ? <Text style={ui.muted}>{labelFor(row.channel)}</Text> : null}
           {(row.description || row.agenda || row.message) ? <Text style={ui.text}>{row.description || row.agenda || row.message}</Text> : null}
           {row.outcome ? <Text style={ui.muted}>Outcome: {row.outcome}</Text> : null}
           <View style={ui.row}>
@@ -193,12 +189,12 @@ export function HistorySection({ leadId }: { leadId: string }) {
 }
 
 export function SectionTabs({ selected, onSelect, summary, loading, error }: { selected: string; onSelect: (key:string)=>void; summary?: SectionSummary; loading: boolean; error: boolean }) {
- const badgeKeys: Record<string,string> = {followups:'followups',tasks:'tasks',reminders:'reminders',meetings:'meetings',quotations:'quotations',invoices:'invoices'};
+  const badgeKeys: Record<string,string> = {followups:'followups',reminders:'reminders',meetings:'meetings',quotations:'quotations',invoices:'invoices'};
  return <ScrollView horizontal showsHorizontalScrollIndicator accessibilityLabel="Lead sections" contentContainerStyle={{alignItems:'stretch',borderBottomWidth:1,borderBottomColor:colors.border}}>
-  {['details','followups','history','tasks','reminders','meetings','quotations','invoices'].map(key=>{
+   {['details','followups','history','reminders','meetings','quotations','invoices'].map(key=>{
     const active=selected===key, count=badgeKeys[key]?summary?.counts[badgeKeys[key] as keyof SectionSummary['counts']]:undefined;
     return <Pressable key={key} accessibilityRole="tab" accessibilityState={{selected:active}} onPress={()=>onSelect(key)} style={{paddingHorizontal:13,paddingVertical:12,borderBottomWidth:active?3:0,borderBottomColor:colors.accent,minHeight:48,flexDirection:'row',alignItems:'center',gap:5}}>
-      <Text style={{fontSize:13,fontWeight:active?'800':'500',color:active?colors.primaryText:colors.text}}>{key==='details'?'Details':key==='followups'?'FollowUp':key==='history'?'History':key==='tasks'?'Task':key==='reminders'?'Reminder':key==='meetings'?'Meeting':key==='quotations'?'Quotation':'Invoice'}</Text>
+       <Text style={{fontSize:13,fontWeight:active?'800':'500',color:active?colors.primaryText:colors.text}}>{key==='details'?'Details':key==='followups'?'FollowUp':key==='history'?'History':key==='reminders'?'Reminder':key==='meetings'?'Meeting':key==='quotations'?'Quotation':'Invoice'}</Text>
       {badgeKeys[key]?<Text accessibilityLabel={loading?'Loading count':error?'Count unavailable':count===undefined?'Loading count':String(count)} style={{fontSize:11,fontWeight:'800',color:colors.white,backgroundColor:loading||error||count===undefined?colors.muted:colors.primaryText,overflow:'hidden',borderRadius:10,paddingHorizontal:6,paddingVertical:2}}>{loading||error||count===undefined?'…':count}</Text>:null}
     </Pressable>
   })}

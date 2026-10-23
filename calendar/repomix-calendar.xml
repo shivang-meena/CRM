@@ -1,0 +1,1447 @@
+<repomix>
+  <file path="apps/client/app/(app)/calendar.tsx">
+export { default } from '@/calendar/CalendarScreen';
+
+  </file>
+  <file path="apps/client/src/calendar/CalendarScreen.tsx">
+// // apps/client/src/calendar/CalendarScreen.tsx
+// import React, { useMemo, useState } from 'react';
+// import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+// import { errorMessage } from '@/api/client';
+// import Button from '@/components/Button';
+// import { colors } from '@/theme/colors';
+// import { useCalendarActions, useCalendarItems } from '@/hooks/useCalendar';
+// import { CALENDAR_CATEGORIES, CalendarCategory, CalendarEventInput, CalendarItem, CalendarView } from '@/types/calendar';
+// import CalendarFilters from './CalendarFilters';
+// import CalendarToolbar from './CalendarToolbar';
+// import MonthCalendar from './MonthCalendar';
+// import DayCalendar from './DayCalendar';
+// import CalendarList from './CalendarList';
+// import CalendarEventFormModal from './CalendarEventFormModal';
+// import CalendarItemDetailsModal from './CalendarItemDetailsModal';
+// import { addDays, addMonths, formatDayHeading, formatMonthHeading, todayIstKey, visibleRange } from './calendarDates';
+
+// export default function CalendarScreen() {
+//   const [view, setView] = useState&lt;CalendarView&gt;('month'); const [selectedDate, setSelectedDate] = useState(todayIstKey()); const [selectedCategories, setSelectedCategories] = useState&lt;CalendarCategory[]&gt;([...CALENDAR_CATEGORIES]); const [formOpen, setFormOpen] = useState(false); const [editingEvent, setEditingEvent] = useState&lt;CalendarItem | null&gt;(null); const [detailItem, setDetailItem] = useState&lt;CalendarItem | null&gt;(null);
+//   const range = useMemo(() =&gt; visibleRange(view, selectedDate), [view, selectedDate]); const query = useMemo(() =&gt; ({ from: range.from, to: range.to, categories: selectedCategories }), [range.from, range.to, selectedCategories]); const itemsQuery = useCalendarItems(query); const actions = useCalendarActions();
+//   const heading = view === 'day' ? formatDayHeading(selectedDate) : formatMonthHeading(selectedDate);
+//   function toggleCategory(category: CalendarCategory) { setSelectedCategories(current =&gt; current.includes(category) ? current.filter(item =&gt; item !== category) : [...current, category]); }
+//   function navigate(amount: number) { setSelectedDate(current =&gt; view === 'day' ? addDays(current, amount) : addMonths(current, amount)); }
+//   function openAdd() { setEditingEvent(null); setFormOpen(true); }
+//   function openEdit(item: CalendarItem) { setDetailItem(null); setEditingEvent(item); setFormOpen(true); }
+//   async function saveEvent(data: CalendarEventInput) { if (editingEvent) await actions.update.mutateAsync({ id: editingEvent.sourceId, data }); else await actions.create.mutateAsync(data); setFormOpen(false); setEditingEvent(null); }
+//   async function deleteEvent(item: CalendarItem) { if (!item.version) return; await actions.remove.mutateAsync({ id: item.sourceId, version: item.version }); }
+//   const items = itemsQuery.data?.items ?? [];
+//   return &lt;View style={styles.container}&gt;&lt;View style={styles.layout}&gt;&lt;CalendarFilters selected={selectedCategories} onToggle={toggleCategory} onAdd={openAdd} /&gt;&lt;View style={styles.main}&gt;&lt;CalendarToolbar heading={heading} view={view} onView={setView} onPrevious={() =&gt; navigate(-1)} onNext={() =&gt; navigate(1)} onToday={() =&gt; setSelectedDate(todayIstKey())} /&gt;{itemsQuery.isLoading &amp;&amp; !itemsQuery.data ? &lt;View style={styles.state}&gt;&lt;ActivityIndicator color={colors.accent} /&gt;&lt;Text style={styles.stateText}&gt;Loading calendar…&lt;/Text&gt;&lt;/View&gt; : itemsQuery.isError ? &lt;View style={styles.state}&gt;&lt;Text style={styles.error}&gt;{errorMessage(itemsQuery.error)}&lt;/Text&gt;&lt;Button title="Retry" variant="outline" onPress={() =&gt; { void itemsQuery.refetch(); }} /&gt;&lt;/View&gt; : &lt;&gt;{!items.length ? &lt;Text style={styles.emptyNotice}&gt;No entries match the selected filters.&lt;/Text&gt; : null}{view === 'month' ? &lt;MonthCalendar month={selectedDate} items={items} selectedDate={selectedDate} onSelectDate={date =&gt; { setSelectedDate(date); setView('day'); }} onMore={date =&gt; { setSelectedDate(date); setView('day'); }} onOpenItem={setDetailItem} /&gt; : view === 'day' ? &lt;DayCalendar date={selectedDate} items={items} onOpenItem={setDetailItem} /&gt; : &lt;CalendarList items={items} onOpenItem={setDetailItem} /&gt;}&lt;/&gt;}&lt;/View&gt;&lt;/View&gt;&lt;CalendarEventFormModal visible={formOpen} selectedDate={selectedDate} event={editingEvent} onClose={() =&gt; { if (!actions.create.isPending &amp;&amp; !actions.update.isPending) { setFormOpen(false); setEditingEvent(null); } }} onSave={saveEvent} /&gt;&lt;CalendarItemDetailsModal item={detailItem} onClose={() =&gt; setDetailItem(null)} onEdit={openEdit} onDelete={deleteEvent} /&gt;&lt;/View&gt;;
+// }
+
+// const styles = StyleSheet.create({ container: { flex: 1, backgroundColor: colors.canvas }, layout: { flex: 1, flexDirection: 'row', flexWrap: 'nowrap' }, main: { flex: 1, minWidth: 0, minHeight: 0, backgroundColor: colors.white }, state: { flex: 1, minHeight: 260, alignItems: 'center', justifyContent: 'center', gap: 9, padding: 20 }, stateText: { color: colors.muted, fontSize: 13 }, error: { color: colors.danger, fontSize: 13, textAlign: 'center' }, emptyNotice: { color: colors.muted, fontSize: 12, paddingHorizontal: 14, paddingTop: 11 } });
+
+
+
+// apps/client/src/calendar/CalendarScreen.tsx
+import React, { useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { errorMessage } from '@/api/client';
+import Button from '@/components/Button';
+import { colors } from '@/theme/colors';
+import { useCalendarActions, useCalendarItems } from '@/hooks/useCalendar';
+import { CALENDAR_CATEGORIES, CalendarCategory, CalendarEventInput, CalendarItem, CalendarView } from '@/types/calendar';
+import CalendarFilters from './CalendarFilters';
+import CalendarToolbar from './CalendarToolbar';
+import MonthCalendar from './MonthCalendar';
+import DayCalendar from './DayCalendar';
+import CalendarList from './CalendarList';
+import CalendarEventFormModal from './CalendarEventFormModal';
+import CalendarItemDetailsModal from './CalendarItemDetailsModal';
+import { addDays, addMonths, formatDayHeading, formatMonthHeading, todayIstKey, visibleRange } from './calendarDates';
+
+const COMPACT_BREAKPOINT = 720;
+const DANGER_SOFT = '#FFF1F0';
+
+export default function CalendarScreen() {
+  const { width } = useWindowDimensions();
+  const compact = width &lt; COMPACT_BREAKPOINT;
+
+  const [view, setView] = useState&lt;CalendarView&gt;('month');
+  const [selectedDate, setSelectedDate] = useState(todayIstKey());
+  const [selectedCategories, setSelectedCategories] = useState&lt;CalendarCategory[]&gt;([...CALENDAR_CATEGORIES]);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState&lt;CalendarItem | null&gt;(null);
+  const [detailItem, setDetailItem] = useState&lt;CalendarItem | null&gt;(null);
+
+  const range = useMemo(() =&gt; visibleRange(view, selectedDate), [view, selectedDate]);
+  const query = useMemo(() =&gt; ({ from: range.from, to: range.to, categories: selectedCategories }), [range.from, range.to, selectedCategories]);
+  const itemsQuery = useCalendarItems(query);
+  const actions = useCalendarActions();
+  const heading = view === 'day' ? formatDayHeading(selectedDate) : formatMonthHeading(selectedDate);
+
+  function toggleCategory(category: CalendarCategory) {
+    setSelectedCategories(current =&gt; current.includes(category) ? current.filter(item =&gt; item !== category) : [...current, category]);
+  }
+  function navigate(amount: number) {
+    setSelectedDate(current =&gt; view === 'day' ? addDays(current, amount) : addMonths(current, amount));
+  }
+  function openAdd() { setEditingEvent(null); setFormOpen(true); }
+  function openEdit(item: CalendarItem) { setDetailItem(null); setEditingEvent(item); setFormOpen(true); }
+  async function saveEvent(data: CalendarEventInput) {
+    if (editingEvent) await actions.update.mutateAsync({ id: editingEvent.sourceId, data });
+    else await actions.create.mutateAsync(data);
+    setFormOpen(false);
+    setEditingEvent(null);
+  }
+  async function deleteEvent(item: CalendarItem) {
+    if (!item.version) return;
+    await actions.remove.mutateAsync({ id: item.sourceId, version: item.version });
+  }
+
+  const items = itemsQuery.data?.items ?? [];
+
+  return (
+    &lt;View style={styles.container}&gt;
+      &lt;View style={[styles.layout, compact ? styles.layoutCompact : styles.layoutWide]}&gt;
+        &lt;CalendarFilters layout={compact ? 'bar' : 'sidebar'} selected={selectedCategories} onToggle={toggleCategory} onAdd={openAdd} /&gt;
+
+        &lt;View style={[styles.main, !compact &amp;&amp; styles.mainCard]}&gt;
+          &lt;CalendarToolbar
+            heading={heading}
+            view={view}
+            onView={setView}
+            onPrevious={() =&gt; navigate(-1)}
+            onNext={() =&gt; navigate(1)}
+            onToday={() =&gt; setSelectedDate(todayIstKey())}
+          /&gt;
+
+          {itemsQuery.isLoading &amp;&amp; !itemsQuery.data ? (
+            &lt;View style={styles.state}&gt;
+              &lt;ActivityIndicator color={colors.accent} /&gt;
+              &lt;Text style={styles.stateText}&gt;Loading calendar…&lt;/Text&gt;
+            &lt;/View&gt;
+          ) : itemsQuery.isError ? (
+            &lt;View accessibilityRole="alert" style={styles.state}&gt;
+              &lt;View style={styles.errorIcon}&gt;&lt;Ionicons name="alert-circle-outline" size={26} color={colors.danger} /&gt;&lt;/View&gt;
+              &lt;Text style={styles.stateTitle}&gt;Couldn't load the calendar&lt;/Text&gt;
+              &lt;Text style={styles.error}&gt;{errorMessage(itemsQuery.error)}&lt;/Text&gt;
+              &lt;Button title="Retry" variant="outline" onPress={() =&gt; { void itemsQuery.refetch(); }} /&gt;
+            &lt;/View&gt;
+          ) : (
+            &lt;&gt;
+              {!items.length ? (
+                &lt;View style={styles.notice}&gt;
+                  &lt;Ionicons name="information-circle-outline" size={16} color={colors.muted} /&gt;
+                  &lt;Text style={styles.noticeText}&gt;No entries match the selected filters.&lt;/Text&gt;
+                &lt;/View&gt;
+              ) : null}
+              {view === 'month' ? (
+                &lt;MonthCalendar
+                  month={selectedDate}
+                  items={items}
+                  selectedDate={selectedDate}
+                  onSelectDate={date =&gt; { setSelectedDate(date); setView('day'); }}
+                  onMore={date =&gt; { setSelectedDate(date); setView('day'); }}
+                  onOpenItem={setDetailItem}
+                /&gt;
+              ) : view === 'day' ? (
+                &lt;DayCalendar date={selectedDate} items={items} onOpenItem={setDetailItem} /&gt;
+              ) : (
+                &lt;CalendarList items={items} onOpenItem={setDetailItem} /&gt;
+              )}
+            &lt;/&gt;
+          )}
+        &lt;/View&gt;
+      &lt;/View&gt;
+
+      &lt;CalendarEventFormModal
+        visible={formOpen}
+        selectedDate={selectedDate}
+        event={editingEvent}
+        onClose={() =&gt; { if (!actions.create.isPending &amp;&amp; !actions.update.isPending) { setFormOpen(false); setEditingEvent(null); } }}
+        onSave={saveEvent}
+      /&gt;
+      &lt;CalendarItemDetailsModal item={detailItem} onClose={() =&gt; setDetailItem(null)} onEdit={openEdit} onDelete={deleteEvent} /&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.canvas },
+  layout: { flex: 1 },
+  layoutWide: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'stretch', padding: 16, gap: 16 },
+  layoutCompact: { flexDirection: 'column' },
+  main: { flex: 1, minWidth: 0, minHeight: 0, backgroundColor: colors.white },
+  mainCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 14px rgba(11,47,125,0.07)' },
+  state: { flex: 1, minHeight: 260, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
+  stateText: { color: colors.muted, fontSize: 13 },
+  stateTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  errorIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: DANGER_SOFT, alignItems: 'center', justifyContent: 'center' },
+  error: { color: colors.danger, fontSize: 13, textAlign: 'center', marginBottom: 4 },
+  notice: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 14, marginTop: 10, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, backgroundColor: '#F7F9FC', alignSelf: 'flex-start' },
+  noticeText: { color: colors.muted, fontSize: 12 },
+});
+  </file>
+  <file path="apps/client/src/calendar/CalendarToolbar.tsx">
+// // apps/client/src/calendar/CalendarToolbar.tsx
+// import React from 'react';
+// import { Pressable, StyleSheet, Text, View } from 'react-native';
+// import { Ionicons } from '@expo/vector-icons';
+// import { colors } from '@/theme/colors';
+// import { CalendarView } from '@/types/calendar';
+
+// type Props = { heading: string; view: CalendarView; onView: (view: CalendarView) =&gt; void; onPrevious: () =&gt; void; onNext: () =&gt; void; onToday: () =&gt; void };
+
+// export default function CalendarToolbar({ heading, view, onView, onPrevious, onNext, onToday }: Props) {
+//   return &lt;View style={styles.toolbar}&gt;
+//     &lt;View style={styles.navigation}&gt;&lt;Pressable accessibilityRole="button" accessibilityLabel="Previous calendar period" onPress={onPrevious} style={styles.iconButton}&gt;&lt;Ionicons name="chevron-back" size={18} color={colors.text} /&gt;&lt;/Pressable&gt;&lt;Pressable accessibilityRole="button" accessibilityLabel="Next calendar period" onPress={onNext} style={styles.iconButton}&gt;&lt;Ionicons name="chevron-forward" size={18} color={colors.text} /&gt;&lt;/Pressable&gt;&lt;Text style={styles.heading}&gt;{heading}&lt;/Text&gt;&lt;Pressable accessibilityRole="button" onPress={onToday} style={styles.today}&gt;&lt;Text style={styles.todayText}&gt;Today&lt;/Text&gt;&lt;/Pressable&gt;&lt;/View&gt;
+//     &lt;View style={styles.views}&gt;{(['month', 'day', 'list'] as CalendarView[]).map(option =&gt; &lt;Pressable key={option} accessibilityRole="button" accessibilityState={{ selected: view === option }} onPress={() =&gt; onView(option)} style={[styles.viewButton, view === option &amp;&amp; styles.viewButtonActive]}&gt;&lt;Text style={[styles.viewText, view === option &amp;&amp; styles.viewTextActive]}&gt;{option[0].toUpperCase() + option.slice(1)}&lt;/Text&gt;&lt;/Pressable&gt;)}&lt;/View&gt;
+//   &lt;/View&gt;;
+// }
+
+// const styles = StyleSheet.create({ toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 12, borderBottomWidth: 1, borderBottomColor: colors.border, flexWrap: 'wrap' }, navigation: { flexDirection: 'row', alignItems: 'center', gap: 6 }, iconButton: { width: 32, height: 32, borderWidth: 1, borderColor: colors.border, borderRadius: 7, alignItems: 'center', justifyContent: 'center' }, heading: { color: colors.text, fontSize: 18, fontWeight: '800', marginHorizontal: 8 }, today: { borderWidth: 1, borderColor: colors.primary, borderRadius: 7, paddingHorizontal: 10, paddingVertical: 7 }, todayText: { color: colors.primaryText, fontSize: 12, fontWeight: '700' }, views: { flexDirection: 'row', borderWidth: 1, borderColor: colors.border, borderRadius: 7, overflow: 'hidden' }, viewButton: { paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.white }, viewButtonActive: { backgroundColor: colors.primary }, viewText: { color: colors.muted, fontSize: 12, fontWeight: '700' }, viewTextActive: { color: colors.primaryText } });
+
+
+// apps/client/src/calendar/CalendarToolbar.tsx
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
+import { CalendarView } from '@/types/calendar';
+import { IconName, SOFT } from './calendarUi';
+
+type Props = { heading: string; view: CalendarView; onView: (view: CalendarView) =&gt; void; onPrevious: () =&gt; void; onNext: () =&gt; void; onToday: () =&gt; void };
+
+const VIEW_OPTIONS: { key: CalendarView; icon: IconName }[] = [
+  { key: 'month', icon: 'grid-outline' },
+  { key: 'day', icon: 'today-outline' },
+  { key: 'list', icon: 'list-outline' },
+];
+
+export default function CalendarToolbar({ heading, view, onView, onPrevious, onNext, onToday }: Props) {
+  const [width, setWidth] = useState(0);
+  const compact = width &gt; 0 &amp;&amp; width &lt; 640;
+
+  const arrows = (
+    &lt;View style={styles.arrows}&gt;
+      &lt;Pressable accessibilityRole="button" accessibilityLabel="Previous calendar period" onPress={onPrevious} style={({ pressed }) =&gt; [styles.arrow, pressed &amp;&amp; styles.pressed]}&gt;
+        &lt;Ionicons name="chevron-back" size={18} color={colors.text} /&gt;
+      &lt;/Pressable&gt;
+      &lt;View style={styles.arrowDivider} /&gt;
+      &lt;Pressable accessibilityRole="button" accessibilityLabel="Next calendar period" onPress={onNext} style={({ pressed }) =&gt; [styles.arrow, pressed &amp;&amp; styles.pressed]}&gt;
+        &lt;Ionicons name="chevron-forward" size={18} color={colors.text} /&gt;
+      &lt;/Pressable&gt;
+    &lt;/View&gt;
+  );
+
+  const todayButton = (
+    &lt;Pressable accessibilityRole="button" accessibilityLabel="Go to today" onPress={onToday} style={({ pressed }) =&gt; [styles.today, pressed &amp;&amp; styles.pressed]}&gt;
+      &lt;Text style={styles.todayText}&gt;Today&lt;/Text&gt;
+    &lt;/Pressable&gt;
+  );
+
+  const views = (
+    &lt;View style={[styles.views, compact &amp;&amp; styles.viewsCompact]}&gt;
+      {VIEW_OPTIONS.map(({ key, icon }) =&gt; {
+        const active = view === key;
+        return (
+          &lt;Pressable
+            key={key}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            onPress={() =&gt; onView(key)}
+            style={[styles.viewButton, compact &amp;&amp; styles.viewButtonCompact, active &amp;&amp; styles.viewButtonActive]}
+          &gt;
+            &lt;Ionicons name={icon} size={14} color={active ? colors.primaryText : colors.muted} /&gt;
+            &lt;Text style={[styles.viewText, active &amp;&amp; styles.viewTextActive]}&gt;{key[0].toUpperCase() + key.slice(1)}&lt;/Text&gt;
+          &lt;/Pressable&gt;
+        );
+      })}
+    &lt;/View&gt;
+  );
+
+  return (
+    &lt;View style={styles.toolbar} onLayout={(event) =&gt; setWidth(event.nativeEvent.layout.width)}&gt;
+      {compact ? (
+        &lt;&gt;
+          &lt;View style={styles.row}&gt;
+            &lt;Text accessibilityRole="header" numberOfLines={1} style={[styles.heading, styles.headingFlex]}&gt;{heading}&lt;/Text&gt;
+            {todayButton}
+          &lt;/View&gt;
+          &lt;View style={styles.row}&gt;
+            {arrows}
+            {views}
+          &lt;/View&gt;
+        &lt;/&gt;
+      ) : (
+        &lt;View style={styles.row}&gt;
+          {arrows}
+          &lt;Text accessibilityRole="header" numberOfLines={1} style={[styles.heading, styles.headingFlex]}&gt;{heading}&lt;/Text&gt;
+          {todayButton}
+          {views}
+        &lt;/View&gt;
+      )}
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  toolbar: { padding: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.white },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+
+  heading: { color: colors.text, fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
+  headingFlex: { flex: 1, minWidth: 0 },
+
+  arrows: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 10, overflow: 'hidden', backgroundColor: colors.white },
+  arrow: { width: 38, height: 36, alignItems: 'center', justifyContent: 'center' },
+  arrowDivider: { width: 1, height: 20, backgroundColor: colors.border },
+  pressed: { backgroundColor: '#F3F4F8' },
+
+  today: { height: 36, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.primary, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  todayText: { color: colors.primaryText, fontSize: 13, fontWeight: '700' },
+
+  views: { flexDirection: 'row', padding: 3, gap: 2, borderRadius: 12, backgroundColor: SOFT },
+  viewsCompact: { flex: 1 },
+  viewButton: { height: 30, paddingHorizontal: 12, borderRadius: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  viewButtonCompact: { flex: 1, paddingHorizontal: 6 },
+  viewButtonActive: { backgroundColor: colors.primary },
+  viewText: { color: colors.muted, fontSize: 12.5, fontWeight: '700' },
+  viewTextActive: { color: colors.primaryText },
+});
+  </file>
+  <file path="apps/client/src/calendar/MonthCalendar.tsx">
+// // apps/client/src/calendar/MonthCalendar.tsx
+// import React from 'react';
+// import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+// import { colors } from '@/theme/colors';
+// import { CALENDAR_CATEGORY_COLORS, CalendarItem } from '@/types/calendar';
+// import { firstDayOfMonth, monthGridKeys, parseDateKey, overlapsIstDay, todayIstKey } from './calendarDates';
+
+// type Props = { month: string; items: CalendarItem[]; selectedDate: string; onSelectDate: (date: string) =&gt; void; onOpenItem: (item: CalendarItem) =&gt; void; onMore: (date: string) =&gt; void };
+
+// export default function MonthCalendar({ month, items, selectedDate, onSelectDate, onOpenItem, onMore }: Props) {
+//   const { height: viewportHeight } = useWindowDimensions(); const today = todayIstKey(); const first = firstDayOfMonth(month); const days = monthGridKeys(month); const rowCount = days.length / 7; const cellHeight = Math.max(68, Math.floor((viewportHeight - 170) / rowCount)); const compact = cellHeight &lt; 100;
+//   return &lt;ScrollView horizontal style={styles.scroll} showsHorizontalScrollIndicator contentContainerStyle={styles.scrollContent}&gt;&lt;View style={styles.calendar}&gt;
+//     &lt;View style={styles.weekHeader}&gt;{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day =&gt; &lt;Text key={day} style={styles.weekDay}&gt;{day}&lt;/Text&gt;)}&lt;/View&gt;
+//     &lt;View style={styles.grid}&gt;{days.map(date =&gt; { const dateItems = items.filter(item =&gt; overlapsIstDay(item, date)).sort((a, b) =&gt; new Date(a.startAt).getTime() - new Date(b.startAt).getTime() || a.key.localeCompare(b.key)); const visibleItems = dateItems.slice(0, compact ? 2 : 3); const { day } = parseDateKey(date); const outside = !date.startsWith(first.slice(0, 7)); return &lt;View key={date} style={[styles.cell, { height: cellHeight }, outside &amp;&amp; styles.outside, date === today &amp;&amp; styles.todayCell, date === selectedDate &amp;&amp; styles.selectedCell]}&gt;&lt;Pressable accessibilityRole="button" accessibilityLabel={`Open ${date}`} onPress={() =&gt; onSelectDate(date)} style={styles.dayButton}&gt;&lt;Text style={[styles.dayNumber, outside &amp;&amp; styles.outsideText, date === today &amp;&amp; styles.todayText]}&gt;{day}&lt;/Text&gt;&lt;/Pressable&gt;&lt;View style={[styles.events, compact &amp;&amp; styles.compactEvents]}&gt;{visibleItems.map(item =&gt; &lt;Pressable key={item.key} accessibilityRole="button" onPress={() =&gt; onOpenItem(item)} style={[styles.chip, compact &amp;&amp; styles.compactChip, { borderLeftColor: CALENDAR_CATEGORY_COLORS[item.category] }]}&gt;&lt;Text numberOfLines={1} style={[styles.chipText, compact &amp;&amp; styles.compactChipText]}&gt;{item.title}&lt;/Text&gt;&lt;/Pressable&gt;)}{dateItems.length &gt; visibleItems.length ? &lt;Pressable accessibilityRole="button" onPress={() =&gt; onMore(date)}&gt;&lt;Text style={[styles.more, compact &amp;&amp; styles.compactMore]}&gt;+{dateItems.length - visibleItems.length} more&lt;/Text&gt;&lt;/Pressable&gt; : null}&lt;/View&gt;&lt;/View&gt;;})}&lt;/View&gt;
+//   &lt;/View&gt;&lt;/ScrollView&gt;;
+// }
+
+// const styles = StyleSheet.create({ scroll: { width: '100%', minWidth: '100%', flex: 1 }, scrollContent: { width: '100%', minWidth: '100%' }, calendar: { width: '100%', minWidth: 0, flex: 1 }, weekHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border }, weekDay: { width: '14.2857%', paddingVertical: 9, textAlign: 'center', color: colors.muted, fontSize: 12, fontWeight: '800' }, grid: { flexDirection: 'row', flexWrap: 'wrap' }, cell: { width: '14.2857%', minHeight: 0, overflow: 'hidden', borderRightWidth: 1, borderBottomWidth: 1, borderColor: colors.border, padding: 6, backgroundColor: colors.white }, outside: { backgroundColor: '#FAFBFD' }, todayCell: { backgroundColor: '#F2F7FF' }, selectedCell: { borderColor: colors.primary, borderWidth: 1 }, dayButton: { alignSelf: 'flex-start', paddingHorizontal: 3, paddingVertical: 1, borderRadius: 4 }, dayNumber: { color: colors.text, fontSize: 12, fontWeight: '800' }, outsideText: { color: '#A5AEC0' }, todayText: { color: colors.primaryText }, events: { gap: 4, marginTop: 6 }, compactEvents: { gap: 2, marginTop: 3 }, chip: { borderLeftWidth: 3, backgroundColor: '#F4F6FA', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 4 }, compactChip: { paddingVertical: 2 }, chipText: { color: colors.text, fontSize: 10, fontWeight: '600' }, compactChipText: { fontSize: 9 }, more: { color: colors.primaryText, fontSize: 10, fontWeight: '800', paddingVertical: 2 }, compactMore: { fontSize: 9, paddingVertical: 1 } });
+
+
+// apps/client/src/calendar/MonthCalendar.tsx
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { colors } from '@/theme/colors';
+import { CALENDAR_CATEGORY_COLORS, CalendarItem } from '@/types/calendar';
+import { firstDayOfMonth, formatCalendarTime, monthGridKeys, parseDateKey, overlapsIstDay, todayIstKey } from './calendarDates';
+import { TODAY_TINT, tint } from './calendarUi';
+
+type Props = { month: string; items: CalendarItem[]; selectedDate: string; onSelectDate: (date: string) =&gt; void; onOpenItem: (item: CalendarItem) =&gt; void; onMore: (date: string) =&gt; void };
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const HEADER_HEIGHT = 40;
+const MIN_CELL_HEIGHT = 72;
+const DOT_MODE_WIDTH = 64; // cells narrower than this (phones) show dots instead of text chips
+const TIME_IN_CHIP_WIDTH = 112;
+
+export default function MonthCalendar({ month, items, selectedDate, onSelectDate, onOpenItem, onMore }: Props) {
+  const { height: viewportHeight } = useWindowDimensions();
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  const today = todayIstKey();
+  const first = firstDayOfMonth(month);
+  const days = monthGridKeys(month);
+  const rowCount = days.length / 7;
+
+  // Cells fill the space that is really available; the old window-based estimate is only a first-paint fallback.
+  const available = size.height &gt; 0
+    ? Math.floor((size.height - HEADER_HEIGHT) / rowCount)
+    : Math.floor((viewportHeight - 170) / rowCount);
+  const cellHeight = Math.max(MIN_CELL_HEIGHT, available);
+  const cellWidth = size.width &gt; 0 ? size.width / 7 : 100;
+  const dotMode = cellWidth &lt; DOT_MODE_WIDTH;
+  const showTime = cellWidth &gt;= TIME_IN_CHIP_WIDTH;
+  const maxChips = dotMode ? 3 : Math.max(1, Math.min(4, Math.floor((cellHeight - 36 - 16) / 22)));
+
+  return (
+    &lt;View style={styles.calendar} onLayout={(event) =&gt; setSize(event.nativeEvent.layout)}&gt;
+      &lt;View style={styles.weekHeader}&gt;
+        {WEEKDAYS.map(day =&gt; &lt;Text key={day} style={styles.weekDay}&gt;{day}&lt;/Text&gt;)}
+      &lt;/View&gt;
+
+      &lt;ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}&gt;
+        &lt;View style={styles.grid}&gt;
+          {days.map(date =&gt; {
+            const dateItems = items
+              .filter(item =&gt; overlapsIstDay(item, date))
+              .sort((a, b) =&gt; new Date(a.startAt).getTime() - new Date(b.startAt).getTime() || a.key.localeCompare(b.key));
+            const visibleItems = dateItems.slice(0, maxChips);
+            const hiddenCount = dateItems.length - visibleItems.length;
+            const { day } = parseDateKey(date);
+            const outside = !date.startsWith(first.slice(0, 7));
+            const isToday = date === today;
+            const isSelected = date === selectedDate;
+
+            return (
+              &lt;Pressable
+                key={date}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${date}`}
+                onPress={() =&gt; onSelectDate(date)}
+                style={[
+                  styles.cell,
+                  { height: cellHeight },
+                  dotMode &amp;&amp; styles.cellCentered,
+                  outside &amp;&amp; styles.outside,
+                  isToday &amp;&amp; styles.todayCell,
+                  isSelected &amp;&amp; styles.selectedCell,
+                ]}
+              &gt;
+                &lt;View style={[styles.dayBadge, dotMode &amp;&amp; styles.dayBadgeCentered, isToday &amp;&amp; styles.dayBadgeToday]}&gt;
+                  &lt;Text style={[styles.dayNumber, outside &amp;&amp; styles.outsideText, isToday &amp;&amp; styles.todayText]}&gt;{day}&lt;/Text&gt;
+                &lt;/View&gt;
+
+                {dotMode ? (
+                  dateItems.length ? (
+                    &lt;View style={styles.dots}&gt;
+                      {visibleItems.map(item =&gt; &lt;View key={item.key} style={[styles.dot, { backgroundColor: CALENDAR_CATEGORY_COLORS[item.category] }]} /&gt;)}
+                      {hiddenCount &gt; 0 ? &lt;Text style={styles.dotMore}&gt;+{hiddenCount}&lt;/Text&gt; : null}
+                    &lt;/View&gt;
+                  ) : null
+                ) : (
+                  &lt;View style={styles.events}&gt;
+                    {visibleItems.map(item =&gt; {
+                      const color = CALENDAR_CATEGORY_COLORS[item.category];
+                      return (
+                        &lt;Pressable
+                          key={item.key}
+                          accessibilityRole="button"
+                          accessibilityLabel={item.title}
+                          onPress={() =&gt; onOpenItem(item)}
+                          style={({ pressed }) =&gt; [styles.chip, { backgroundColor: tint(color, pressed ? '33' : '1A'), borderLeftColor: color }]}
+                        &gt;
+                          &lt;Text numberOfLines={1} style={styles.chipText}&gt;
+                            {showTime &amp;&amp; !item.allDay ? &lt;Text style={styles.chipTime}&gt;{formatCalendarTime(item.startAt)} &lt;/Text&gt; : null}
+                            {item.title}
+                          &lt;/Text&gt;
+                        &lt;/Pressable&gt;
+                      );
+                    })}
+                    {hiddenCount &gt; 0 ? (
+                      &lt;Pressable accessibilityRole="button" onPress={() =&gt; onMore(date)}&gt;
+                        &lt;Text style={styles.more}&gt;+{hiddenCount} more&lt;/Text&gt;
+                      &lt;/Pressable&gt;
+                    ) : null}
+                  &lt;/View&gt;
+                )}
+              &lt;/Pressable&gt;
+            );
+          })}
+        &lt;/View&gt;
+      &lt;/ScrollView&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  calendar: { flex: 1, minWidth: 0, minHeight: 0 },
+  scroll: { flex: 1 },
+  weekHeader: { height: HEADER_HEIGHT, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: '#FAFBFD' },
+  weekDay: { width: '14.2857%', textAlign: 'center', color: colors.muted, fontSize: 12, fontWeight: '700' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+
+  cell: { width: '14.2857%', minHeight: 0, overflow: 'hidden', borderRightWidth: 1, borderBottomWidth: 1, borderColor: colors.border, padding: 6, backgroundColor: colors.white },
+  cellCentered: { alignItems: 'center', paddingHorizontal: 2 },
+  outside: { backgroundColor: '#FAFBFD' },
+  todayCell: { backgroundColor: TODAY_TINT },
+  selectedCell: { borderWidth: 1, borderColor: colors.primary, zIndex: 1 },
+
+  dayBadge: { alignSelf: 'flex-start', minWidth: 26, height: 26, paddingHorizontal: 4, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  dayBadgeCentered: { alignSelf: 'center' },
+  dayBadgeToday: { backgroundColor: colors.primary },
+  dayNumber: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
+  outsideText: { color: '#A5AEC0' },
+  todayText: { color: colors.primaryText },
+
+  events: { gap: 3, marginTop: 5 },
+  chip: { borderLeftWidth: 3, borderRadius: 5, paddingHorizontal: 5, paddingVertical: 3 },
+  chipText: { color: colors.text, fontSize: 10.5, fontWeight: '600' },
+  chipTime: { color: colors.muted, fontWeight: '700' },
+  more: { color: colors.primaryText, fontSize: 10.5, fontWeight: '800', paddingVertical: 2, paddingHorizontal: 2 },
+
+  dots: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 3, marginTop: 4 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  dotMore: { color: colors.muted, fontSize: 9, fontWeight: '800' },
+});
+  </file>
+  <file path="apps/client/src/calendar/DayCalendar.tsx">
+// // apps/client/src/calendar/DayCalendar.tsx
+// import React from 'react';
+// import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+// import { colors } from '@/theme/colors';
+// import { CALENDAR_CATEGORY_COLORS, CALENDAR_CATEGORY_LABELS, CalendarItem } from '@/types/calendar';
+// import { formatCalendarTime, overlapsIstDay } from './calendarDates';
+
+// type Props = { date: string; items: CalendarItem[]; onOpenItem: (item: CalendarItem) =&gt; void };
+
+// export default function DayCalendar({ date, items, onOpenItem }: Props) {
+//   const entries = items.filter(item =&gt; overlapsIstDay(item, date)); const allDay = entries.filter(item =&gt; item.allDay); const timed = entries.filter(item =&gt; !item.allDay).sort((a, b) =&gt; new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+//   return &lt;ScrollView contentContainerStyle={styles.body}&gt;{allDay.length ? &lt;View style={styles.section}&gt;&lt;Text style={styles.sectionTitle}&gt;All day&lt;/Text&gt;{allDay.map(item =&gt; &lt;DayEntry key={item.key} item={item} onOpen={onOpenItem} /&gt;)}&lt;/View&gt; : null}&lt;View style={styles.section}&gt;&lt;Text style={styles.sectionTitle}&gt;Timed&lt;/Text&gt;{timed.length ? timed.map(item =&gt; &lt;DayEntry key={item.key} item={item} onOpen={onOpenItem} /&gt;) : &lt;Text style={styles.empty}&gt;No entries for this day.&lt;/Text&gt;}&lt;/View&gt;&lt;/ScrollView&gt;;
+// }
+
+// function DayEntry({ item, onOpen }: { item: CalendarItem; onOpen: (item: CalendarItem) =&gt; void }) { return &lt;Pressable accessibilityRole="button" onPress={() =&gt; onOpen(item)} style={styles.entry}&gt;&lt;View style={[styles.marker, { backgroundColor: CALENDAR_CATEGORY_COLORS[item.category] }]} /&gt;&lt;View style={styles.content}&gt;&lt;Text style={styles.title}&gt;{item.title}&lt;/Text&gt;&lt;Text style={styles.meta}&gt;{item.allDay ? 'All day' : formatCalendarTime(item.startAt)} · {CALENDAR_CATEGORY_LABELS[item.category]}{item.status ? ` · ${item.status}` : ''}&lt;/Text&gt;&lt;/View&gt;&lt;/Pressable&gt;; }
+// const styles = StyleSheet.create({ body: { padding: 14, gap: 18 }, section: { gap: 8 }, sectionTitle: { color: colors.text, fontSize: 13, fontWeight: '800' }, entry: { flexDirection: 'row', gap: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 11, backgroundColor: colors.white }, marker: { width: 5, borderRadius: 3 }, content: { flex: 1, gap: 4 }, title: { color: colors.text, fontSize: 13, fontWeight: '800' }, meta: { color: colors.muted, fontSize: 11 }, empty: { color: colors.muted, fontSize: 13, paddingVertical: 20 } });
+
+
+// apps/client/src/calendar/DayCalendar.tsx
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
+import { CALENDAR_CATEGORY_COLORS, CalendarItem } from '@/types/calendar';
+import { formatCalendarTime, overlapsIstDay, todayIstKey } from './calendarDates';
+import { CategoryTag, EmptyState, IconName, SOFT, StatusTag, tint } from './calendarUi';
+
+type Props = { date: string; items: CalendarItem[]; onOpenItem: (item: CalendarItem) =&gt; void };
+
+export default function DayCalendar({ date, items, onOpenItem }: Props) {
+  const entries = items.filter(item =&gt; overlapsIstDay(item, date));
+  const allDay = entries.filter(item =&gt; item.allDay);
+  const timed = entries
+    .filter(item =&gt; !item.allDay)
+    .sort((a, b) =&gt; new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+
+  if (!entries.length) {
+    return (
+      &lt;ScrollView contentContainerStyle={styles.body}&gt;
+        &lt;EmptyState icon="calendar-clear-outline" title="Nothing scheduled" text="No entries for this day." /&gt;
+      &lt;/ScrollView&gt;
+    );
+  }
+
+  return (
+    &lt;ScrollView contentContainerStyle={styles.body}&gt;
+      {allDay.length ? (
+        &lt;View style={styles.section}&gt;
+          &lt;SectionTitle icon="sunny-outline" label="All day" count={allDay.length} /&gt;
+          {allDay.map(item =&gt; &lt;DayEntry key={item.key} item={item} onOpen={onOpenItem} /&gt;)}
+        &lt;/View&gt;
+      ) : null}
+
+      {timed.length ? (
+        &lt;View style={styles.section}&gt;
+          &lt;SectionTitle icon="time-outline" label="Timed" count={timed.length} /&gt;
+          {timed.map(item =&gt; &lt;DayEntry key={item.key} item={item} date={date} onOpen={onOpenItem} /&gt;)}
+        &lt;/View&gt;
+      ) : null}
+    &lt;/ScrollView&gt;
+  );
+}
+
+function SectionTitle({ icon, label, count }: { icon: IconName; label: string; count: number }) {
+  return (
+    &lt;View style={styles.sectionHeader}&gt;
+      &lt;Ionicons name={icon} size={15} color={colors.muted} /&gt;
+      &lt;Text style={styles.sectionTitle}&gt;{label}&lt;/Text&gt;
+      &lt;View style={styles.countPill}&gt;&lt;Text style={styles.countText}&gt;{count}&lt;/Text&gt;&lt;/View&gt;
+    &lt;/View&gt;
+  );
+}
+
+function DayEntry({ item, date, onOpen }: { item: CalendarItem; date?: string; onOpen: (item: CalendarItem) =&gt; void }) {
+  const color = CALENDAR_CATEGORY_COLORS[item.category];
+
+  // Timed entries get a time rail; entries that cross midnight say so instead of showing a misleading time.
+  let railStart = '';
+  let railEnd = '';
+  if (date &amp;&amp; !item.allDay) {
+    railStart = todayIstKey(new Date(item.startAt)) &lt; date ? 'Ongoing' : formatCalendarTime(item.startAt);
+    if (item.endAt) railEnd = todayIstKey(new Date(item.endAt)) &gt; date ? 'Continues' : formatCalendarTime(item.endAt);
+  }
+
+  return (
+    &lt;View style={styles.entryRow}&gt;
+      {date ? (
+        &lt;View style={styles.rail}&gt;
+          &lt;Text style={styles.railStart}&gt;{railStart}&lt;/Text&gt;
+          {railEnd ? &lt;Text style={styles.railEnd}&gt;{railEnd}&lt;/Text&gt; : null}
+        &lt;/View&gt;
+      ) : null}
+      &lt;Pressable
+        accessibilityRole="button"
+        accessibilityLabel={item.title}
+        onPress={() =&gt; onOpen(item)}
+        style={({ pressed }) =&gt; [styles.entry, { backgroundColor: tint(color, pressed ? '26' : '14'), borderLeftColor: color }]}
+      &gt;
+        &lt;Text style={styles.title}&gt;{item.title}&lt;/Text&gt;
+        &lt;View style={styles.tags}&gt;
+          &lt;CategoryTag category={item.category} /&gt;
+          {item.status ? &lt;StatusTag status={item.status} /&gt; : null}
+        &lt;/View&gt;
+      &lt;/Pressable&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  body: { padding: 16, gap: 22 },
+  section: { gap: 10 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sectionTitle: { color: colors.text, fontSize: 13.5, fontWeight: '800' },
+  countPill: { minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, backgroundColor: SOFT, alignItems: 'center', justifyContent: 'center' },
+  countText: { color: colors.muted, fontSize: 11, fontWeight: '800' },
+
+  entryRow: { flexDirection: 'row', alignItems: 'stretch', gap: 12 },
+  rail: { width: 64, paddingTop: 12, alignItems: 'flex-end', gap: 2 },
+  railStart: { color: colors.text, fontSize: 13, fontWeight: '800' },
+  railEnd: { color: colors.muted, fontSize: 11.5 },
+  entry: { flex: 1, minWidth: 0, gap: 8, paddingVertical: 12, paddingHorizontal: 14, borderLeftWidth: 4, borderRadius: 12 },
+  title: { color: colors.text, fontSize: 14, fontWeight: '800', lineHeight: 19 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+});
+  </file>
+  <file path="apps/client/src/calendar/CalendarList.tsx">
+// // apps/client/src/calendar/CalendarList.tsx
+// import React, { useMemo } from 'react';
+// import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+// import { colors } from '@/theme/colors';
+// import { CALENDAR_CATEGORY_COLORS, CALENDAR_CATEGORY_LABELS, CalendarItem } from '@/types/calendar';
+// import { formatCalendarDate, formatCalendarTime, itemRangeLabel, todayIstKey } from './calendarDates';
+
+// type Props = { items: CalendarItem[]; onOpenItem: (item: CalendarItem) =&gt; void };
+
+// export default function CalendarList({ items, onOpenItem }: Props) {
+//   const groups = useMemo(() =&gt; { const map = new Map&lt;string, CalendarItem[]&gt;(); [...items].sort((a, b) =&gt; new Date(a.startAt).getTime() - new Date(b.startAt).getTime() || a.key.localeCompare(b.key)).forEach(item =&gt; { const key = todayIstKey(new Date(item.startAt)); map.set(key, [...(map.get(key) ?? []), item]); }); return [...map.entries()]; }, [items]);
+//   if (!groups.length) return &lt;View style={styles.empty}&gt;&lt;Text style={styles.emptyTitle}&gt;No calendar entries&lt;/Text&gt;&lt;Text style={styles.emptyText}&gt;There are no entries for this month.&lt;/Text&gt;&lt;/View&gt;;
+//   return &lt;ScrollView contentContainerStyle={styles.body}&gt;{groups.map(([date, rows]) =&gt; &lt;View key={date} style={styles.group}&gt;&lt;Text style={styles.date}&gt;{formatCalendarDate(rows[0].startAt)}&lt;/Text&gt;{rows.map(item =&gt; &lt;Pressable key={item.key} accessibilityRole="button" onPress={() =&gt; onOpenItem(item)} style={styles.row}&gt;&lt;View style={[styles.dot, { backgroundColor: CALENDAR_CATEGORY_COLORS[item.category] }]} /&gt;&lt;View style={styles.main}&gt;&lt;Text style={styles.title}&gt;{item.title}&lt;/Text&gt;&lt;Text style={styles.meta}&gt;{item.allDay ? 'All day' : formatCalendarTime(item.startAt)} · {CALENDAR_CATEGORY_LABELS[item.category]}{item.endAt ? ` · ${itemRangeLabel(item)}` : ''}{item.status ? ` · ${item.status}` : ''}&lt;/Text&gt;&lt;/View&gt;&lt;/Pressable&gt;)}&lt;/View&gt;)}&lt;/ScrollView&gt;;
+// }
+
+// const styles = StyleSheet.create({ body: { padding: 14, gap: 18 }, group: { gap: 8 }, date: { color: colors.primaryText, fontSize: 13, fontWeight: '800' }, row: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 10 }, dot: { width: 9, height: 9, borderRadius: 5 }, main: { flex: 1, gap: 3 }, title: { color: colors.text, fontSize: 13, fontWeight: '700' }, meta: { color: colors.muted, fontSize: 11 }, empty: { padding: 32, alignItems: 'center', gap: 8 }, emptyTitle: { color: colors.text, fontWeight: '800', fontSize: 15 }, emptyText: { color: colors.muted, fontSize: 12 } });
+
+// apps/client/src/calendar/CalendarList.tsx
+import React, { useMemo } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
+import { CALENDAR_CATEGORY_COLORS, CalendarItem } from '@/types/calendar';
+import { addDays, dateKeyToUtc, formatCalendarTime, itemRangeLabel, parseDateKey, todayIstKey } from './calendarDates';
+import { CategoryTag, EmptyState, StatusTag } from './calendarUi';
+
+type Props = { items: CalendarItem[]; onOpenItem: (item: CalendarItem) =&gt; void };
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// One readable "when" line per entry (the old version repeated the time and the range).
+function whenLabel(item: CalendarItem): string {
+  if (item.allDay) {
+    if (!item.endAt) return 'All day';
+    const startKey = todayIstKey(new Date(item.startAt));
+    const endKey = addDays(todayIstKey(new Date(item.endAt)), -1);
+    return startKey === endKey ? 'All day' : itemRangeLabel(item);
+  }
+  if (!item.endAt) return formatCalendarTime(item.startAt);
+  return todayIstKey(new Date(item.startAt)) === todayIstKey(new Date(item.endAt))
+    ? `${formatCalendarTime(item.startAt)} – ${formatCalendarTime(item.endAt)}`
+    : itemRangeLabel(item);
+}
+
+export default function CalendarList({ items, onOpenItem }: Props) {
+  const groups = useMemo(() =&gt; {
+    const map = new Map&lt;string, CalendarItem[]&gt;();
+    [...items]
+      .sort((a, b) =&gt; new Date(a.startAt).getTime() - new Date(b.startAt).getTime() || a.key.localeCompare(b.key))
+      .forEach(item =&gt; {
+        const key = todayIstKey(new Date(item.startAt));
+        map.set(key, [...(map.get(key) ?? []), item]);
+      });
+    return [...map.entries()];
+  }, [items]);
+
+  if (!groups.length) {
+    return (
+      &lt;ScrollView contentContainerStyle={styles.body}&gt;
+        &lt;EmptyState icon="calendar-clear-outline" title="No calendar entries" text="There are no entries for this month." /&gt;
+      &lt;/ScrollView&gt;
+    );
+  }
+
+  const today = todayIstKey();
+
+  return (
+    &lt;ScrollView contentContainerStyle={styles.body}&gt;
+      {groups.map(([date, rows]) =&gt; {
+        const { day, month } = parseDateKey(date);
+        const weekday = WEEKDAYS[dateKeyToUtc(date).getUTCDay()];
+        const isToday = date === today;
+        return (
+          &lt;View key={date} style={styles.group}&gt;
+            &lt;View
+              accessible
+              accessibilityLabel={`${weekday} ${day} ${MONTHS[month - 1]}`}
+              style={[styles.badge, isToday &amp;&amp; styles.badgeToday]}
+            &gt;
+              &lt;Text style={[styles.badgeWeekday, isToday &amp;&amp; styles.badgeTodayText]}&gt;{weekday}&lt;/Text&gt;
+              &lt;Text style={[styles.badgeDay, isToday &amp;&amp; styles.badgeTodayText]}&gt;{day}&lt;/Text&gt;
+              &lt;Text style={[styles.badgeMonth, isToday &amp;&amp; styles.badgeTodayText]}&gt;{MONTHS[month - 1]}&lt;/Text&gt;
+            &lt;/View&gt;
+
+            &lt;View style={styles.items}&gt;
+              {rows.map(item =&gt; (
+                &lt;Pressable
+                  key={item.key}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.title}
+                  onPress={() =&gt; onOpenItem(item)}
+                  style={({ pressed }) =&gt; [styles.card, pressed &amp;&amp; styles.cardPressed]}
+                &gt;
+                  &lt;View style={[styles.bar, { backgroundColor: CALENDAR_CATEGORY_COLORS[item.category] }]} /&gt;
+                  &lt;View style={styles.main}&gt;
+                    &lt;Text style={styles.title}&gt;{item.title}&lt;/Text&gt;
+                    &lt;View style={styles.whenRow}&gt;
+                      &lt;Ionicons name="time-outline" size={13} color={colors.muted} /&gt;
+                      &lt;Text style={styles.when}&gt;{whenLabel(item)}&lt;/Text&gt;
+                    &lt;/View&gt;
+                    &lt;View style={styles.tags}&gt;
+                      &lt;CategoryTag category={item.category} /&gt;
+                      {item.status ? &lt;StatusTag status={item.status} /&gt; : null}
+                    &lt;/View&gt;
+                  &lt;/View&gt;
+                  &lt;Ionicons name="chevron-forward" size={16} color={colors.muted} /&gt;
+                &lt;/Pressable&gt;
+              ))}
+            &lt;/View&gt;
+          &lt;/View&gt;
+        );
+      })}
+    &lt;/ScrollView&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  body: { padding: 16, gap: 18 },
+  group: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+
+  badge: { width: 56, paddingVertical: 8, borderRadius: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white },
+  badgeToday: { backgroundColor: colors.primary, borderColor: colors.primary },
+  badgeWeekday: { color: colors.muted, fontSize: 11, fontWeight: '700' },
+  badgeDay: { color: colors.text, fontSize: 22, lineHeight: 27, fontWeight: '800' },
+  badgeMonth: { color: colors.muted, fontSize: 11, fontWeight: '700' },
+  badgeTodayText: { color: colors.primaryText },
+
+  items: { flex: 1, minWidth: 0, gap: 8 },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.white },
+  cardPressed: { backgroundColor: '#F7F9FC' },
+  bar: { alignSelf: 'stretch', width: 4, borderRadius: 2 },
+  main: { flex: 1, minWidth: 0, gap: 6 },
+  title: { color: colors.text, fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  whenRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  when: { color: colors.muted, fontSize: 12 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+});
+  </file>
+  <file path="apps/client/src/calendar/CalendarFilters.tsx">
+// // apps/client/src/calendar/CalendarFilters.tsx
+// import React from 'react';
+// import { Pressable, StyleSheet, Text, View } from 'react-native';
+// import { Ionicons } from '@expo/vector-icons';
+// import Button from '@/components/Button';
+// import { colors } from '@/theme/colors';
+// import { CALENDAR_CATEGORIES, CALENDAR_CATEGORY_COLORS, CALENDAR_CATEGORY_LABELS, CalendarCategory } from '@/types/calendar';
+
+// type Props = { selected: CalendarCategory[]; onToggle: (category: CalendarCategory) =&gt; void; onAdd: () =&gt; void };
+
+// export default function CalendarFilters({ selected, onToggle, onAdd }: Props) {
+//   return &lt;View style={styles.panel}&gt;&lt;Button title="+ Add Event" onPress={onAdd} /&gt;&lt;Text style={styles.title}&gt;Show&lt;/Text&gt;{CALENDAR_CATEGORIES.map(category =&gt; { const checked = selected.includes(category); return &lt;Pressable key={category} accessibilityRole="checkbox" accessibilityState={{ checked }} onPress={() =&gt; onToggle(category)} style={styles.filter}&gt;&lt;View style={[styles.checkbox, checked &amp;&amp; { backgroundColor: CALENDAR_CATEGORY_COLORS[category], borderColor: CALENDAR_CATEGORY_COLORS[category] }]}&gt;{checked ? &lt;Ionicons name="checkmark" size={13} color={colors.white} /&gt; : null}&lt;/View&gt;&lt;View style={[styles.dot, { backgroundColor: CALENDAR_CATEGORY_COLORS[category] }]} /&gt;&lt;Text style={[styles.label, !checked &amp;&amp; styles.disabled]}&gt;{CALENDAR_CATEGORY_LABELS[category]}&lt;/Text&gt;&lt;/Pressable&gt;;})}&lt;/View&gt;;
+// }
+
+// const styles = StyleSheet.create({ panel: { width: 190, padding: 12, gap: 10, borderRightWidth: 1, borderRightColor: colors.border, backgroundColor: colors.white }, title: { color: colors.muted, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', marginTop: 8 }, filter: { minHeight: 30, flexDirection: 'row', alignItems: 'center', gap: 8 }, checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }, dot: { width: 8, height: 8, borderRadius: 4 }, label: { color: colors.text, fontSize: 13, fontWeight: '600' }, disabled: { color: colors.muted } });
+
+
+// apps/client/src/calendar/CalendarFilters.tsx
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import Button from '@/components/Button';
+import { colors } from '@/theme/colors';
+import { CALENDAR_CATEGORIES, CALENDAR_CATEGORY_COLORS, CALENDAR_CATEGORY_LABELS, CalendarCategory } from '@/types/calendar';
+import { tint } from './calendarUi';
+
+type Props = {
+  selected: CalendarCategory[];
+  onToggle: (category: CalendarCategory) =&gt; void;
+  onAdd: () =&gt; void;
+  layout?: 'sidebar' | 'bar'; // presentation only: 'bar' is used on narrow screens
+};
+
+export default function CalendarFilters({ selected, onToggle, onAdd, layout = 'sidebar' }: Props) {
+  if (layout === 'bar') {
+    return (
+      &lt;View style={styles.bar}&gt;
+        &lt;Button title="+ Add Event" onPress={onAdd} /&gt;
+        &lt;ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.barScroll} contentContainerStyle={styles.barContent}&gt;
+          {CALENDAR_CATEGORIES.map(category =&gt; {
+            const checked = selected.includes(category);
+            const color = CALENDAR_CATEGORY_COLORS[category];
+            return (
+              &lt;Pressable
+                key={category}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked }}
+                onPress={() =&gt; onToggle(category)}
+                style={[styles.pill, checked &amp;&amp; { backgroundColor: tint(color, '1A'), borderColor: tint(color, '66') }]}
+              &gt;
+                &lt;View style={[styles.pillDot, checked ? { backgroundColor: color } : { borderWidth: 1.5, borderColor: color }]} /&gt;
+                &lt;Text style={[styles.pillText, !checked &amp;&amp; styles.muted]}&gt;{CALENDAR_CATEGORY_LABELS[category]}&lt;/Text&gt;
+              &lt;/Pressable&gt;
+            );
+          })}
+        &lt;/ScrollView&gt;
+      &lt;/View&gt;
+    );
+  }
+
+  return (
+    &lt;View style={styles.panel}&gt;
+      &lt;Button title="+ Add Event" onPress={onAdd} /&gt;
+      &lt;View style={styles.divider} /&gt;
+      &lt;Text style={styles.title}&gt;Show&lt;/Text&gt;
+      {CALENDAR_CATEGORIES.map(category =&gt; {
+        const checked = selected.includes(category);
+        const color = CALENDAR_CATEGORY_COLORS[category];
+        return (
+          &lt;Pressable
+            key={category}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked }}
+            onPress={() =&gt; onToggle(category)}
+            style={({ pressed }) =&gt; [styles.filter, pressed &amp;&amp; styles.filterPressed]}
+          &gt;
+            &lt;View style={[styles.checkbox, { borderColor: color }, checked &amp;&amp; { backgroundColor: color }]}&gt;
+              {checked ? &lt;Ionicons name="checkmark" size={14} color={colors.white} /&gt; : null}
+            &lt;/View&gt;
+            &lt;Text style={[styles.label, !checked &amp;&amp; styles.muted]}&gt;{CALENDAR_CATEGORY_LABELS[category]}&lt;/Text&gt;
+          &lt;/Pressable&gt;
+        );
+      })}
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  /* Sidebar */
+  panel: { width: 228, alignSelf: 'flex-start', padding: 14, gap: 4, borderWidth: 1, borderColor: colors.border, borderRadius: 16, backgroundColor: colors.white, boxShadow: '0 4px 14px rgba(11,47,125,0.07)' },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 12 },
+  title: { color: colors.muted, fontSize: 12, fontWeight: '700', marginBottom: 4, marginLeft: 6 },
+  filter: { minHeight: 40, paddingHorizontal: 6, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  filterPressed: { backgroundColor: '#F3F4F8' },
+  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  label: { color: colors.text, fontSize: 13.5, fontWeight: '600' },
+  muted: { color: colors.muted },
+
+  /* Compact bar */
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingLeft: 12, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
+  barScroll: { flex: 1 },
+  barContent: { alignItems: 'center', gap: 8, paddingRight: 12 },
+  pill: { height: 34, paddingHorizontal: 12, borderRadius: 17, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  pillDot: { width: 9, height: 9, borderRadius: 5 },
+  pillText: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
+});
+  </file>
+  <file path="apps/client/src/calendar/CalendarEventFormModal.tsx">
+// // apps/client/src/calendar/CalendarEventFormModal.tsx
+// import React, { useEffect, useState } from 'react';
+// import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+// import { Ionicons } from '@expo/vector-icons';
+// import Button from '@/components/Button';
+// import DateTimePickerModal from '@/components/DateTimePickerModal';
+// import { errorMessage } from '@/api/client';
+// import { colors } from '@/theme/colors';
+// import { CalendarEventInput, CalendarItem } from '@/types/calendar';
+// import { addDays, dateKeyToIstMidnightIso, dateTimeKeyToIstIso, formatCalendarTime, parseDateKey, todayIstKey } from './calendarDates';
+
+// type Props = { visible: boolean; selectedDate: string; event: CalendarItem | null; onClose: () =&gt; void; onSave: (data: CalendarEventInput) =&gt; Promise&lt;void&gt; };
+// type FormState = { title: string; category: CalendarEventInput['category']; description: string; allDay: boolean; startDate: string; endDate: string; startTime: string; endTime: string };
+// const requestKey = () =&gt; `cal_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+// const pickerValue = (date: string, time: string) =&gt; { const { year, month, day } = parseDateKey(date); return `${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year} ${time}`; };
+// const parsePicker = (value: string) =&gt; { const match = /^(\d{2})-(\d{2})-(\d{4}) (\d{2}:\d{2})$/.exec(value); return match ? { date: `${match[3]}-${match[2]}-${match[1]}`, time: match[4] } : null; };
+// const initial = (selectedDate: string, event: CalendarItem | null): FormState =&gt; {
+//   if (!event) return { title: '', category: 'EVENT', description: '', allDay: false, startDate: selectedDate, endDate: selectedDate, startTime: '10:00', endTime: '11:00' };
+//   const startDate = todayIstKey(new Date(event.startAt)); const endDate = event.endAt ? todayIstKey(new Date(event.endAt)) : startDate;
+//   return { title: event.title, category: event.category as CalendarEventInput['category'], description: event.description ?? '', allDay: event.allDay, startDate, endDate: event.allDay ? addDays(endDate, -1) : endDate, startTime: formatCalendarTime(event.startAt), endTime: event.endAt ? formatCalendarTime(event.endAt) : '11:00' };
+// };
+
+// export default function CalendarEventFormModal({ visible, selectedDate, event, onClose, onSave }: Props) {
+//   const [form, setForm] = useState&lt;FormState&gt;(() =&gt; initial(selectedDate, event)); const [picker, setPicker] = useState&lt;'startDate' | 'endDate' | 'startTime' | 'endTime' | null&gt;(null); const [error, setError] = useState(''); const [saving, setSaving] = useState(false);
+//   useEffect(() =&gt; { if (visible) { setForm(initial(selectedDate, event)); setPicker(null); setError(''); } }, [visible, selectedDate, event]);
+//   const set = &lt;K extends keyof FormState&gt;(key: K, value: FormState[K]) =&gt; setForm(old =&gt; ({ ...old, [key]: value }));
+//   async function save() {
+//     if (!form.title.trim()) return setError('Title is required.');
+//     if (form.endDate &lt; form.startDate) return setError('End date must be on or after start date.');
+//     const startAt = form.allDay ? dateKeyToIstMidnightIso(form.startDate) : dateTimeKeyToIstIso(form.startDate, form.startTime);
+//     const endAt = form.allDay ? dateKeyToIstMidnightIso(addDays(form.endDate, 1)) : dateTimeKeyToIstIso(form.endDate, form.endTime);
+//     if (new Date(endAt) &lt;= new Date(startAt)) return setError('End must be after start.');
+//     setSaving(true); setError('');
+//     try { await onSave({ title: form.title.trim(), category: form.category, description: form.description.trim() || null, startAt, endAt, allDay: form.allDay, timezone: 'Asia/Kolkata', ...(event ? { version: event.version ?? 1 } : { requestKey: requestKey() }) }); onClose(); } catch (cause) { setError(errorMessage(cause)); } finally { setSaving(false); }
+//   }
+//   const pickerDate = picker === 'endDate' || picker === 'endTime' ? form.endDate : form.startDate; const pickerTime = picker === 'startTime' ? form.startTime : picker === 'endTime' ? form.endTime : '12:00';
+//   return &lt;Modal visible={visible} transparent animationType="fade" onRequestClose={() =&gt; !saving &amp;&amp; onClose()}&gt;&lt;View style={styles.overlay}&gt;&lt;View style={styles.modal}&gt;&lt;View style={styles.header}&gt;&lt;Text style={styles.headerTitle}&gt;{event ? 'Edit Calendar Event' : 'Add Calendar Event'}&lt;/Text&gt;&lt;Pressable accessibilityRole="button" accessibilityLabel="Close event form" disabled={saving} onPress={onClose}&gt;&lt;Ionicons name="close" size={21} color={colors.primaryText} /&gt;&lt;/Pressable&gt;&lt;/View&gt;&lt;ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled"&gt;
+//     &lt;Field label="Title *" value={form.title} onChangeText={value =&gt; set('title', value)} /&gt;
+//     &lt;View style={styles.field}&gt;&lt;Text style={styles.label}&gt;Category&lt;/Text&gt;&lt;View style={styles.chips}&gt;{(['EVENT', 'HOLIDAY', 'SERVICE'] as CalendarEventInput['category'][]).map(value =&gt; &lt;Pressable key={value} onPress={() =&gt; set('category', value)} style={[styles.chip, form.category === value &amp;&amp; styles.chipActive]}&gt;&lt;Text style={[styles.chipText, form.category === value &amp;&amp; styles.chipTextActive]}&gt;{value[0] + value.slice(1).toLowerCase()}&lt;/Text&gt;&lt;/Pressable&gt;)}&lt;/View&gt;&lt;/View&gt;
+//     &lt;Field label="Description" value={form.description} onChangeText={value =&gt; set('description', value)} multiline /&gt;
+//     &lt;Pressable accessibilityRole="switch" accessibilityState={{ checked: form.allDay }} onPress={() =&gt; set('allDay', !form.allDay)} style={styles.toggleRow}&gt;&lt;View style={[styles.toggle, form.allDay &amp;&amp; styles.toggleActive]}&gt;&lt;View style={[styles.knob, form.allDay &amp;&amp; styles.knobActive]} /&gt;&lt;/View&gt;&lt;Text style={styles.toggleText}&gt;All day&lt;/Text&gt;&lt;/Pressable&gt;
+//     &lt;DateField label="Start date" value={form.startDate} onPress={() =&gt; setPicker('startDate')} /&gt;&lt;DateField label="End date" value={form.endDate} onPress={() =&gt; setPicker('endDate')} /&gt;
+//     {!form.allDay ? &lt;View style={styles.row}&gt;&lt;View style={styles.half}&gt;&lt;DateField label="Start time" value={form.startTime} onPress={() =&gt; setPicker('startTime')} time /&gt;&lt;/View&gt;&lt;View style={styles.half}&gt;&lt;DateField label="End time" value={form.endTime} onPress={() =&gt; setPicker('endTime')} time /&gt;&lt;/View&gt;&lt;/View&gt; : &lt;Text style={styles.helper}&gt;The end date is inclusive and will be stored as the next day at IST midnight.&lt;/Text&gt;}
+//     {error ? &lt;Text accessibilityRole="alert" style={styles.error}&gt;{error}&lt;/Text&gt; : null}
+//   &lt;/ScrollView&gt;&lt;View style={styles.footer}&gt;&lt;Button title="Cancel" variant="outline" onPress={onClose} disabled={saving} /&gt;&lt;Button title={event ? 'Save Changes' : 'Save Event'} onPress={() =&gt; { void save(); }} loading={saving} /&gt;&lt;/View&gt;&lt;/View&gt;&lt;/View&gt;&lt;DateTimePickerModal visible={!!picker} value={picker ? pickerValue(pickerDate, pickerTime) : ''} title={picker?.includes('Time') ? 'Choose Time' : picker === 'endDate' ? 'Choose End Date' : 'Choose Start Date'} onSelect={value =&gt; { const parsed = parsePicker(value); if (!parsed || !picker) return; if (picker === 'startDate' || picker === 'endDate') set(picker, parsed.date); else set(picker, parsed.time); setPicker(null); }} onClose={() =&gt; setPicker(null)} /&gt;&lt;/Modal&gt;;
+// }
+
+// function Field({ label, value, onChangeText, multiline = false }: { label: string; value: string; onChangeText: (value: string) =&gt; void; multiline?: boolean }) { return &lt;View style={styles.field}&gt;&lt;Text style={styles.label}&gt;{label}&lt;/Text&gt;&lt;TextInput value={value} onChangeText={onChangeText} style={[styles.input, multiline &amp;&amp; styles.multiline]} multiline={multiline} placeholderTextColor={colors.muted} /&gt;&lt;/View&gt;; }
+// function DateField({ label, value, onPress, time = false }: { label: string; value: string; onPress: () =&gt; void; time?: boolean }) { return &lt;View style={styles.field}&gt;&lt;Text style={styles.label}&gt;{label}&lt;/Text&gt;&lt;Pressable onPress={onPress} style={styles.dateField}&gt;&lt;Ionicons name={time ? 'time-outline' : 'calendar-outline'} size={17} color={colors.primaryText} /&gt;&lt;Text style={styles.dateText}&gt;{value}&lt;/Text&gt;&lt;/Pressable&gt;&lt;/View&gt;; }
+// const styles = StyleSheet.create({ overlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 14 }, modal: { width: '100%', maxWidth: 600, maxHeight: '92%', backgroundColor: colors.white, borderRadius: 10, overflow: 'hidden' }, header: { backgroundColor: colors.primary, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, headerTitle: { color: colors.primaryText, fontSize: 16, fontWeight: '800' }, body: { padding: 16, gap: 13 }, field: { gap: 5 }, label: { color: colors.text, fontSize: 12, fontWeight: '800' }, input: { borderWidth: 1, borderColor: colors.border, borderRadius: 7, minHeight: 42, paddingHorizontal: 11, paddingVertical: 9, color: colors.text }, multiline: { minHeight: 82, textAlignVertical: 'top' }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 7, paddingHorizontal: 11, paddingVertical: 8 }, chipActive: { backgroundColor: colors.primary, borderColor: colors.primary }, chipText: { color: colors.muted, fontSize: 12, fontWeight: '700' }, chipTextActive: { color: colors.primaryText }, toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 9 }, toggle: { width: 42, height: 24, borderRadius: 12, backgroundColor: '#DCE3F0', padding: 3 }, toggleActive: { backgroundColor: colors.accent }, knob: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.white }, knobActive: { alignSelf: 'flex-end' }, toggleText: { color: colors.text, fontSize: 13, fontWeight: '700' }, row: { flexDirection: 'row', gap: 10 }, half: { flex: 1 }, dateField: { minHeight: 42, borderWidth: 1, borderColor: colors.border, borderRadius: 7, paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', gap: 8 }, dateText: { color: colors.text, fontSize: 13, fontWeight: '600' }, helper: { color: colors.muted, fontSize: 11 }, error: { color: colors.danger, backgroundColor: colors.dangerSoft, padding: 9, borderRadius: 6, fontSize: 12 }, footer: { borderTopWidth: 1, borderTopColor: colors.border, padding: 14, flexDirection: 'row', justifyContent: 'flex-end', gap: 9 } });
+
+
+// apps/client/src/calendar/CalendarEventFormModal.tsx
+import React, { useEffect, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import Button from '@/components/Button';
+import DateTimePickerModal from '@/components/DateTimePickerModal';
+import { errorMessage } from '@/api/client';
+import { colors } from '@/theme/colors';
+import { CALENDAR_CATEGORY_COLORS, CalendarEventInput, CalendarItem } from '@/types/calendar';
+import { addDays, dateKeyToIstMidnightIso, dateTimeKeyToIstIso, formatCalendarTime, formatDateKey, parseDateKey, todayIstKey } from './calendarDates';
+import { SURFACE, tint } from './calendarUi';
+
+type Props = { visible: boolean; selectedDate: string; event: CalendarItem | null; onClose: () =&gt; void; onSave: (data: CalendarEventInput) =&gt; Promise&lt;void&gt; };
+type FormState = { title: string; category: CalendarEventInput['category']; description: string; allDay: boolean; startDate: string; endDate: string; startTime: string; endTime: string };
+
+const DANGER_SOFT = '#FFF1F0';
+const requestKey = () =&gt; `cal_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+const pickerValue = (date: string, time: string) =&gt; { const { year, month, day } = parseDateKey(date); return `${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year} ${time}`; };
+const parsePicker = (value: string) =&gt; { const match = /^(\d{2})-(\d{2})-(\d{4}) (\d{2}:\d{2})$/.exec(value); return match ? { date: `${match[3]}-${match[2]}-${match[1]}`, time: match[4] } : null; };
+const initial = (selectedDate: string, event: CalendarItem | null): FormState =&gt; {
+  if (!event) return { title: '', category: 'EVENT', description: '', allDay: false, startDate: selectedDate, endDate: selectedDate, startTime: '10:00', endTime: '11:00' };
+  const startDate = todayIstKey(new Date(event.startAt)); const endDate = event.endAt ? todayIstKey(new Date(event.endAt)) : startDate;
+  return { title: event.title, category: event.category as CalendarEventInput['category'], description: event.description ?? '', allDay: event.allDay, startDate, endDate: event.allDay ? addDays(endDate, -1) : endDate, startTime: formatCalendarTime(event.startAt), endTime: event.endAt ? formatCalendarTime(event.endAt) : '11:00' };
+};
+
+export default function CalendarEventFormModal({ visible, selectedDate, event, onClose, onSave }: Props) {
+  const [form, setForm] = useState&lt;FormState&gt;(() =&gt; initial(selectedDate, event));
+  const [picker, setPicker] = useState&lt;'startDate' | 'endDate' | 'startTime' | 'endTime' | null&gt;(null);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() =&gt; { if (visible) { setForm(initial(selectedDate, event)); setPicker(null); setError(''); } }, [visible, selectedDate, event]);
+
+  const set = &lt;K extends keyof FormState&gt;(key: K, value: FormState[K]) =&gt; setForm(old =&gt; ({ ...old, [key]: value }));
+
+  async function save() {
+    if (!form.title.trim()) return setError('Title is required.');
+    if (form.endDate &lt; form.startDate) return setError('End date must be on or after start date.');
+    const startAt = form.allDay ? dateKeyToIstMidnightIso(form.startDate) : dateTimeKeyToIstIso(form.startDate, form.startTime);
+    const endAt = form.allDay ? dateKeyToIstMidnightIso(addDays(form.endDate, 1)) : dateTimeKeyToIstIso(form.endDate, form.endTime);
+    if (new Date(endAt) &lt;= new Date(startAt)) return setError('End must be after start.');
+    setSaving(true); setError('');
+    try {
+      await onSave({ title: form.title.trim(), category: form.category, description: form.description.trim() || null, startAt, endAt, allDay: form.allDay, timezone: 'Asia/Kolkata', ...(event ? { version: event.version ?? 1 } : { requestKey: requestKey() }) });
+      onClose();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const pickerDate = picker === 'endDate' || picker === 'endTime' ? form.endDate : form.startDate;
+  const pickerTime = picker === 'startTime' ? form.startTime : picker === 'endTime' ? form.endTime : '12:00';
+
+  return (
+    &lt;Modal visible={visible} transparent animationType="fade" onRequestClose={() =&gt; !saving &amp;&amp; onClose()}&gt;
+      &lt;View style={styles.overlay}&gt;
+        &lt;View style={styles.modal}&gt;
+          &lt;View style={styles.header}&gt;
+            &lt;View style={styles.headerText}&gt;
+              &lt;Text style={styles.headerTitle}&gt;{event ? 'Edit Calendar Event' : 'Add Calendar Event'}&lt;/Text&gt;
+            &lt;/View&gt;
+            &lt;Pressable accessibilityRole="button" accessibilityLabel="Close event form" disabled={saving} onPress={onClose} hitSlop={8} style={styles.closeButton}&gt;
+              &lt;Ionicons name="close" size={20} color={colors.primaryText} /&gt;
+            &lt;/Pressable&gt;
+          &lt;/View&gt;
+
+          &lt;ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled"&gt;
+            &lt;Field label="Title *" value={form.title} onChangeText={value =&gt; set('title', value)} /&gt;
+
+            &lt;View style={styles.field}&gt;
+              &lt;Text style={styles.label}&gt;Category&lt;/Text&gt;
+              &lt;View style={styles.chips}&gt;
+                {(['EVENT', 'HOLIDAY', 'SERVICE'] as CalendarEventInput['category'][]).map(value =&gt; {
+                  const active = form.category === value;
+                  const color = CALENDAR_CATEGORY_COLORS[value];
+                  return (
+                    &lt;Pressable
+                      key={value}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      onPress={() =&gt; set('category', value)}
+                      style={[styles.chip, active &amp;&amp; { backgroundColor: tint(color, '1A'), borderColor: color }]}
+                    &gt;
+                      &lt;View style={[styles.chipDot, { backgroundColor: color }]} /&gt;
+                      &lt;Text style={[styles.chipText, active &amp;&amp; styles.chipTextActive]}&gt;{value[0] + value.slice(1).toLowerCase()}&lt;/Text&gt;
+                      {active ? &lt;Ionicons name="checkmark" size={14} color={color} /&gt; : null}
+                    &lt;/Pressable&gt;
+                  );
+                })}
+              &lt;/View&gt;
+            &lt;/View&gt;
+
+            &lt;Field label="Description" value={form.description} onChangeText={value =&gt; set('description', value)} multiline /&gt;
+
+            {/* Everything about "when" lives in one panel */}
+            &lt;View style={styles.panel}&gt;
+              &lt;Pressable accessibilityRole="switch" accessibilityState={{ checked: form.allDay }} onPress={() =&gt; set('allDay', !form.allDay)} style={styles.toggleRow}&gt;
+                &lt;View style={styles.toggleLabel}&gt;
+                  &lt;Ionicons name="sunny-outline" size={17} color={colors.muted} /&gt;
+                  &lt;Text style={styles.toggleText}&gt;All day&lt;/Text&gt;
+                &lt;/View&gt;
+                &lt;View style={[styles.toggle, form.allDay &amp;&amp; styles.toggleActive]}&gt;&lt;View style={[styles.knob, form.allDay &amp;&amp; styles.knobActive]} /&gt;&lt;/View&gt;
+              &lt;/Pressable&gt;
+
+              &lt;View style={styles.row}&gt;
+                &lt;View style={styles.half}&gt;&lt;DateField label="Start date" value={form.startDate} onPress={() =&gt; setPicker('startDate')} /&gt;&lt;/View&gt;
+                &lt;View style={styles.half}&gt;&lt;DateField label="End date" value={form.endDate} onPress={() =&gt; setPicker('endDate')} /&gt;&lt;/View&gt;
+              &lt;/View&gt;
+
+              {!form.allDay ? (
+                &lt;View style={styles.row}&gt;
+                  &lt;View style={styles.half}&gt;&lt;DateField label="Start time" value={form.startTime} onPress={() =&gt; setPicker('startTime')} time /&gt;&lt;/View&gt;
+                  &lt;View style={styles.half}&gt;&lt;DateField label="End time" value={form.endTime} onPress={() =&gt; setPicker('endTime')} time /&gt;&lt;/View&gt;
+                &lt;/View&gt;
+              ) : (
+                &lt;View style={styles.helperRow}&gt;
+                  &lt;Ionicons name="information-circle-outline" size={15} color={colors.muted} /&gt;
+                  &lt;Text style={styles.helper}&gt;The end date is inclusive and will be stored as the next day at IST midnight.&lt;/Text&gt;
+                &lt;/View&gt;
+              )}
+            &lt;/View&gt;
+
+            {error ? (
+              &lt;View accessibilityRole="alert" style={styles.errorBox}&gt;
+                &lt;Ionicons name="alert-circle-outline" size={17} color={colors.danger} /&gt;
+                &lt;Text style={styles.error}&gt;{error}&lt;/Text&gt;
+              &lt;/View&gt;
+            ) : null}
+          &lt;/ScrollView&gt;
+
+          &lt;View style={styles.footer}&gt;
+            &lt;Button title="Cancel" variant="outline" onPress={onClose} disabled={saving} /&gt;
+            &lt;Button title={event ? 'Save Changes' : 'Save Event'} onPress={() =&gt; { void save(); }} loading={saving} /&gt;
+          &lt;/View&gt;
+        &lt;/View&gt;
+      &lt;/View&gt;
+
+      &lt;DateTimePickerModal
+        visible={!!picker}
+        value={picker ? pickerValue(pickerDate, pickerTime) : ''}
+        title={picker?.includes('Time') ? 'Choose Time' : picker === 'endDate' ? 'Choose End Date' : 'Choose Start Date'}
+        onSelect={value =&gt; {
+          const parsed = parsePicker(value);
+          if (!parsed || !picker) return;
+          if (picker === 'startDate' || picker === 'endDate') set(picker, parsed.date); else set(picker, parsed.time);
+          setPicker(null);
+        }}
+        onClose={() =&gt; setPicker(null)}
+      /&gt;
+    &lt;/Modal&gt;
+  );
+}
+
+function Field({ label, value, onChangeText, multiline = false }: { label: string; value: string; onChangeText: (value: string) =&gt; void; multiline?: boolean }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    &lt;View style={styles.field}&gt;
+      &lt;Text style={styles.label}&gt;{label}&lt;/Text&gt;
+      &lt;TextInput
+        value={value}
+        onChangeText={onChangeText}
+        onFocus={() =&gt; setFocused(true)}
+        onBlur={() =&gt; setFocused(false)}
+        style={[styles.input, multiline &amp;&amp; styles.multiline, focused &amp;&amp; styles.inputFocused]}
+        multiline={multiline}
+        placeholderTextColor={colors.muted}
+      /&gt;
+    &lt;/View&gt;
+  );
+}
+
+function DateField({ label, value, onPress, time = false }: { label: string; value: string; onPress: () =&gt; void; time?: boolean }) {
+  return (
+    &lt;View style={styles.field}&gt;
+      &lt;Text style={styles.label}&gt;{label}&lt;/Text&gt;
+      &lt;Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${time ? value : formatDateKey(value)}`} onPress={onPress} style={({ pressed }) =&gt; [styles.dateField, pressed &amp;&amp; styles.dateFieldPressed]}&gt;
+        &lt;Ionicons name={time ? 'time-outline' : 'calendar-outline'} size={17} color={colors.primaryText} /&gt;
+        &lt;Text style={styles.dateText}&gt;{time ? value : formatDateKey(value)}&lt;/Text&gt;
+      &lt;/Pressable&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 14 },
+  modal: { width: '100%', maxWidth: 600, maxHeight: '92%', backgroundColor: colors.white, borderRadius: 16, overflow: 'hidden', boxShadow: '0 16px 40px rgba(14,27,61,0.24)' },
+
+  header: { backgroundColor: colors.primary, paddingVertical: 14, paddingLeft: 20, paddingRight: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  headerText: { flex: 1 },
+  headerTitle: { color: colors.primaryText, fontSize: 17, fontWeight: '800' },
+  closeButton: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.22)' },
+
+  body: { padding: 20, gap: 16 },
+  field: { gap: 6 },
+  label: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, color: colors.text, fontSize: 14, backgroundColor: colors.white },
+  inputFocused: { borderColor: colors.primary },
+  multiline: { minHeight: 88, textAlignVertical: 'top' },
+
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { height: 38, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border, borderRadius: 19, flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: colors.white },
+  chipDot: { width: 8, height: 8, borderRadius: 4 },
+  chipText: { color: colors.muted, fontSize: 13, fontWeight: '700' },
+  chipTextActive: { color: colors.text },
+
+  panel: { padding: 14, gap: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: SURFACE },
+  toggleRow: { minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  toggleLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  toggleText: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  toggle: { width: 44, height: 26, borderRadius: 13, backgroundColor: '#DCE3F0', padding: 3 },
+  toggleActive: { backgroundColor: colors.accent },
+  knob: { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.white },
+  knobActive: { alignSelf: 'flex-end' },
+
+  row: { flexDirection: 'row', gap: 10 },
+  half: { flex: 1, minWidth: 0 },
+  dateField: { minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.white },
+  dateFieldPressed: { backgroundColor: '#F3F4F8' },
+  dateText: { color: colors.text, fontSize: 13.5, fontWeight: '600', flexShrink: 1 },
+  helperRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  helper: { flex: 1, color: colors.muted, fontSize: 12, lineHeight: 17 },
+
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 11, borderRadius: 10, backgroundColor: colors.dangerSoft ?? DANGER_SOFT },
+  error: { flex: 1, color: colors.danger, fontSize: 12.5 },
+
+  footer: { borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+});
+  </file>
+  <file path="apps/client/src/calendar/CalendarItemDetailsModal.tsx">
+// // apps/client/src/calendar/CalendarItemDetailsModal.tsx
+// import React, { useState } from 'react';
+// import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+// import { Ionicons } from '@expo/vector-icons';
+// import { useRouter } from 'expo-router';
+// import ConfirmDialog from '@/components/ConfirmDialog';
+// import Button from '@/components/Button';
+// import { errorMessage } from '@/api/client';
+// import { colors } from '@/theme/colors';
+// import { CALENDAR_CATEGORY_COLORS, CALENDAR_CATEGORY_LABELS, CalendarItem } from '@/types/calendar';
+// import { formatCalendarDate, formatCalendarTime, itemRangeLabel } from './calendarDates';
+
+// type Props = { item: CalendarItem | null; onClose: () =&gt; void; onEdit: (item: CalendarItem) =&gt; void; onDelete: (item: CalendarItem) =&gt; Promise&lt;void&gt; };
+
+// export default function CalendarItemDetailsModal({ item, onClose, onEdit, onDelete }: Props) {
+//   const router = useRouter(); const [confirm, setConfirm] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+//   if (!item) return null;
+//   const currentItem = item;
+//   const sourceLabel = currentItem.source === 'CALENDAR_EVENT' ? 'Calendar event' : currentItem.source === 'LEAD_FOLLOWUP' ? 'Lead follow-up' : currentItem.source === 'REMINDER' ? 'Reminder' : 'Meeting';
+//   function openSource() { if (currentItem.leadId) { router.push({ pathname: '/lead/[id]', params: { id: currentItem.leadId, section: currentItem.source === 'LEAD_FOLLOWUP' ? 'followups' : currentItem.source === 'REMINDER' ? 'reminders' : 'meetings' } }); } else if (currentItem.source === 'REMINDER') router.push('/reminders'); else if (currentItem.source === 'MEETING') router.push('/meetings'); }
+//   async function remove() { setBusy(true); setError(''); try { await onDelete(currentItem); setConfirm(false); onClose(); } catch (cause) { setError(errorMessage(cause)); } finally { setBusy(false); } }
+//   return &lt;&gt;&lt;Modal visible transparent animationType="fade" onRequestClose={onClose}&gt;&lt;View style={styles.overlay}&gt;&lt;View style={styles.modal}&gt;&lt;View style={styles.header}&gt;&lt;Text style={styles.title}&gt;Calendar Details&lt;/Text&gt;&lt;Pressable accessibilityRole="button" onPress={onClose}&gt;&lt;Ionicons name="close" size={21} color={colors.primaryText} /&gt;&lt;/Pressable&gt;&lt;/View&gt;&lt;ScrollView contentContainerStyle={styles.body}&gt;&lt;View style={styles.titleRow}&gt;&lt;View style={[styles.dot, { backgroundColor: CALENDAR_CATEGORY_COLORS[currentItem.category] }]} /&gt;&lt;Text style={styles.eventTitle}&gt;{currentItem.title}&lt;/Text&gt;&lt;/View&gt;&lt;Detail label="Category" value={CALENDAR_CATEGORY_LABELS[currentItem.category]} /&gt;&lt;Detail label="Source" value={sourceLabel} /&gt;&lt;Detail label="When" value={currentItem.allDay ? itemRangeLabel(currentItem) : currentItem.endAt ? itemRangeLabel(currentItem) : `${formatCalendarDate(currentItem.startAt)} ${formatCalendarTime(currentItem.startAt)}`} /&gt;&lt;Detail label="Status" value={currentItem.status ?? '—'} /&gt;&lt;Detail label="Description" value={currentItem.description || '—'} /&gt;{error ? &lt;Text accessibilityRole="alert" style={styles.error}&gt;{error}&lt;/Text&gt; : null}&lt;/ScrollView&gt;&lt;View style={styles.footer}&gt;{currentItem.editable ? &lt;&gt;&lt;Button title="Edit" variant="outline" onPress={() =&gt; onEdit(currentItem)} /&gt;&lt;Button title="Delete" variant="danger" onPress={() =&gt; setConfirm(true)} /&gt;&lt;/&gt; : currentItem.source !== 'CALENDAR_EVENT' ? &lt;Button title="Open source" variant="outline" onPress={openSource} /&gt; : null}&lt;Button title="Close" onPress={onClose} /&gt;&lt;/View&gt;&lt;/View&gt;&lt;/View&gt;&lt;/Modal&gt;&lt;ConfirmDialog visible={confirm} title="Delete calendar event?" message="This event will be archived and removed from the calendar." loading={busy} onCancel={() =&gt; setConfirm(false)} onConfirm={() =&gt; { void remove(); }} /&gt;&lt;/&gt;;
+// }
+
+// function Detail({ label, value }: { label: string; value: string }) { return &lt;View style={styles.detail}&gt;&lt;Text style={styles.label}&gt;{label}&lt;/Text&gt;&lt;Text style={styles.value}&gt;{value}&lt;/Text&gt;&lt;/View&gt;; }
+// const styles = StyleSheet.create({ overlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 14 }, modal: { width: '100%', maxWidth: 560, maxHeight: '88%', backgroundColor: colors.white, borderRadius: 10, overflow: 'hidden' }, header: { backgroundColor: colors.primary, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, title: { color: colors.primaryText, fontSize: 16, fontWeight: '800' }, body: { padding: 16, gap: 13 }, titleRow: { flexDirection: 'row', alignItems: 'center', gap: 9 }, dot: { width: 10, height: 10, borderRadius: 5 }, eventTitle: { flex: 1, color: colors.text, fontSize: 17, fontWeight: '800' }, detail: { gap: 4 }, label: { color: colors.muted, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }, value: { color: colors.text, fontSize: 13 }, error: { color: colors.danger, backgroundColor: colors.dangerSoft, padding: 9, borderRadius: 6, fontSize: 12 }, footer: { borderTopWidth: 1, borderTopColor: colors.border, padding: 14, flexDirection: 'row', justifyContent: 'flex-end', gap: 9, flexWrap: 'wrap' } });
+
+// apps/client/src/calendar/CalendarItemDetailsModal.tsx
+import React, { useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import Button from '@/components/Button';
+import { errorMessage } from '@/api/client';
+import { colors } from '@/theme/colors';
+import { CALENDAR_CATEGORY_COLORS, CalendarItem } from '@/types/calendar';
+import { formatCalendarDate, formatCalendarTime, itemRangeLabel } from './calendarDates';
+import { CategoryTag, IconName, SOFT, SURFACE, prettyStatus, tint } from './calendarUi';
+
+type Props = { item: CalendarItem | null; onClose: () =&gt; void; onEdit: (item: CalendarItem) =&gt; void; onDelete: (item: CalendarItem) =&gt; Promise&lt;void&gt; };
+
+export default function CalendarItemDetailsModal({ item, onClose, onEdit, onDelete }: Props) {
+  const router = useRouter();
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  if (!item) return null;
+  const currentItem = item;
+  const color = CALENDAR_CATEGORY_COLORS[currentItem.category];
+  const sourceLabel = currentItem.source === 'CALENDAR_EVENT' ? 'Calendar event' : currentItem.source === 'LEAD_FOLLOWUP' ? 'Lead follow-up' : currentItem.source === 'REMINDER' ? 'Reminder' : 'Meeting';
+
+  function openSource() {
+    if (currentItem.leadId) {
+      router.push({ pathname: '/lead/[id]', params: { id: currentItem.leadId, section: currentItem.source === 'LEAD_FOLLOWUP' ? 'followups' : currentItem.source === 'REMINDER' ? 'reminders' : 'meetings' } });
+    } else if (currentItem.source === 'REMINDER') router.push('/reminders');
+    else if (currentItem.source === 'MEETING') router.push('/meetings');
+  }
+
+  async function remove() {
+    setBusy(true);
+    setError('');
+    try {
+      await onDelete(currentItem);
+      setConfirm(false);
+      onClose();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const when = currentItem.allDay
+    ? itemRangeLabel(currentItem)
+    : currentItem.endAt
+      ? itemRangeLabel(currentItem)
+      : `${formatCalendarDate(currentItem.startAt)} ${formatCalendarTime(currentItem.startAt)}`;
+
+  return (
+    &lt;&gt;
+      &lt;Modal visible transparent animationType="fade" onRequestClose={onClose}&gt;
+        &lt;View style={styles.overlay}&gt;
+          &lt;View style={styles.modal}&gt;
+            &lt;View style={styles.header}&gt;
+              &lt;Text style={styles.title}&gt;Calendar Details&lt;/Text&gt;
+              &lt;Pressable accessibilityRole="button" accessibilityLabel="Close details" onPress={onClose} hitSlop={8} style={styles.closeButton}&gt;
+                &lt;Ionicons name="close" size={20} color={colors.primaryText} /&gt;
+              &lt;/Pressable&gt;
+            &lt;/View&gt;
+
+            &lt;ScrollView contentContainerStyle={styles.body}&gt;
+              &lt;View style={[styles.hero, { backgroundColor: tint(color, '14'), borderLeftColor: color }]}&gt;
+                &lt;Text style={styles.eventTitle}&gt;{currentItem.title}&lt;/Text&gt;
+                &lt;View style={styles.tags}&gt;
+                  &lt;CategoryTag category={currentItem.category} /&gt;
+                  &lt;View style={styles.sourceTag}&gt;&lt;Text style={styles.sourceText}&gt;{sourceLabel}&lt;/Text&gt;&lt;/View&gt;
+                &lt;/View&gt;
+              &lt;/View&gt;
+
+              &lt;View style={styles.infoCard}&gt;
+                &lt;InfoRow icon="time-outline" label="When" value={when} /&gt;
+                &lt;View style={styles.rowDivider} /&gt;
+                &lt;InfoRow icon="flag-outline" label="Status" value={currentItem.status ? prettyStatus(currentItem.status) : '—'} /&gt;
+                &lt;View style={styles.rowDivider} /&gt;
+                &lt;InfoRow icon="document-text-outline" label="Description" value={currentItem.description || '—'} /&gt;
+              &lt;/View&gt;
+
+              {error ? (
+                &lt;View accessibilityRole="alert" style={styles.errorBox}&gt;
+                  &lt;Ionicons name="alert-circle-outline" size={17} color={colors.danger} /&gt;
+                  &lt;Text style={styles.error}&gt;{error}&lt;/Text&gt;
+                &lt;/View&gt;
+              ) : null}
+            &lt;/ScrollView&gt;
+
+            &lt;View style={styles.footer}&gt;
+              {currentItem.editable ? (
+                &lt;&gt;
+                  &lt;Button title="Edit" variant="outline" onPress={() =&gt; onEdit(currentItem)} /&gt;
+                  &lt;Button title="Delete" variant="danger" onPress={() =&gt; setConfirm(true)} /&gt;
+                &lt;/&gt;
+              ) : currentItem.source !== 'CALENDAR_EVENT' ? (
+                &lt;Button title="Open source" variant="outline" onPress={openSource} /&gt;
+              ) : null}
+              &lt;Button title="Close" onPress={onClose} /&gt;
+            &lt;/View&gt;
+          &lt;/View&gt;
+        &lt;/View&gt;
+      &lt;/Modal&gt;
+
+      &lt;ConfirmDialog
+        visible={confirm}
+        title="Delete calendar event?"
+        message="This event will be archived and removed from the calendar."
+        loading={busy}
+        onCancel={() =&gt; setConfirm(false)}
+        onConfirm={() =&gt; { void remove(); }}
+      /&gt;
+    &lt;/&gt;
+  );
+}
+
+function InfoRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+  return (
+    &lt;View style={styles.infoRow}&gt;
+      &lt;View style={styles.infoIcon}&gt;&lt;Ionicons name={icon} size={16} color={colors.primaryText} /&gt;&lt;/View&gt;
+      &lt;View style={styles.infoText}&gt;
+        &lt;Text style={styles.label}&gt;{label}&lt;/Text&gt;
+        &lt;Text style={styles.value}&gt;{value}&lt;/Text&gt;
+      &lt;/View&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 14 },
+  modal: { width: '100%', maxWidth: 560, maxHeight: '88%', backgroundColor: colors.white, borderRadius: 16, overflow: 'hidden', boxShadow: '0 16px 40px rgba(14,27,61,0.24)' },
+
+  header: { backgroundColor: colors.primary, paddingVertical: 14, paddingLeft: 20, paddingRight: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  title: { color: colors.primaryText, fontSize: 17, fontWeight: '800' },
+  closeButton: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.22)' },
+
+  body: { padding: 20, gap: 16 },
+  hero: { gap: 10, paddingVertical: 14, paddingHorizontal: 16, borderLeftWidth: 5, borderRadius: 14 },
+  eventTitle: { color: colors.text, fontSize: 19, fontWeight: '800', lineHeight: 25 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  sourceTag: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: SOFT },
+  sourceText: { color: colors.muted, fontSize: 11, fontWeight: '700' },
+
+  infoCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: SURFACE, paddingHorizontal: 14 },
+  infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 13 },
+  infoIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
+  infoText: { flex: 1, minWidth: 0, gap: 3 },
+  rowDivider: { height: 1, backgroundColor: colors.border },
+  label: { color: colors.muted, fontSize: 12, fontWeight: '700' },
+  value: { color: colors.text, fontSize: 14, lineHeight: 20 },
+
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 11, borderRadius: 10, backgroundColor: colors.dangerSoft },
+  error: { flex: 1, color: colors.danger, fontSize: 12.5 },
+
+  footer: { borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' },
+});
+  </file>
+  <file path="apps/client/src/calendar/calendarDates.ts">
+// apps/client/src/calendar/calendarDates.ts
+import { CalendarItem, CalendarView } from '@/types/calendar';
+
+const IST_MINUTES = 330;
+const DAY_MS = 86400000;
+const pad = (value: number) =&gt; String(value).padStart(2, '0');
+
+export function todayIstKey(now = new Date()): string {
+  const shifted = new Date(now.getTime() + IST_MINUTES * 60000);
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
+}
+
+export function parseDateKey(key: string): { year: number; month: number; day: number } {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!match) throw new Error('Invalid calendar date key.');
+  return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+}
+
+export function dateKeyToUtc(key: string): Date { const { year, month, day } = parseDateKey(key); return new Date(Date.UTC(year, month - 1, day)); }
+export function dateKeyToIstMidnightIso(key: string): string { return new Date(dateKeyToUtc(key).getTime() - IST_MINUTES * 60000).toISOString(); }
+export function dateTimeKeyToIstIso(key: string, time: string): string { const [hour, minute] = time.split(':').map(Number); return new Date(dateKeyToUtc(key).getTime() + (hour * 60 + minute - IST_MINUTES) * 60000).toISOString(); }
+export function addDays(key: string, amount: number): string { const date = new Date(dateKeyToUtc(key).getTime() + amount * DAY_MS); return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`; }
+export function addMonths(key: string, amount: number): string { const { year, month, day } = parseDateKey(key); const index = year * 12 + month - 1 + amount; const nextYear = Math.floor(index / 12); const nextMonth = index % 12 + 1; const maxDay = new Date(Date.UTC(nextYear, nextMonth, 0)).getUTCDate(); return `${nextYear}-${pad(nextMonth)}-${pad(Math.min(day, maxDay))}`; }
+export function firstDayOfMonth(key: string): string { const { year, month } = parseDateKey(key); return `${year}-${pad(month)}-01`; }
+export function lastDayOfMonth(key: string): string { const { year, month } = parseDateKey(key); return `${year}-${pad(month)}-${pad(new Date(Date.UTC(year, month, 0)).getUTCDate())}`; }
+export function monthGridKeys(key: string): string[] { const first = firstDayOfMonth(key); const offset = dateKeyToUtc(first).getUTCDay(); const days = dateKeyToUtc(lastDayOfMonth(key)).getUTCDate(); const cells = Math.max(35, Math.ceil((offset + days) / 7) * 7); return Array.from({ length: cells }, (_, index) =&gt; addDays(first, index - offset)); }
+export function visibleRange(view: CalendarView, selected: string): { from: string; to: string } { if (view === 'day') return { from: dateKeyToIstMidnightIso(selected), to: dateKeyToIstMidnightIso(addDays(selected, 1)) }; if (view === 'list') { const first = firstDayOfMonth(selected); return { from: dateKeyToIstMidnightIso(first), to: dateKeyToIstMidnightIso(addDays(first, dateKeyToUtc(lastDayOfMonth(selected)).getUTCDate())) }; } const grid = monthGridKeys(selected); return { from: dateKeyToIstMidnightIso(grid[0]), to: dateKeyToIstMidnightIso(addDays(grid[grid.length - 1], 1)) }; }
+export function overlapsIstDay(item: CalendarItem, key: string): boolean { const from = dateKeyToIstMidnightIso(key); const to = dateKeyToIstMidnightIso(addDays(key, 1)); if (!item.endAt) return item.startAt &gt;= from &amp;&amp; item.startAt &lt; to; return item.startAt &lt; to &amp;&amp; item.endAt &gt; from; }
+export function formatMonthHeading(key: string): string { return new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(dateKeyToUtc(key)); }
+export function formatDayHeading(key: string): string { return new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(dateKeyToUtc(key)); }
+export function formatDateKey(key: string): string { return new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(dateKeyToUtc(key)); }
+export function formatCalendarTime(iso: string): string { return new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'Asia/Kolkata' }).format(new Date(iso)); }
+export function formatCalendarDate(iso: string): string { return new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(new Date(iso)); }
+export function itemRangeLabel(item: CalendarItem): string { if (item.allDay &amp;&amp; item.endAt) return `${formatDateKey(todayIstKey(new Date(item.startAt)))} – ${formatDateKey(addDays(todayIstKey(new Date(item.endAt)), -1))}`; if (!item.endAt) return formatCalendarTime(item.startAt); return `${formatCalendarDate(item.startAt)} ${formatCalendarTime(item.startAt)} – ${formatCalendarDate(item.endAt)} ${formatCalendarTime(item.endAt)}`; }
+
+  </file>
+  <file path="apps/client/src/calendar/calendarUi.tsx">
+// apps/client/src/calendar/calendarUi.tsx
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
+import { CALENDAR_CATEGORY_COLORS, CALENDAR_CATEGORY_LABELS, CalendarCategory } from '@/types/calendar';
+
+export type IconName = React.ComponentProps&lt;typeof Ionicons&gt;['name'];
+
+export const SURFACE = '#F7F9FC';
+export const SOFT = '#EEF3FA';
+export const TODAY_TINT = '#F2F7FF';
+
+// Appends an alpha byte to a 6-digit hex colour, so every tint stays inside the existing category palette.
+export const tint = (hex: string, alpha: string) =&gt; `${hex}${alpha}`;
+
+export function prettyStatus(status: string) {
+  const text = status.replace(/_/g, ' ').toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+export function CategoryTag({ category }: { category: CalendarCategory }) {
+  const color = CALENDAR_CATEGORY_COLORS[category];
+  return (
+    &lt;View style={[styles.tag, { backgroundColor: tint(color, '1A') }]}&gt;
+      &lt;View style={[styles.tagDot, { backgroundColor: color }]} /&gt;
+      &lt;Text style={styles.tagText}&gt;{CALENDAR_CATEGORY_LABELS[category]}&lt;/Text&gt;
+    &lt;/View&gt;
+  );
+}
+
+export function StatusTag({ status }: { status: string }) {
+  return (
+    &lt;View style={[styles.tag, { backgroundColor: SOFT }]}&gt;
+      &lt;Text style={[styles.tagText, { color: colors.muted }]}&gt;{prettyStatus(status)}&lt;/Text&gt;
+    &lt;/View&gt;
+  );
+}
+
+export function EmptyState({ icon, title, text }: { icon: IconName; title: string; text: string }) {
+  return (
+    &lt;View style={styles.empty}&gt;
+      &lt;View style={styles.emptyIcon}&gt;&lt;Ionicons name={icon} size={26} color={colors.primaryText} /&gt;&lt;/View&gt;
+      &lt;Text style={styles.emptyTitle}&gt;{title}&lt;/Text&gt;
+      &lt;Text style={styles.emptyText}&gt;{text}&lt;/Text&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  tag: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  tagDot: { width: 6, height: 6, borderRadius: 3 },
+  tagText: { color: colors.text, fontSize: 11, fontWeight: '700' },
+  empty: { alignItems: 'center', gap: 8, paddingVertical: 48, paddingHorizontal: 24 },
+  emptyIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  emptyText: { color: colors.muted, fontSize: 13, textAlign: 'center' },
+});
+
+  </file>
+  <file path="apps/client/src/types/calendar.ts">
+// apps/client/src/types/calendar.ts
+export type CalendarCategory = 'EVENT' | 'LEAD' | 'REMINDER' | 'MEETING' | 'HOLIDAY' | 'SERVICE';
+export type CalendarSource = 'CALENDAR_EVENT' | 'LEAD_FOLLOWUP' | 'REMINDER' | 'MEETING';
+export type CalendarView = 'month' | 'day' | 'list';
+
+export interface CalendarItem {
+  key: string;
+  sourceId: string;
+  source: CalendarSource;
+  category: CalendarCategory;
+  title: string;
+  description: string | null;
+  startAt: string;
+  endAt: string | null;
+  allDay: boolean;
+  leadId: string | null;
+  status: string | null;
+  version: number | null;
+  editable: boolean;
+}
+
+export interface CalendarItemsQuery { from: string; to: string; categories: CalendarCategory[] }
+export interface CalendarEventInput { title: string; category: 'EVENT' | 'HOLIDAY' | 'SERVICE'; description?: string | null; startAt: string; endAt: string; allDay: boolean; timezone: 'Asia/Kolkata'; requestKey?: string; version?: number }
+
+export const CALENDAR_CATEGORIES: CalendarCategory[] = ['EVENT', 'LEAD', 'REMINDER', 'MEETING', 'HOLIDAY', 'SERVICE'];
+export const CALENDAR_CATEGORY_LABELS: Record&lt;CalendarCategory, string&gt; = { EVENT: 'Event', LEAD: 'Lead', REMINDER: 'Reminder', MEETING: 'Meeting', HOLIDAY: 'Holiday', SERVICE: 'Service' };
+export const CALENDAR_CATEGORY_COLORS: Record&lt;CalendarCategory, string&gt; = { EVENT: '#F28A24', LEAD: '#1E9B68', REMINDER: '#7C5BC7', MEETING: '#D84B63', HOLIDAY: '#12A8C5', SERVICE: '#778196' };
+
+  </file>
+</repomix>

@@ -33,10 +33,4 @@ export const colors = {
   navHover: 'rgba(14,27,61,0.05)',
   purple: '#1D5FD6',
   purpleSoft: '#E4EFFD',
-  taskNew: '#1D5FD6',
-  taskFeedback: '#2BB5F5',
-  taskCompleted: '#1E7F5C',
-  taskRejected: '#B3261E',
-  taskProcessing: '#0B2F7D',
-  taskBadge: '#E4EFFD',
 };

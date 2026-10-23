@@ -7,7 +7,6 @@ import { CrmCoreModule } from './crm/crm-core.module';
 import { LeadActivitiesModule } from './lead-activities/lead-activities.module';
 import { SalesDocumentsModule } from './sales-documents/sales-documents.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { TasksModule } from './tasks/tasks.module';
 import { NotesModule } from './notes/notes.module';
 import { StandaloneActivitiesModule } from './standalone-activities/standalone-activities.module';
 import { CalendarModule } from './calendar/calendar.module';
@@ -17,6 +16,6 @@ import { LeaveModule } from './leave/leave.module';
 import { SettingsModule } from './settings/settings.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, CrmCoreModule, AuthModule, LeadsModule, LeadActivitiesModule, SalesDocumentsModule, NotificationsModule, TasksModule, NotesModule, StandaloneActivitiesModule, CalendarModule, CustomersModule, StaffModule, LeaveModule, SettingsModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, CrmCoreModule, AuthModule, LeadsModule, LeadActivitiesModule, SalesDocumentsModule, NotificationsModule, NotesModule, StandaloneActivitiesModule, CalendarModule, CustomersModule, StaffModule, LeaveModule, SettingsModule],
 })
 export class AppModule {}

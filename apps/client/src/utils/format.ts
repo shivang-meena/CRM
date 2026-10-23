@@ -58,8 +58,8 @@ export function crmDayRange(date = new Date()) {
   return { from: from.toISOString(), to: new Date(from.getTime() + 86400000).toISOString() };
 }
 
-export function formatMoney(value: string, currency = 'INR') {
-  const [whole, decimals = '00'] = value.split('.');
+export function formatMoney(value: string | number, currency = 'INR') {
+  const [whole, decimals = '00'] = String(value).split('.');
   const sign = whole.startsWith('-') ? '-' : '';
   const digits = whole.replace('-', '');
   const grouped = digits.length <= 3 ? digits : digits.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + digits.slice(-3);

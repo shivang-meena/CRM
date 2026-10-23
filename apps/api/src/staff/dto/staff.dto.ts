@@ -81,7 +81,6 @@ export class ListStaffQueryDto {
 
 export class StaffPermissionsDto {
   @IsOptional() @IsBoolean() lead?: boolean;
-  @IsOptional() @IsBoolean() task?: boolean;
   @IsOptional() @IsBoolean() reminder?: boolean;
   @IsOptional() @IsBoolean() meeting?: boolean;
   @IsOptional() @IsBoolean() note?: boolean;

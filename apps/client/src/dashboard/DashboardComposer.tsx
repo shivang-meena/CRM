@@ -18,7 +18,7 @@ export default function DashboardComposer({ kind, entry, defaultDate, onSave, on
   const [date, setDate] = useState(formatDateTime(entry?.date ?? defaultDate.toISOString()));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const label = kind === 'note' ? 'Note' : kind === 'task' ? 'Task' : kind === 'Events' ? 'Event' : kind;
+  const label = kind === 'note' ? 'Note' : kind === 'Events' ? 'Event' : kind;
 
   async function submit() {
     if (!text.trim()) { setError(`Enter your ${label.toLowerCase()}.`); return; }

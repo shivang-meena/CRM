@@ -81,6 +81,6 @@ export function useDeleteLead() {
   return useMutation({ mutationFn: async (id: string) => {
     const cached = qc.getQueryData<Lead>(['lead', id]) ?? qc.getQueriesData<Lead[]>({ queryKey: ['leads'] }).flatMap(([, rows]) => rows ?? []).find(row => row.id === id);
     await deleteLeadRequest(id, cached?.version ?? (await fetchLead(id)).version);
-    ['lead', 'lead-followups', 'lead-tasks', 'lead-reminders', 'lead-meetings', 'lead-documents', 'lead-document', 'lead-history', 'lead-sections-summary'].forEach(key => qc.removeQueries({ queryKey: [key, id] }));
+    ['lead', 'lead-followups', 'lead-reminders', 'lead-meetings', 'lead-documents', 'lead-document', 'lead-history', 'lead-sections-summary'].forEach(key => qc.removeQueries({ queryKey: [key, id] }));
   }, onSuccess: refresh });
 }

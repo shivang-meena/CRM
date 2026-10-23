@@ -62,7 +62,7 @@ export class CrmCoreService {
     }
   }
 
-  async cancelReminders(tx: Tx, leadId: string, target: { followUpId?: string; taskId?: string; meetingId?: string }, actor: Actor) {
+  async cancelReminders(tx: Tx, leadId: string, target: { followUpId?: string; meetingId?: string }, actor: Actor) {
     const rows = await tx.leadReminder.findMany({ where: { leadId, ...target, deletedAt: null, status: 'PENDING' } });
     for (const row of rows) {
       await tx.leadReminder.update({ where: { id: row.id }, data: {

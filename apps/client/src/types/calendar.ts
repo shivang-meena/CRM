@@ -1,3 +1,4 @@
+// apps/client/src/types/calendar.ts
 export type CalendarCategory = 'EVENT' | 'LEAD' | 'REMINDER' | 'MEETING' | 'HOLIDAY' | 'SERVICE';
 export type CalendarSource = 'CALENDAR_EVENT' | 'LEAD_FOLLOWUP' | 'REMINDER' | 'MEETING';
 export type CalendarView = 'month' | 'day' | 'list';

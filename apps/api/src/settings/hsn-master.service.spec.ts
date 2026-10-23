@@ -39,6 +39,8 @@ describe('HSN master invoice flow', () => {
   };
   const db = {
     hsnMaster: { findMany: jest.fn(), create: jest.fn(), update: jest.fn() },
+    serviceMaster: { findMany: jest.fn(), findFirst: jest.fn() },
+    productMaster: { findMany: jest.fn(), findFirst: jest.fn() },
   };
   const prisma = db as unknown as PrismaService;
   const service = new HsnMasterService(prisma);
@@ -63,6 +65,10 @@ describe('HSN master invoice flow', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     db.hsnMaster.findMany.mockResolvedValue([master]);
+    db.serviceMaster.findMany.mockResolvedValue([]);
+    db.serviceMaster.findFirst.mockResolvedValue(null);
+    db.productMaster.findMany.mockResolvedValue([]);
+    db.productMaster.findFirst.mockResolvedValue(null);
     db.hsnMaster.create.mockImplementation(
       ({ data }: { data: SaveHsnMasterDto }) =>
         Promise.resolve({ ...master, ...data }),
@@ -158,6 +164,53 @@ describe('HSN master invoice flow', () => {
         GstModeDto.IGST,
       ),
     ).rejects.toThrow('Select an active HSN');
+  });
+
+  it('resolves product masters and supports mixed service/product lines', async () => {
+    const product = { id: 'product-1', name: 'Keyboard', hsnSac: '8471', description: 'Computer keyboard', igstRate: 18, sgstRate: 9, cgstRate: 9, isActive: true };
+    const serviceEntry = { id: 'service-1', name: 'Consulting', hsnSac: '9983', description: 'Consulting', igstRate: 18, sgstRate: 9, cgstRate: 9, isActive: true };
+    db.productMaster.findMany.mockResolvedValue([product]);
+    db.serviceMaster.findMany.mockResolvedValue([serviceEntry]);
+    const resolved = await service.resolveItems([
+      { ...line, id: 'service-line', itemType: 'SERVICE', hsnMasterId: serviceEntry.id },
+      { ...line, id: 'product-line', itemType: 'PRODUCT', hsnMasterId: product.id, productName: 'Keyboard' },
+    ], GstModeDto.IGST);
+    expect(resolved.map((item) => [item.itemType, item.productName, item.hsnSac])).toEqual([
+      ['SERVICE', 'Consulting', '9983'],
+      ['PRODUCT', 'Keyboard', '8471'],
+    ]);
+  });
+
+  it('returns active invoice catalogue entries with category tags and no duplicate-code collapse', async () => {
+    db.serviceMaster.findMany.mockResolvedValue([{ id: 'service-1', name: 'Consulting', hsnSac: '9983', description: 'Consulting', igstRate: 18, sgstRate: 9, cgstRate: 9, isActive: true }]);
+    db.productMaster.findMany.mockResolvedValue([{ id: 'product-1', name: 'Keyboard', hsnSac: '9983', description: 'Keyboard', igstRate: 18, sgstRate: 9, cgstRate: 9, isActive: true }]);
+    db.hsnMaster.findMany.mockResolvedValue([{ ...master, code: '9983' }]);
+    const entries = await service.listInvoiceCatalog();
+    expect(entries.map((entry) => [entry.id, entry.itemType])).toEqual([
+      ['service-1', 'SERVICE'], ['product-1', 'PRODUCT'], ['hsn-1', 'LEGACY_HSN'],
+    ]);
+  });
+
+  it('retains typed source references for new non-GST lines while clearing tax snapshots', async () => {
+    const product = { id: 'product-1', name: 'Keyboard', hsnSac: '8471', description: 'Computer keyboard', igstRate: 18, sgstRate: 9, cgstRate: 9, isActive: true };
+    db.productMaster.findFirst.mockResolvedValue(product);
+    const resolved = await service.resolveItems([
+      { ...line, itemType: 'PRODUCT', hsnMasterId: product.id, hsnSac: '8471', igstRate: 18 },
+    ], GstModeDto.NON_GST);
+    expect(resolved[0]).toMatchObject({ itemType: 'PRODUCT', hsnMasterId: product.id, hsnSac: '', igstRate: 0, sgstRate: 0, cgstRate: 0 });
+  });
+
+  it('rejects an inactive product selected for a new GST line', async () => {
+    await expect(service.resolveItems([
+      { ...line, itemType: 'PRODUCT', hsnMasterId: 'inactive-product' },
+    ], GstModeDto.IGST)).rejects.toThrow('Select an active product');
+  });
+
+  it('requires an HSN/SAC code for a GST product', async () => {
+    db.productMaster.findMany.mockResolvedValue([{ id: 'product-1', name: 'Keyboard', hsnSac: '', description: '', igstRate: 18, sgstRate: 9, cgstRate: 9, isActive: true }]);
+    await expect(service.resolveItems([
+      { ...line, itemType: 'PRODUCT', hsnMasterId: 'product-1' },
+    ], GstModeDto.IGST)).rejects.toThrow('HSN/SAC code is required for Keyboard');
   });
 
   const savedLine = () =>

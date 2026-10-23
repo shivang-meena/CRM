@@ -172,7 +172,7 @@ export default function ServiceMasterEditor() {
     <View style={styles.card}>
       <View style={styles.heading}>
         <Text accessibilityRole="header" style={styles.title}>
-          Services & HSN Master
+          Service HSN
         </Text>
         <Text style={styles.hint}>
           Manage services with their corresponding HSN/SAC codes and GST rates (CGST, SGST, IGST) used across Leads and Invoices.

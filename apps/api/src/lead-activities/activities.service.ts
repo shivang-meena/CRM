@@ -6,10 +6,9 @@ import { ListQueryDto, VersionDto } from '../crm/crm.dto';
 import { activityPermissions, assertPermissions, hasPermission } from '../auth/permissions';
 import type { AuthenticatedUser, ModulePermission } from '../auth/permissions';
 
-export type ActivityKind = 'followups' | 'tasks' | 'meetings' | 'reminders';
+export type ActivityKind = 'followups' | 'meetings' | 'reminders';
 const config = {
   followups: { delegate: 'leadFollowUp', entity: 'FOLLOWUP', time: 'scheduledAt', pending: ['PENDING'], statuses: ['PENDING','COMPLETED','CANCELLED'], target: 'followUpId' },
-  tasks: { delegate: 'leadTask', entity: 'TASK', time: 'dueAt', pending: ['TODO','IN_PROGRESS'], statuses: ['TODO','IN_PROGRESS','COMPLETED','CANCELLED'], target: 'taskId' },
   meetings: { delegate: 'leadMeeting', entity: 'MEETING', time: 'startAt', pending: ['SCHEDULED'], statuses: ['SCHEDULED','COMPLETED','CANCELLED'], target: 'meetingId' },
   reminders: { delegate: 'leadReminder', entity: 'REMINDER', time: 'remindAt', pending: ['PENDING'], statuses: ['PENDING','TRIGGERED','DISMISSED','CANCELLED'], target: '' },
 } as const;
@@ -24,9 +23,8 @@ export class ActivitiesService {
   private fields(kind: ActivityKind, input: Record<string, any>) {
     const allowed = {
       followups: ['title','description','scheduledAt','channel','assignedTo'],
-      tasks: ['title','description','dueAt','priority','assignedTo','status'],
       meetings: ['title','agenda','startAt','endAt','timezone','mode','location','meetingUrl','attendees','assignedTo'],
-      reminders: ['title','message','remindAt','followUpId','taskId','meetingId'],
+      reminders: ['title','message','remindAt','followUpId','meetingId'],
     }[kind];
     const output: Record<string, any> = {};
     for (const key of allowed) if (input[key] !== undefined) {
@@ -38,10 +36,10 @@ export class ActivitiesService {
   private async validate(tx: Tx, kind: ActivityKind, leadId: string, row: Record<string, any>) {
     if (kind === 'meetings' && new Date(row.endAt) <= new Date(row.startAt)) throw new BadRequestException('Meeting end must be after its start.');
     if (kind !== 'reminders') return;
-    const targets = (['followUpId','taskId','meetingId'] as const).filter(k => row[k]);
+    const targets = (['followUpId','meetingId'] as const).filter(k => row[k]);
     if (targets.length > 1) throw new BadRequestException('Choose at most one linked activity.');
     if (targets.length) {
-      const target = targets[0], linkedKind = target === 'followUpId' ? 'followups' : target === 'taskId' ? 'tasks' : 'meetings';
+      const target = targets[0], linkedKind = target === 'followUpId' ? 'followups' : 'meetings';
       const linked = await this.db(tx, linkedKind).findFirst({ where: { id: row[target], leadId, deletedAt: null } });
       if (!linked || !(config[linkedKind].pending as readonly string[]).includes(linked.status)) throw new BadRequestException('The linked activity must be pending and belong to this lead.');
     }
@@ -51,7 +49,7 @@ export class ActivitiesService {
     if (leadId && !await this.prisma.lead.findFirst({ where: { id: leadId, deletedAt: null } })) throw new NotFoundException('Lead not found');
     const c = config[kind];
     if (query.status && !(c.statuses as readonly string[]).includes(query.status)) throw new BadRequestException('Invalid status filter');
-    if (query.priority && (kind !== 'tasks' || !['LOW','MEDIUM','HIGH'].includes(query.priority))) throw new BadRequestException('Invalid priority filter');
+    if (query.priority) throw new BadRequestException('Invalid priority filter');
     if (query.from && query.to && new Date(query.from) > new Date(query.to)) throw new BadRequestException('Date range is invalid');
     const now = new Date();
     const where: Record<string, any> = {
@@ -121,7 +119,7 @@ export class ActivitiesService {
       if (action === 'complete' && kind === 'reminders') throw new BadRequestException('Dismiss reminders instead.');
       if (action === 'dismiss' && (kind !== 'reminders' || !['PENDING','TRIGGERED'].includes(before.status))) throw new BadRequestException('This reminder cannot be dismissed.');
       const data = action === 'update' ? this.fields(kind, input) : {};
-      if (action === 'complete') Object.assign(data, { status: 'COMPLETED', completedAt: new Date(), ...(kind === 'tasks' ? {} : { outcome: input.outcome ?? null }) });
+      if (action === 'complete') Object.assign(data, { status: 'COMPLETED', completedAt: new Date(), outcome: input.outcome ?? null });
       if (action === 'cancel') data.status = 'CANCELLED';
       if (action === 'dismiss') Object.assign(data, { status: 'DISMISSED', dismissedAt: new Date() });
       if (action === 'delete') data.deletedAt = new Date();
@@ -154,13 +152,13 @@ export class ActivitiesService {
         if (!hasPermission(actor, activityPermissions[kind])) {
           counts[kind] = 0;
           pending[kind] = 0;
-          if (kind === 'tasks' || kind === 'followups') overdue[kind] = 0;
+          if (kind === 'followups') overdue[kind] = 0;
           continue;
         }
         const db = this.db(tx, kind), c = config[kind], base = { leadId, deletedAt: null };
         counts[kind] = await db.count({ where: base });
         pending[kind] = await db.count({ where: { ...base, status: { in: [...c.pending] } } });
-        if (kind === 'tasks' || kind === 'followups') overdue[kind] = await db.count({ where: { ...base, status: { in: [...c.pending] }, [c.time]: { lt: new Date() } } });
+        if (kind === 'followups') overdue[kind] = await db.count({ where: { ...base, status: { in: [...c.pending] }, [c.time]: { lt: new Date() } } });
       }
       counts.quotations = 0;
       counts.invoices = 0;
@@ -178,7 +176,7 @@ export class ActivitiesService {
   async history(leadId: string, query: ListQueryDto, actor: AuthenticatedUser) {
     if (!await this.prisma.lead.findFirst({ where: { id: leadId, deletedAt: null } })) throw new NotFoundException('Lead not found');
     const entityPermissions: Record<HistoryEntity, ModulePermission> = {
-      LEAD: 'lead', FOLLOWUP: 'lead', TASK: 'task', REMINDER: 'reminder',
+      LEAD: 'lead', FOLLOWUP: 'lead', REMINDER: 'reminder',
       MEETING: 'meeting', QUOTATION: 'invoice', INVOICE: 'invoice', PAYMENT: 'invoice',
     };
     const entityTypes = (Object.keys(entityPermissions) as HistoryEntity[])

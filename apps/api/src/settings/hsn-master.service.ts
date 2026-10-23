@@ -24,14 +24,30 @@ export class HsnMasterService {
     previousMode?: string,
   ): Promise<SalesDocumentItemInputDto[]> {
     if (mode === GstModeDto.NON_GST) {
-      return items.map((item) => ({
-        ...item,
-        hsnMasterId: undefined,
-        hsnDescription: '',
-        hsnSac: '',
-        igstRate: 0,
-        sgstRate: 0,
-        cgstRate: 0,
+      return Promise.all(items.map(async (item) => {
+        const saved = previous.find((row) => row.id === item.id);
+        const unchangedSource = saved
+          && previousMode === mode
+          && (saved.hsnMasterId || undefined) === item.hsnMasterId
+          && (saved.itemType || undefined) === item.itemType;
+        if (item.hsnMasterId && item.itemType && !unchangedSource) {
+          const source = item.itemType === 'SERVICE'
+            ? await this.prisma.serviceMaster.findFirst({ where: { id: item.hsnMasterId, isActive: true } })
+            : await this.prisma.productMaster.findFirst({ where: { id: item.hsnMasterId, isActive: true } });
+          if (!source) {
+            const legacy = await this.prisma.hsnMaster.findFirst({ where: { id: item.hsnMasterId, isActive: true } });
+            if (!legacy) throw new BadRequestException(`Select an active ${item.itemType.toLowerCase()} for ${item.productName}.`);
+          }
+        }
+        return {
+          ...item,
+          hsnMasterId: item.itemType ? item.hsnMasterId : undefined,
+          hsnDescription: '',
+          hsnSac: '',
+          igstRate: 0,
+          sgstRate: 0,
+          cgstRate: 0,
+        };
       }));
     }
 
@@ -43,7 +59,7 @@ export class HsnMasterService {
       ),
     ];
 
-    const [services, masters] = await Promise.all([
+    const [services, masters, products] = await Promise.all([
       this.prisma.serviceMaster
         ? this.prisma.serviceMaster.findMany({
             where: { id: { in: requestedIds }, isActive: true },
@@ -54,6 +70,7 @@ export class HsnMasterService {
             where: { id: { in: requestedIds }, isActive: true },
           })
         : Promise.resolve([] as HsnMaster[]),
+      this.prisma.productMaster.findMany({ where: { id: { in: requestedIds }, isActive: true } }),
     ]);
 
     return items.map((item) => {
@@ -62,6 +79,7 @@ export class HsnMasterService {
         saved &&
         mode === previousMode &&
         !item.applyHsnMaster &&
+        (saved.itemType || undefined) === item.itemType &&
         (saved.hsnMasterId || undefined) === item.hsnMasterId &&
         saved.hsnSac === item.hsnSac?.trim()
       ) {
@@ -75,19 +93,34 @@ export class HsnMasterService {
       }
 
       const service = services.find((row) => row.id === item.hsnMasterId);
-      if (service) {
+      const product = products.find((row) => row.id === item.hsnMasterId);
+      const master = masters.find((row) => row.id === item.hsnMasterId);
+      if ((item.itemType === 'SERVICE' && !service && !master) || (item.itemType === 'PRODUCT' && !product && !master)) {
+        throw new BadRequestException(`Select an active ${item.itemType.toLowerCase()} for ${item.productName}.`);
+      }
+      if (item.itemType === 'PRODUCT' && product) {
+        if (!product.hsnSac.trim()) {
+          throw new BadRequestException(`HSN/SAC code is required for ${product.name}.`);
+        }
         return {
-          ...item,
-          productName: item.productName || service.name,
+          ...item, productName: item.productName || product.name,
+          hsnSac: product.hsnSac || item.hsnSac || '',
+          hsnDescription: product.description || product.name,
+          igstRate: Number(product.igstRate), sgstRate: Number(product.sgstRate), cgstRate: Number(product.cgstRate),
+        };
+      }
+      if ((item.itemType === 'SERVICE' || !item.itemType) && service) {
+        if (!service.hsnSac.trim()) {
+          throw new BadRequestException(`HSN/SAC code is required for ${service.name}.`);
+        }
+        return {
+          ...item, productName: item.productName || service.name,
           hsnSac: service.hsnSac || item.hsnSac || '',
           hsnDescription: service.description || service.name,
-          igstRate: Number(service.igstRate),
-          sgstRate: Number(service.sgstRate),
-          cgstRate: Number(service.cgstRate),
+          igstRate: Number(service.igstRate), sgstRate: Number(service.sgstRate), cgstRate: Number(service.cgstRate),
         };
       }
 
-      const master = masters.find((row) => row.id === item.hsnMasterId);
       if (master) {
         return {
           ...item,
@@ -100,7 +133,7 @@ export class HsnMasterService {
       }
 
       throw new BadRequestException(
-        `Select an active HSN from HSN Master for ${item.productName || 'each item'}. Add master entries in Invoice Settings first.`,
+        `Select an active HSN from HSN Master for ${item.productName || 'each item'}. Add master entries in Master Data → Service HSN.`,
       );
     });
   }
@@ -147,6 +180,49 @@ export class HsnMasterService {
       }));
 
     return [...serviceList, ...standaloneHsns];
+  }
+
+  async listInvoiceCatalog() {
+    const [services, products, hsns] = await Promise.all([
+      this.prisma.serviceMaster.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } }),
+      this.prisma.productMaster.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } }),
+      this.prisma.hsnMaster.findMany({ where: { isActive: true }, orderBy: { code: 'asc' } }),
+    ]);
+    return [
+      ...services.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        code: entry.hsnSac || '',
+        description: entry.description || entry.name,
+        igstRate: Number(entry.igstRate),
+        sgstRate: Number(entry.sgstRate),
+        cgstRate: Number(entry.cgstRate),
+        isActive: entry.isActive,
+        itemType: 'SERVICE' as const,
+      })),
+      ...products.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        code: entry.hsnSac || '',
+        description: entry.description || entry.name,
+        igstRate: Number(entry.igstRate),
+        sgstRate: Number(entry.sgstRate),
+        cgstRate: Number(entry.cgstRate),
+        isActive: entry.isActive,
+        itemType: 'PRODUCT' as const,
+      })),
+      ...hsns.map((entry) => ({
+        id: entry.id,
+        name: entry.description,
+        code: entry.code,
+        description: entry.description,
+        igstRate: Number(entry.igstRate),
+        sgstRate: Number(entry.sgstRate),
+        cgstRate: Number(entry.cgstRate),
+        isActive: entry.isActive,
+        itemType: 'LEGACY_HSN' as const,
+      })),
+    ];
   }
 
   async save(data: SaveHsnMasterDto, id?: string) {

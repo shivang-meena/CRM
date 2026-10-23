@@ -3,7 +3,7 @@ import type { Lead } from '@/types/lead';
 export type ScheduleKind = 'Reminder' | 'Meeting' | 'Events';
 export type DashboardEntry = {
   id: string;
-  kind: 'note' | 'task' | ScheduleKind;
+  kind: 'note' | ScheduleKind;
   text: string;
   date: string | null;
   completed: boolean;
@@ -32,9 +32,11 @@ export function parseEntries(raw: string | null): DashboardEntry[] {
       !('entries' in saved) || !Array.isArray(saved.entries)) {
     throw new Error('Saved dashboard data could not be read.');
   }
-  const kinds = ['note', 'task', 'Reminder', 'Meeting', 'Events'];
+  const kinds = ['note', 'Reminder', 'Meeting', 'Events'];
   const ids = new Set<string>();
-  return saved.entries.map((entry: unknown) => {
+  return saved.entries.filter((entry: unknown) =>
+    !(entry && typeof entry === 'object' && 'kind' in entry && entry.kind === 'task'),
+  ).map((entry: unknown) => {
     if (!entry || typeof entry !== 'object' || !('id' in entry) || typeof entry.id !== 'string' ||
         !('kind' in entry) || typeof entry.kind !== 'string' || !kinds.includes(entry.kind) ||
         !('text' in entry) || typeof entry.text !== 'string' || !entry.text.trim() ||

@@ -16,8 +16,6 @@ import { fetchCompanyProfile, saveCompanyProfile } from "@/api/companyProfile";
 import { errorMessage } from "@/api/client";
 import { CompanyProfile, EMPTY_COMPANY_PROFILE } from "@/types/companyProfile";
 import CompanyLogo from "./CompanyLogo";
-import WebSettingsTabs from './WebSettingsTabs';
-import ServiceMasterEditor from './ServiceMasterEditor';
 import { INVOICE_COMPANY_PROFILE_KEY } from '@/hooks/useInvoiceCompanyProfile';
 import ProfileColorPicker from "./ProfileColorPicker";
 import {
@@ -227,7 +225,6 @@ function CompanyProfileForm({
       contentContainerStyle={styles.pageContent}
       keyboardShouldPersistTaps="handled"
     >
-      <WebSettingsTabs active="general" />
       <View style={styles.toolbar}>
         <View
           accessibilityRole="tab"
@@ -477,7 +474,6 @@ function CompanyProfileForm({
         </View>
 
       </View>
-      <ServiceMasterEditor />
     </ScrollView>
   );
 }

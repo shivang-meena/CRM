@@ -18,7 +18,6 @@ interface Props {
 
 const PERMISSION_CONFIG: Array<{ key: keyof StaffPermissions; label: string }> = [
   { key: 'lead', label: 'Lead' },
-  { key: 'task', label: 'Task' },
   { key: 'reminder', label: 'Reminder' },
   { key: 'meeting', label: 'Meeting' },
   { key: 'note', label: 'Note' },
@@ -37,7 +36,6 @@ export function StaffFormModal({ visible, mode, values, error, pending, onChange
   const togglePermission = (permKey: keyof StaffPermissions) => {
     const current = values.permissions ?? {
       lead: true,
-      task: true,
       reminder: true,
       meeting: true,
       note: true,

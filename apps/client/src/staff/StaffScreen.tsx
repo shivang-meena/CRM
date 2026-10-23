@@ -34,7 +34,6 @@ function validDate(value: string) {
 
 const defaultPermissions = {
   lead: true,
-  task: true,
   reminder: true,
   meeting: true,
   note: true,

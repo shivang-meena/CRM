@@ -7,7 +7,6 @@ import Stars from '@/components/Stars';
 import LeadDetailsModal from '@/components/lead/LeadDetailsModal';
 import LeadSectionTabs from '@/components/lead/LeadSectionTabs';
 import FollowUpsSection from '@/components/lead/FollowUpsSection';
-import TasksSection from '@/components/lead/TasksSection';
 import RemindersSection from '@/components/lead/RemindersSection';
 import MeetingsSection from '@/components/lead/MeetingsSection';
 import QuotationsSection from '@/components/lead/QuotationsSection';
@@ -55,6 +54,7 @@ export default function CustomerDetailsScreen() {
     ['Company Name', lead.companyName || '—'],
     ['Phone', lead.phone || '—'],
     ['Email Address', lead.email || '—'],
+    ['State', lead.state || '—'],
     ['Address', lead.address || '—'],
     ['Comment', lead.comment || '—'],
     ['Reference', lead.reference || '—'],
@@ -130,7 +130,6 @@ export default function CustomerDetailsScreen() {
         ) : (
           <View style={styles.section}>
             {section === 'followups' ? <FollowUpsSection leadId={lead.id} summary={summary.data} /> : null}
-            {section === 'tasks' ? <TasksSection leadId={lead.id} summary={summary.data} /> : null}
             {section === 'reminders' ? <RemindersSection leadId={lead.id} summary={summary.data} /> : null}
             {section === 'meetings' ? <MeetingsSection leadId={lead.id} summary={summary.data} /> : null}
             {section === 'history' ? <HistorySection leadId={lead.id} /> : null}

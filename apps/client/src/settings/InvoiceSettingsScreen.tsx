@@ -12,10 +12,8 @@ import type { InvoiceSettings, InvoiceSettingsPayload } from '@/types/nonGstInvo
 import { INVOICE_GST_SETTINGS_KEY } from '@/hooks/useInvoiceGstSettings';
 import { INVOICE_NON_GST_SETTINGS_KEY } from '@/hooks/useInvoiceNonGstSettings';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import WebSettingsTabs from './WebSettingsTabs';
 import GstSignatureUpload from './GstSignatureUpload';
 import { ProfileField, fieldStyles } from './ProfileFields';
-import ServiceMasterEditor from './ServiceMasterEditor';
 
 const KEY = ['settings', 'invoices'] as const;
 type Kind = 'gst' | 'nonGst';
@@ -219,7 +217,6 @@ function InvoiceSettingsForm({ initial }: { initial: InvoiceSettings }) {
   const resetSettings = resetKind ? saved[resetKind] : null;
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <WebSettingsTabs active="invoice" />
       <View style={styles.toolbar}>
         <Pressable
           accessibilityRole="button"
@@ -267,9 +264,9 @@ function InvoiceSettingsForm({ initial }: { initial: InvoiceSettings }) {
             </View>
             <View>
               <Text accessibilityRole="header" style={styles.title}>
-                Currency &amp; HSN Master
+                Invoice Currency
               </Text>
-              <Text style={styles.subtitle}>Set invoice currency and manage HSN/SAC master data.</Text>
+              <Text style={styles.subtitle}>Set the default currency for invoices.</Text>
             </View>
           </View>
         </View>
@@ -316,7 +313,6 @@ function InvoiceSettingsForm({ initial }: { initial: InvoiceSettings }) {
             ) : null}
           </View>
         </View>
-        <ServiceMasterEditor />
       </View>
       <ConfirmDialog
         visible={Boolean(resetKind)}

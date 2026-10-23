@@ -31,7 +31,7 @@ export class StandaloneActivitiesService {
     if (kind === 'meetings' && new Date(row.endAt) <= new Date(row.startAt)) {
       throw new BadRequestException('Meeting end must be after its start.');
     }
-    if (kind === 'reminders' && (row.followUpId || row.taskId || row.meetingId)) {
+    if (kind === 'reminders' && (row.followUpId || row.meetingId)) {
       throw new BadRequestException('Standalone reminders cannot be linked to a lead activity.');
     }
   }

@@ -29,7 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       where: { id: payload.sub, deletedAt: null, status: 'ACTIVE', canLoginApp: true },
       select: {
         id: true, firstName: true, lastName: true,
-        permLead: true, permTask: true, permReminder: true, permMeeting: true,
+        permLead: true, permReminder: true, permMeeting: true,
         permNote: true, permCalendar: true, permCustomer: true, permInvoice: true, permStaff: true, permLeave: true,
       },
     });
@@ -37,7 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       id: staff.id, name: `${staff.firstName} ${staff.lastName}`, role: 'staff',
       permissions: {
-        lead: staff.permLead, task: staff.permTask, reminder: staff.permReminder,
+        lead: staff.permLead, reminder: staff.permReminder,
         meeting: staff.permMeeting, note: staff.permNote, calendar: staff.permCalendar,
         customer: staff.permCustomer, invoice: staff.permInvoice, staff: staff.permStaff, leave: staff.permLeave,
       },

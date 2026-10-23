@@ -15,7 +15,7 @@ export function useCrmMutation<T>(leadId: string, fn: (input: T) => Promise<unkn
       ...['customers', 'customer', 'customer-by-lead'].map(key =>
         qc.invalidateQueries({ queryKey: [key] }),
       ),
-      ...['lead-followups','lead-tasks','lead-meetings','lead-reminders','lead-sections-summary','lead-history','lead-documents','lead-document','lead'].map(key => qc.invalidateQueries({ queryKey: [key, leadId] })),
+      ...['lead-followups','lead-meetings','lead-reminders','lead-sections-summary','lead-history','lead-documents','lead-document','lead'].map(key => qc.invalidateQueries({ queryKey: [key, leadId] })),
       qc.invalidateQueries({ queryKey: ['leads'] }), qc.invalidateQueries({ queryKey: ['dashboard-lead-activities'] }),
       qc.invalidateQueries({ queryKey: ['notifications'] }),
     ]);

@@ -26,7 +26,6 @@ export default function AppLayout() {
   const isUnauthorized = () => {
     if (role !== 'staff') return false;
     if (pathname.startsWith('/lead') && !permissions?.lead) return true;
-    if (pathname.startsWith('/tasks') && !permissions?.task) return true;
     if (pathname.startsWith('/reminders') && !permissions?.reminder) return true;
     if (pathname.startsWith('/meetings') && !permissions?.meeting) return true;
     if (pathname.startsWith('/notes') && !permissions?.note) return true;

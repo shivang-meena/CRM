@@ -544,15 +544,12 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useLeads } from '@/hooks/useLeads';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { useDashboardActivities } from '@/hooks/useLeadActivities';
-import { useDashboardStandaloneTasks, useTaskActions, useTaskLabels, useTaskSummary } from '@/hooks/useTasks';
-import { Task as StandaloneTask } from '@/types/task';
 import { ActivityRecord } from '@/types/leadActivities';
 import { errorMessage } from '@/api/client';
 import { crmDayRange, formatDateTime } from '@/utils/format';
 import type { LeadStatus } from '@/types/lead';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Button from '@/components/Button';
-import TaskFormModal from '@/components/tasks/TaskFormModal';
 import { colors } from '@/theme/colors';
 import DashboardPanel, { dashboardColors as palette, IconName } from './DashboardPanel';
 import DashboardComposer from './DashboardComposer';
@@ -566,7 +563,6 @@ const scheduleTabs: ScheduleKind[] = ['Reminder', 'Meeting', 'Events'];
 
 // Existing brand colours, reused as per-type accents so rows are scannable at a glance.
 const tones: Record<string, { color: string; soft: string }> = {
-  task: { color: '#1D5FD6', soft: '#E4EFFD' },
   Reminder: { color: '#2BB5F5', soft: '#E8F3FD' },
   Meeting: { color: '#0B2F7D', soft: '#E4EFFD' },
   Events: { color: '#1D5FD6', soft: '#E4EFFD' },
@@ -647,7 +643,7 @@ function IconButton({ label, icon, onPress, disabled, danger }: { label: string;
 }
 
 function KindIcon({ name, kind }: { name: IconName; kind: string }) {
-  const tone = tones[kind] ?? tones.task;
+  const tone = tones[kind] ?? tones.Reminder;
   return <View style={[styles.kindIcon, { backgroundColor: tone.soft }]}><Ionicons name={name} size={18} color={tone.color} /></View>;
 }
 
@@ -676,17 +672,13 @@ export default function Dashboard() {
     : leadTabs;
 
   const store = useDashboardEntries(userName);
-  const taskActions = useTaskActions();
-  const taskLabelsQuery = useTaskLabels();
   const [contentWidth, setContentWidth] = useState(0);
   const [now, setNow] = useState(() => new Date());
   const [leadTab, setLeadTab] = useState<LeadStatus>('NEW');
   const [selectedScheduleTab, setScheduleTab] = useState<ScheduleKind>('Reminder');
   const scheduleTab = visibleScheduleTabs.includes(selectedScheduleTab) ? selectedScheduleTab : visibleScheduleTabs[0] ?? 'Events';
-  const [taskTab, setTaskTab] = useState('Today');
   const [composer, setComposer] = useState<{ kind: DashboardEntry['kind']; entry?: DashboardEntry } | null>(null);
   const [deleteEntry, setDeleteEntry] = useState<DashboardEntry | null>(null);
-  const [standaloneTaskFormOpen, setStandaloneTaskFormOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
@@ -695,23 +687,14 @@ export default function Dashboard() {
 
   // Asia/Kolkata day boundaries for Today and Tomorrow
   const todayRange = crmDayRange(now);
-  const tomorrowIST = new Date(now.getTime() + 86400000);
-  const tomorrowRange = crmDayRange(tomorrowIST);
 
   // Backend lead activities queries
   const todayFollowUpsQuery = useDashboardActivities('followups', { from: todayRange.from, to: todayRange.to });
-  const todayTasksQuery = useDashboardActivities('tasks', { from: todayRange.from, to: todayRange.to });
-  const tomorrowTasksQuery = useDashboardActivities('tasks', { from: tomorrowRange.from, to: tomorrowRange.to });
-  const standaloneTodayQuery = useDashboardStandaloneTasks({ from: todayRange.from, to: todayRange.to });
-  const standaloneTomorrowQuery = useDashboardStandaloneTasks({ from: tomorrowRange.from, to: tomorrowRange.to });
-  const standaloneTodaySummaryQuery = useTaskSummary({ from: todayRange.from, to: todayRange.to });
-  const standaloneTomorrowSummaryQuery = useTaskSummary({ from: tomorrowRange.from, to: tomorrowRange.to });
   const backendRemindersQuery = useDashboardActivities('reminders', { status: 'PENDING' });
   const backendMeetingsQuery = useDashboardActivities('meetings', { status: 'SCHEDULED' });
 
   const leads = query.data ?? [];
   const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
-  const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
   const todaysLeads = leads.filter((lead) => isOnDay(lead.createdAt, now));
   const yesterdayCount = leads.filter((lead) => isOnDay(lead.createdAt, yesterday)).length;
   const change = yesterdayCount === 0 ? (todaysLeads.length ? null : 0) : (todaysLeads.length - yesterdayCount) / yesterdayCount * 100;
@@ -721,24 +704,11 @@ export default function Dashboard() {
   const visibleLeads = leads.filter((lead) => lead.status === leadTab || (lead.status && lead.status.toLowerCase() === activeTabLabel));
 
   // Local storage personal entries
-  const localTasks = store.entries.filter((entry) => entry.kind === 'task');
-  const localTodaysTasks = localTasks.filter((entry) => isOnDay(entry.date, now));
-  const localTomorrowTasks = localTasks.filter((entry) => isOnDay(entry.date, tomorrow));
   const localNotes = store.entries.filter((entry) => entry.kind === 'note');
   const localSchedules = store.entries.filter((entry) => entry.kind === scheduleTab).sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime());
 
-  // Server task items
-  const serverTodayTasks = todayTasksQuery.data?.items ?? [];
-  const serverTomorrowTasks = tomorrowTasksQuery.data?.items ?? [];
-  const standaloneTodayTasks = standaloneTodayQuery.data?.items ?? [];
-  const standaloneTomorrowTasks = standaloneTomorrowQuery.data?.items ?? [];
-
-  // Summary card counts combining server and local
   const followUpCount = todayFollowUpsQuery.isLoading ? null : (todayFollowUpsQuery.data?.total ?? 0);
   const followUpCompleted = todayFollowUpsQuery.data?.completed ?? 0;
-
-  const totalTasksCount = (store.ready ? localTodaysTasks.length : 0) + (todayTasksQuery.data?.total ?? 0) + (standaloneTodaySummaryQuery.data?.total ?? 0);
-  const totalTasksCompleted = localTodaysTasks.filter((entry) => entry.completed).length + (todayTasksQuery.data?.completed ?? 0) + (standaloneTodaySummaryQuery.data?.status.find(item => item.status === 'COMPLETED')?.total ?? 0);
 
   const ready = store.ready && !store.saving;
   const wide = contentWidth >= 760;
@@ -750,41 +720,20 @@ export default function Dashboard() {
   function refreshAll() {
     void query.refetch();
     void todayFollowUpsQuery.refetch();
-    void todayTasksQuery.refetch();
-    void standaloneTodayQuery.refetch();
-    void standaloneTodaySummaryQuery.refetch();
     setNow(new Date());
   }
 
   async function saveEntry(entry: DashboardEntry) {
     if (!canCompose(entry.kind)) return false;
     const saved = await store.save([entry, ...store.entries.filter((item) => item.id !== entry.id)]);
-    if (saved && entry.kind !== 'note' && entry.kind !== 'task') setScheduleTab(entry.kind);
+    if (saved && entry.kind !== 'note') setScheduleTab(entry.kind);
     return saved;
-  }
-
-  async function saveStandaloneTask(data: Record<string, unknown>) {
-    await taskActions.create.mutateAsync(data);
-    setStandaloneTaskFormOpen(false);
   }
 
   function entryRow(entry: DashboardEntry) {
     return (
       <View key={entry.id} style={styles.entryRow}>
-        {entry.kind === 'task' ? (
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityLabel={`Complete ${entry.text}`}
-            accessibilityState={{ checked: entry.completed, disabled: !ready }}
-            disabled={!ready}
-            onPress={() => { void saveEntry({ ...entry, completed: !entry.completed }); }}
-            style={styles.checkbox}
-          >
-            <Ionicons name={entry.completed ? 'checkbox' : 'square-outline'} size={22} color={palette.purple} />
-          </Pressable>
-        ) : (
-          <KindIcon name={entry.kind === 'Reminder' ? 'notifications-outline' : 'calendar-outline'} kind={entry.kind} />
-        )}
+        <KindIcon name={entry.kind === 'Reminder' ? 'notifications-outline' : 'calendar-outline'} kind={entry.kind} />
         <View style={styles.rowContent}>
           <Text numberOfLines={2} style={[styles.rowTitle, entry.completed && styles.completedText]}>{entry.text}</Text>
           <RowMeta when={formatDateTime(entry.date)} source="Personal" />
@@ -797,25 +746,25 @@ export default function Dashboard() {
     );
   }
 
-  function backendEntryRow(item: ActivityRecord, kind: 'task' | 'Reminder' | 'Meeting') {
+  function backendEntryRow(item: ActivityRecord, kind: 'Reminder' | 'Meeting') {
     return (
       <Pressable
         key={`backend-${item.id}`}
         accessibilityRole="button"
         accessibilityLabel={`Open ${item.title} for ${item.independent ? 'standalone activity' : item.lead?.name ?? 'lead'}`}
         onPress={() => item.independent || !canAccess('lead')
-          ? router.push(kind === 'task' ? '/tasks' : kind === 'Reminder' ? '/reminders' : '/meetings')
+          ? router.push(kind === 'Reminder' ? '/reminders' : '/meetings')
           : item.leadId ? router.push({
             pathname: '/lead/[id]',
             params: {
               id: item.leadId,
-              section: kind === 'task' ? 'tasks' : kind === 'Reminder' ? 'reminders' : 'meetings',
+              section: kind === 'Reminder' ? 'reminders' : 'meetings',
             },
           }) : undefined}
         style={({ pressed }) => [styles.entryRow, pressed && styles.pressed]}
       >
         <KindIcon
-          name={kind === 'task' ? 'checkbox-outline' : kind === 'Reminder' ? 'notifications-outline' : 'calendar-outline'}
+          name={kind === 'Reminder' ? 'notifications-outline' : 'calendar-outline'}
           kind={kind}
         />
         <View style={styles.rowContent}>
@@ -834,25 +783,6 @@ export default function Dashboard() {
     );
   }
 
-  function standaloneEntryRow(item: StandaloneTask) {
-    return (
-      <Pressable
-        key={`standalone-${item.id}`}
-        accessibilityRole="button"
-        accessibilityLabel={`Open ${item.subject}`}
-        onPress={() => router.push({ pathname: '/tasks', params: { taskId: item.id } })}
-        style={({ pressed }) => [styles.entryRow, pressed && styles.pressed]}
-      >
-        <KindIcon name="checkbox-outline" kind="task" />
-        <View style={styles.rowContent}>
-          <Text numberOfLines={2} style={styles.rowTitle}>{item.subject}</Text>
-          <RowMeta when={formatDateTime(item.endAt)} source="Standalone task" />
-        </View>
-        <Ionicons name="chevron-forward" size={16} color={palette.muted} />
-      </Pressable>
-    );
-  }
-
   return (
     <View style={styles.page} onLayout={(event) => setContentWidth(event.nativeEvent.layout.width)}>
       <View style={styles.topbar}>
@@ -864,7 +794,6 @@ export default function Dashboard() {
           <Pressable accessibilityRole="button" accessibilityLabel="Refresh dashboard" onPress={refreshAll} style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed]}>
             <Ionicons name="refresh-outline" size={18} color={palette.purple} />
           </Pressable>
-          {canAccess('task') ? <Button title="+ Add Task" onPress={() => setStandaloneTaskFormOpen(true)} /> : null}
         </View>
       </View>
 
@@ -873,7 +802,7 @@ export default function Dashboard() {
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
-            refreshing={query.isRefetching || todayFollowUpsQuery.isRefetching || standaloneTodayQuery.isRefetching}
+            refreshing={query.isRefetching || todayFollowUpsQuery.isRefetching}
             onRefresh={refreshAll}
             tintColor={palette.purple}
           />
@@ -914,15 +843,6 @@ export default function Dashboard() {
             color="#2BB5F5"
             soft="#E8F3FD"
             progressLabel="Completed Followup"
-          /> : null}
-          {canAccess('task') ? <SummaryCard
-            title="Today's Tasks"
-            icon="calendar-outline"
-            count={todayTasksQuery.isLoading && !store.ready ? null : totalTasksCount}
-            completed={totalTasksCompleted}
-            color="#0B2F7D"
-            soft="#E4EFFD"
-            progressLabel="Completed Task"
           /> : null}
         </View>
 
@@ -998,37 +918,9 @@ export default function Dashboard() {
           </View> : null}
         </View>
 
-        {/* Tasks & Sticky notes */}
-        {canAccess('task') || canAccess('note') ? <View style={[styles.panelRow, !wide && styles.stacked]}>
-          {canAccess('task') ? <View style={column}>
-            <DashboardPanel
-              title="Tasks"
-              icon="calendar-outline"
-              selected={taskTab}
-              onSelect={setTaskTab}
-              tabs={['Today', 'Tomorrow'].map((key) => {
-                const localCount = localTasks.filter((entry) => isOnDay(entry.date, key === 'Today' ? now : tomorrow)).length;
-                const serverCount = key === 'Today' ? (todayTasksQuery.data?.total ?? 0) + (standaloneTodaySummaryQuery.data?.total ?? 0) : (tomorrowTasksQuery.data?.total ?? 0) + (standaloneTomorrowSummaryQuery.data?.total ?? 0);
-                return { key, label: key, count: localCount + serverCount };
-              })}
-              action={<IconButton label="Add task" icon="add-outline" disabled={!ready} onPress={() => setComposer({ kind: 'task' })} />}
-              empty={
-                (taskTab === 'Today' ? !localTodaysTasks.length && !serverTodayTasks.length && !standaloneTodayTasks.length : !localTomorrowTasks.length && !serverTomorrowTasks.length && !standaloneTomorrowTasks.length)
-              }
-              loading={!store.ready && !store.error && (todayTasksQuery.isLoading || standaloneTodayQuery.isLoading || standaloneTodaySummaryQuery.isLoading)}
-              emptyMessage="There Are No Tasks to Display"
-            >
-              {taskTab === 'Today'
-                ? serverTodayTasks.map((t) => backendEntryRow(t, 'task'))
-                : serverTomorrowTasks.map((t) => backendEntryRow(t, 'task'))}
-              {taskTab === 'Today'
-                ? standaloneTodayTasks.map(standaloneEntryRow)
-                : standaloneTomorrowTasks.map(standaloneEntryRow)}
-              {(taskTab === 'Today' ? localTodaysTasks : localTomorrowTasks).map(entryRow)}
-            </DashboardPanel>
-          </View> : null}
-
-          {canAccess('note') ? <View style={column}>
+        {/* Sticky notes */}
+        {canAccess('note') ? <View style={[styles.panelRow, !wide && styles.stacked]}>
+          <View style={column}>
             <DashboardPanel
               title="Sticky Notes"
               icon="bookmark-outline"
@@ -1053,7 +945,7 @@ export default function Dashboard() {
                 ))}
               </View>
             </DashboardPanel>
-          </View> : null}
+          </View>
         </View> : null}
 
         <View style={styles.footer}>
@@ -1066,21 +958,11 @@ export default function Dashboard() {
           key={composer.entry?.id ?? composer.kind}
           kind={composer.kind}
           entry={composer.entry}
-          defaultDate={composer.kind === 'task' && taskTab === 'Tomorrow' ? tomorrow : now}
+          defaultDate={now}
           onSave={saveEntry}
           onClose={() => setComposer(null)}
         />
       ) : null}
-
-      <TaskFormModal
-        visible={standaloneTaskFormOpen && canAccess('task')}
-        task={null}
-        userName={userName}
-        labels={taskLabelsQuery.data ?? []}
-        onClose={() => setStandaloneTaskFormOpen(false)}
-        onSave={saveStandaloneTask}
-        onCreateLabel={(name, colour) => taskActions.createLabel.mutateAsync({ name, colour })}
-      />
 
       <ConfirmDialog
         visible={!!deleteEntry && canCompose(deleteEntry.kind)}

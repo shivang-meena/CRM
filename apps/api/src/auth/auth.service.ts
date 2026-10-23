@@ -38,7 +38,6 @@ export class AuthService {
 
     const permissions = {
       lead: staff.permLead,
-      task: staff.permTask,
       reminder: staff.permReminder,
       meeting: staff.permMeeting,
       note: staff.permNote,
@@ -88,7 +87,6 @@ export class AuthService {
 
     const permissions = {
       lead: staff.permLead,
-      task: staff.permTask,
       reminder: staff.permReminder,
       meeting: staff.permMeeting,
       note: staff.permNote,

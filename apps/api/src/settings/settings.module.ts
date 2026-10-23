@@ -9,6 +9,8 @@ import { HsnMasterController } from './hsn-master.controller';
 import { HsnMasterService } from './hsn-master.service';
 import { ServiceMasterController } from './service-master.controller';
 import { ServiceMasterService } from './service-master.service';
+import { ProductMasterController } from './product-master.controller';
+import { ProductMasterService } from './product-master.service';
 import { LeadStatusMasterController } from './lead-status-master.controller';
 import { LeadStatusMasterService } from './lead-status-master.service';
 
@@ -19,6 +21,7 @@ import { LeadStatusMasterService } from './lead-status-master.service';
     InvoiceSettingsController,
     HsnMasterController,
     ServiceMasterController,
+    ProductMasterController,
     LeadStatusMasterController,
   ],
   providers: [
@@ -27,6 +30,7 @@ import { LeadStatusMasterService } from './lead-status-master.service';
     NonGstInvoiceSettingsService,
     HsnMasterService,
     ServiceMasterService,
+    ProductMasterService,
     LeadStatusMasterService,
   ],
   exports: [

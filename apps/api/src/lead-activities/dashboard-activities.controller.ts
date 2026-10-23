@@ -11,10 +11,10 @@ import { StandaloneActivitiesService } from '../standalone-activities/standalone
 export class DashboardActivitiesController {
   constructor(private service: ActivitiesService, private standalone: StandaloneActivitiesService) {}
   @Get('lead-activities') list(@Query() query: ListQueryDto, @Req() req: { user: AuthenticatedUser }) {
-    if (!['followups','tasks','reminders','meetings'].includes(query.type ?? '')) throw new BadRequestException('Choose an activity type.');
+    if (!['followups','reminders','meetings'].includes(query.type ?? '')) throw new BadRequestException('Choose an activity type.');
     const kind = query.type as ActivityKind;
     assertPermissions(req.user, activityPermissions[kind]);
-    if (kind !== 'meetings' && kind !== 'reminders') return this.service.list(kind, undefined, query);
+    if (kind === 'followups') return this.service.list(kind, undefined, query);
     return Promise.all([
       this.service.listAll(kind, undefined, query),
       this.standalone.listAll(kind, query),

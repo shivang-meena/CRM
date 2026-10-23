@@ -29,7 +29,7 @@ export class SalesDocumentsController {
   constructor(private readonly service: SalesDocumentsService, private readonly hsnMaster: HsnMasterService) {}
 
   @Get('hsn-master')
-  listHsnMaster() { return this.hsnMaster.list(true); }
+  listHsnMaster() { return this.hsnMaster.listInvoiceCatalog(); }
 
   @Get()
   list(@Query() query: SalesDocumentQueryDto) {

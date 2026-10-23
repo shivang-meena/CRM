@@ -1,3 +1,4 @@
+// apps/client/src/context/LeadDndContext.tsx
 import React, { createContext, useContext, useState } from 'react';
 import { LeadStatus } from '@/types/lead';
 

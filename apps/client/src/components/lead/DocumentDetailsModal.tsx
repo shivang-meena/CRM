@@ -21,6 +21,35 @@ type Props = {
   onConvertToInvoice?: (invoice: SalesDocument) => void;
 };
 
+type DocumentResponseFields = {
+  documentNo?: string | null;
+  customerName?: string | null;
+  mobile?: string | null;
+  email?: string | null;
+  address?: string | null;
+  issueDate?: string | null;
+  nextPaymentDate?: string | null;
+  paymentStatus?: string | null;
+  dueAmount?: number | string | null;
+  sellerCompanyName?: string | null;
+  sellerPhone?: string | null;
+  sellerEmail?: string | null;
+  sellerAddress?: string | null;
+  termsAndConditions?: string | null;
+  items?: Array<{
+    id?: string;
+    productName?: string | null;
+    description?: string | null;
+    quantity?: number | string;
+    unit?: string | null;
+    unitPrice?: number | string;
+    discountAmount?: number | string;
+    discountValue?: number | string;
+    taxPercent?: number | string;
+    totalAmount?: number | string;
+  }>;
+};
+
 export default function DocumentDetailsModal({
   visible,
   leadId,
@@ -40,6 +69,19 @@ export default function DocumentDetailsModal({
   const crmMutation = useCrmMutation(leadId, async () => {});
 
   if (!visible || !doc) return null;
+
+  // Lead-level document endpoints return a flat compatibility shape, while
+  // newer document endpoints return the snapshot shape used by this modal.
+  const response = doc as SalesDocument & DocumentResponseFields;
+  const customer = doc.customerSnapshot;
+  const issuer = doc.issuerSnapshot;
+  const items = response.items ?? [];
+  const balance = doc.balance ?? response.dueAmount ?? '0';
+  const documentDate = response.issueDate ?? doc.documentDate;
+  const documentNumber = doc.documentNumber ?? response.documentNo;
+  const paymentState = doc.paymentState ?? response.paymentStatus;
+  const dueDate = doc.dueDate ?? response.nextPaymentDate;
+  const terms = doc.terms ?? response.termsAndConditions;
 
   const isQuote = doc.type === 'QUOTATION';
 
@@ -108,14 +150,14 @@ export default function DocumentDetailsModal({
             <View style={{ flex: 1, gap: 2 }}>
               <View style={styles.titleRow}>
                 <Text style={styles.modalTitle}>
-                  {doc.documentNumber ?? `Draft ${isQuote ? 'Quotation' : 'Invoice'}`}
+                  {documentNumber ?? `Draft ${isQuote ? 'Quotation' : 'Invoice'}`}
                 </Text>
                 <View style={[styles.statusBadge, doc.status === 'ISSUED' && styles.statusIssued, doc.status === 'ACCEPTED' && styles.statusAccepted, doc.status === 'VOID' && styles.statusVoid]}>
                   <Text style={styles.statusBadgeText}>{doc.status}</Text>
                 </View>
                 {!isQuote ? (
-                  <View style={[styles.statusBadge, doc.paymentState === 'PAID' ? styles.statusAccepted : styles.statusPart]}>
-                    <Text style={styles.statusBadgeText}>{doc.paymentState}</Text>
+                  <View style={[styles.statusBadge, paymentState === 'PAID' ? styles.statusAccepted : styles.statusPart]}>
+                    <Text style={styles.statusBadgeText}>{paymentState ?? 'UNPAID'}</Text>
                   </View>
                 ) : null}
                 {doc.isOverdue ? (
@@ -125,7 +167,7 @@ export default function DocumentDetailsModal({
                 ) : null}
               </View>
               <Text style={styles.subMeta}>
-                Date: {doc.documentDate} {isQuote && doc.validUntil ? `• Valid until: ${doc.validUntil}` : ''} {!isQuote && doc.dueDate ? `• Due date: ${doc.dueDate}` : ''}
+                Date: {documentDate ? formatDateTime(documentDate) : '—'} {isQuote && doc.validUntil ? `• Valid until: ${doc.validUntil}` : ''} {!isQuote && dueDate ? `• Due date: ${formatDateTime(dueDate)}` : ''}
               </Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Close document details" onPress={onClose} style={styles.closeBtn}>
@@ -144,20 +186,20 @@ export default function DocumentDetailsModal({
             <View style={styles.partiesRow}>
               <View style={styles.partyBox}>
                 <Text style={styles.partyHeading}>Customer Details</Text>
-                <Text style={styles.partyName}>{doc.customerSnapshot.name}</Text>
-                {doc.customerSnapshot.phone ? <Text style={styles.partyMeta}>Phone: {doc.customerSnapshot.phone}</Text> : null}
-                {doc.customerSnapshot.email ? <Text style={styles.partyMeta}>Email: {doc.customerSnapshot.email}</Text> : null}
-                {doc.customerSnapshot.address ? <Text style={styles.partyMeta}>Address: {doc.customerSnapshot.address}</Text> : null}
-                {doc.customerSnapshot.taxIdentifier ? <Text style={styles.partyMeta}>Tax ID: {doc.customerSnapshot.taxIdentifier}</Text> : null}
+                <Text style={styles.partyName}>{customer?.name ?? response.customerName ?? 'Customer'}</Text>
+                {(customer?.phone ?? response.mobile) ? <Text style={styles.partyMeta}>Phone: {customer?.phone ?? response.mobile}</Text> : null}
+                {(customer?.email ?? response.email) ? <Text style={styles.partyMeta}>Email: {customer?.email ?? response.email}</Text> : null}
+                {(customer?.address ?? response.address) ? <Text style={styles.partyMeta}>Address: {customer?.address ?? response.address}</Text> : null}
+                {customer?.taxIdentifier ? <Text style={styles.partyMeta}>Tax ID: {customer.taxIdentifier}</Text> : null}
               </View>
 
               <View style={styles.partyBox}>
                 <Text style={styles.partyHeading}>Issuer Details</Text>
-                <Text style={styles.partyName}>{doc.issuerSnapshot.name}</Text>
-                {doc.issuerSnapshot.phone ? <Text style={styles.partyMeta}>Phone: {doc.issuerSnapshot.phone}</Text> : null}
-                {doc.issuerSnapshot.email ? <Text style={styles.partyMeta}>Email: {doc.issuerSnapshot.email}</Text> : null}
-                {doc.issuerSnapshot.address ? <Text style={styles.partyMeta}>Address: {doc.issuerSnapshot.address}</Text> : null}
-                {doc.issuerSnapshot.taxIdentifier ? <Text style={styles.partyMeta}>Tax ID: {doc.issuerSnapshot.taxIdentifier}</Text> : null}
+                <Text style={styles.partyName}>{issuer?.name ?? response.sellerCompanyName ?? 'Company'}</Text>
+                {(issuer?.phone ?? response.sellerPhone) ? <Text style={styles.partyMeta}>Phone: {issuer?.phone ?? response.sellerPhone}</Text> : null}
+                {(issuer?.email ?? response.sellerEmail) ? <Text style={styles.partyMeta}>Email: {issuer?.email ?? response.sellerEmail}</Text> : null}
+                {(issuer?.address ?? response.sellerAddress) ? <Text style={styles.partyMeta}>Address: {issuer?.address ?? response.sellerAddress}</Text> : null}
+                {issuer?.taxIdentifier ? <Text style={styles.partyMeta}>Tax ID: {issuer.taxIdentifier}</Text> : null}
               </View>
             </View>
 
@@ -173,17 +215,17 @@ export default function DocumentDetailsModal({
                   <Text style={[styles.th, { flex: 1, textAlign: 'right' }]}>Tax</Text>
                   <Text style={[styles.th, { flex: 1.2, textAlign: 'right' }]}>Total</Text>
                 </View>
-                {doc.items.map((it, idx) => (
+                {items.map((it, idx) => (
                   <View key={it.id ?? idx} style={styles.tableRow}>
                     <View style={{ flex: 2 }}>
-                      <Text style={styles.tdDesc}>{it.description}</Text>
+                      <Text style={styles.tdDesc}>{it.description ?? it.productName ?? 'Item'}</Text>
                       {it.unit ? <Text style={styles.tdUnit}>({it.unit})</Text> : null}
                     </View>
                     <Text style={[styles.td, { flex: 1, textAlign: 'center' }]}>{it.quantity}</Text>
                     <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>{formatMoney(it.unitPrice)}</Text>
-                    <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>{formatMoney(it.discountAmount)}</Text>
-                    <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>{it.taxPercent}%</Text>
-                    <Text style={[styles.tdBold, { flex: 1.2, textAlign: 'right' }]}>{formatMoney(it.totalAmount)}</Text>
+                    <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>{formatMoney(it.discountAmount ?? it.discountValue ?? '0')}</Text>
+                    <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>{it.taxPercent ?? 0}%</Text>
+                    <Text style={[styles.tdBold, { flex: 1.2, textAlign: 'right' }]}>{formatMoney(it.totalAmount ?? '0')}</Text>
                   </View>
                 ))}
               </View>
@@ -216,14 +258,14 @@ export default function DocumentDetailsModal({
                   </View>
                   <View style={styles.sumRow}>
                     <Text style={styles.sumLabel}>Balance Due</Text>
-                    <Text style={[styles.sumVal, { color: colors.danger, fontWeight: '800' }]}>{formatMoney(doc.balance)}</Text>
+                    <Text style={[styles.sumVal, { color: colors.danger, fontWeight: '800' }]}>{formatMoney(balance)}</Text>
                   </View>
                 </>
               ) : null}
             </View>
 
             {/* Notes & Terms */}
-            {doc.notes || doc.terms ? (
+            {doc.notes || terms ? (
               <View style={styles.notesBox}>
                 {doc.notes ? (
                   <View style={{ gap: 2 }}>
@@ -231,10 +273,10 @@ export default function DocumentDetailsModal({
                     <Text style={styles.notesBody}>{doc.notes}</Text>
                   </View>
                 ) : null}
-                {doc.terms ? (
+                {terms ? (
                   <View style={{ gap: 2 }}>
                     <Text style={styles.notesHead}>Terms & Conditions:</Text>
-                    <Text style={styles.notesBody}>{doc.terms}</Text>
+                    <Text style={styles.notesBody}>{terms}</Text>
                   </View>
                 ) : null}
               </View>
@@ -324,7 +366,7 @@ export default function DocumentDetailsModal({
 
               {!isQuote && doc.status === 'ISSUED' ? (
                 <>
-                  {parseFloat(doc.balance) > 0 ? (
+                  {Number(balance) > 0 ? (
                     <Button title="Record Payment" onPress={() => setPaymentOpen(true)} />
                   ) : null}
                   <Button title="Void Invoice" variant="danger" loading={busy} onPress={() => handleAction('void')} />

@@ -1,6 +1,6 @@
 import { ForbiddenException, SetMetadata } from '@nestjs/common';
 
-export type ModulePermission = 'lead' | 'task' | 'reminder' | 'meeting' | 'note' | 'calendar' | 'customer' | 'invoice' | 'staff' | 'leave';
+export type ModulePermission = 'lead' | 'reminder' | 'meeting' | 'note' | 'calendar' | 'customer' | 'invoice' | 'staff' | 'leave';
 export type AuthenticatedUser = {
   id: string;
   name: string;
@@ -28,5 +28,5 @@ export function assertPermissions(user: AuthenticatedUser, ...permissions: Modul
 }
 
 export const activityPermissions = {
-  followups: 'lead', tasks: 'task', reminders: 'reminder', meetings: 'meeting',
+  followups: 'lead', reminders: 'reminder', meetings: 'meeting',
 } as const satisfies Record<string, ModulePermission>;

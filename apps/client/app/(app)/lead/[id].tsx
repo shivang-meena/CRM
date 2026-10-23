@@ -1,3 +1,4 @@
+// apps/client/app/(app)/lead/[id].tsx
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -23,7 +24,6 @@ import LeadActionBar from '@/components/lead/LeadActionBar';
 import LeadSectionTabs from '@/components/lead/LeadSectionTabs';
 import LeadDetailsSection from '@/components/lead/LeadDetailsSection';
 import FollowUpsSection from '@/components/lead/FollowUpsSection';
-import TasksSection from '@/components/lead/TasksSection';
 import RemindersSection from '@/components/lead/RemindersSection';
 import MeetingsSection from '@/components/lead/MeetingsSection';
 import QuotationsSection from '@/components/lead/QuotationsSection';
@@ -31,7 +31,6 @@ import InvoicesSection from '@/components/lead/InvoicesSection';
 import HistorySection from '@/components/lead/HistorySection';
 
 import FollowUpFormModal from '@/components/lead/FollowUpFormModal';
-import TaskFormModal from '@/components/lead/TaskFormModal';
 import ReminderFormModal from '@/components/lead/ReminderFormModal';
 import MeetingFormModal from '@/components/lead/MeetingFormModal';
 import SalesDocumentFormModal from '@/components/lead/SalesDocumentFormModal';
@@ -46,7 +45,6 @@ export default function LeadDetails() {
     'details',
     'followups',
     'history',
-    'tasks',
     'reminders',
     'meetings',
     'quotations',
@@ -74,7 +72,6 @@ export default function LeadDetails() {
   const [editLeadOpen, setEditLeadOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
-  const [taskOpen, setTaskOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [quotationOpen, setQuotationOpen] = useState(false);
@@ -121,7 +118,6 @@ export default function LeadDetails() {
           <LeadActionBar
             leadId={lead.id}
             onAddFollowUp={() => setFollowUpOpen(true)}
-            onAddTask={() => setTaskOpen(true)}
             onAddReminder={() => setReminderOpen(true)}
             onAddMeeting={() => setMeetingOpen(true)}
             onCreateQuotation={() => setQuotationOpen(true)}
@@ -154,10 +150,6 @@ export default function LeadDetails() {
 
             {selectedSection === 'history' && (
               <HistorySection leadId={lead.id} />
-            )}
-
-            {selectedSection === 'tasks' && (
-              <TasksSection leadId={lead.id} summary={summary} />
             )}
 
             {selectedSection === 'reminders' && (
@@ -215,20 +207,6 @@ export default function LeadDetails() {
             handleRecordSaved('followups');
           }}
           onClose={() => setFollowUpOpen(false)}
-        />
-      ) : null}
-
-      {/* Add Task Modal */}
-      {taskOpen && lead ? (
-        <TaskFormModal
-          visible={taskOpen && canAccess('task')}
-          leadId={lead.id}
-          defaultAssignee={lead.assignedTo || userName}
-          onSaved={() => {
-            setTaskOpen(false);
-            handleRecordSaved('tasks');
-          }}
-          onClose={() => setTaskOpen(false)}
         />
       ) : null}
 

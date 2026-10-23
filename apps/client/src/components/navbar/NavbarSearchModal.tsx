@@ -6,11 +6,10 @@ import { colors } from '@/theme/colors';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { ModulePermission } from '@/hooks/usePermissions';
 
-type PageShortcut = { permission: ModulePermission; label: string; path: '/leads' | '/tasks' | '/reminders' | '/meetings' | '/notes'; icon: React.ComponentProps<typeof Ionicons>['name'] };
+type PageShortcut = { permission: ModulePermission; label: string; path: '/leads' | '/reminders' | '/meetings' | '/notes'; icon: React.ComponentProps<typeof Ionicons>['name'] };
 
 const pages: PageShortcut[] = [
   { permission: 'lead', label: 'Lead', path: '/leads', icon: 'funnel-outline' },
-  { permission: 'task', label: 'Task', path: '/tasks', icon: 'calendar-outline' },
   { permission: 'reminder', label: 'Reminder', path: '/reminders', icon: 'alarm-outline' },
   { permission: 'meeting', label: 'Meeting', path: '/meetings', icon: 'headset-outline' },
   { permission: 'note', label: 'Note', path: '/notes', icon: 'bookmark' },

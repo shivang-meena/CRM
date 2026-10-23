@@ -6,11 +6,11 @@ import type { LeadSection } from '@/types/leadActivities';
 export type ModulePermission = keyof StaffPermissions;
 
 export const activityPermissions = {
-  followups: 'lead', tasks: 'task', reminders: 'reminder', meetings: 'meeting',
+  followups: 'lead', reminders: 'reminder', meetings: 'meeting',
 } as const satisfies Record<string, ModulePermission>;
 
 export const leadSectionPermissions: Record<LeadSection, ModulePermission> = {
-  details: 'lead', followups: 'lead', history: 'lead', tasks: 'task',
+  details: 'lead', followups: 'lead', history: 'lead',
   reminders: 'reminder', meetings: 'meeting', quotations: 'invoice', invoices: 'invoice',
 };
 

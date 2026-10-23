@@ -36,6 +36,11 @@ export enum DiscountTypeDto {
   FLAT_PER_UNIT = 'FLAT_PER_UNIT',
 }
 
+export enum SalesItemTypeDto {
+  SERVICE = 'SERVICE',
+  PRODUCT = 'PRODUCT',
+}
+
 export enum InvoicePaymentStatusDto {
   UNPAID = 'UNPAID',
   PARTIALLY_PAID = 'PARTIALLY_PAID',
@@ -44,6 +49,10 @@ export enum InvoicePaymentStatusDto {
 }
 
 export class SalesDocumentItemInputDto {
+  @IsOptional()
+  @IsEnum(SalesItemTypeDto)
+  itemType?: SalesItemTypeDto;
+
   @IsOptional()
   @IsString()
   id?: string;

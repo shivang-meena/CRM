@@ -472,7 +472,7 @@ import { useAuth } from '@/context/AuthContext';
 import Button from './Button';
 
 type Module =
-  | 'lead' | 'reminder' | 'meeting' | 'task'
+  | 'lead' | 'reminder' | 'meeting'
   | 'note' | 'calendar' | 'customer' | 'invoice'
   | 'staff' | 'leave';
 
@@ -491,9 +491,9 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
 
   const isDashboard = pathname === '/';
   const isLead = pathname === '/leads' || pathname.startsWith('/lead/');
+  const isLeadView = pathname === '/lead-view';
   const isReminder = pathname === '/reminders';
   const isMeeting = pathname === '/meetings';
-  const isTask = pathname === '/tasks';
   const isNote = pathname === '/notes';
   const isCalendar = pathname === '/calendar';
   const isCustomer = pathname === '/customers' || pathname.startsWith('/customer/');
@@ -505,9 +505,12 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
   const isAnyInvoice = pathname.startsWith('/invoice');
   const isStaff = pathname === '/staff';
   const isLeave = pathname === '/leave';
-  const isWebSettings = pathname === '/settings/web' || pathname === '/settings/invoices';
+  const isWebSettings = pathname === '/settings/web';
   const isLeadSettings = pathname === '/settings/leads';
-  const isAnySettings = isWebSettings || isLeadSettings;
+  const isInvoiceSettings = pathname === '/settings/invoices';
+  const isServiceHsn = pathname === '/settings/service-hsn';
+  const isProductHsn = pathname === '/settings/product-hsn';
+  const isAnySettings = isWebSettings || isLeadSettings || isInvoiceSettings || isServiceHsn || isProductHsn;
 
   type NavEntry = {
     key: string;
@@ -519,16 +522,16 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
   };
 
   const mainItems: NavEntry[] = [
-    { key: 'dashboard', label: 'Dashboard', icon: 'grid-outline', active: isDashboard, onPress: () => router.replace('/'), visible: true },
-    { key: 'leads', label: 'Lead', icon: 'funnel-outline', active: isLead, onPress: () => router.replace('/leads'), visible: hasAccess('lead') },
-    { key: 'reminders', label: 'Reminder', icon: 'alarm-outline', active: isReminder, onPress: () => router.replace('/reminders'), visible: hasAccess('reminder') },
-    { key: 'meetings', label: 'Meeting', icon: 'headset-outline', active: isMeeting, onPress: () => router.replace('/meetings'), visible: hasAccess('meeting') },
+    { key: 'dashboard', label: 'Dashboard', icon: 'grid-outline' as const, active: isDashboard, onPress: () => router.replace('/'), visible: true },
+    { key: 'leads', label: 'Lead', icon: 'funnel-outline' as const, active: isLead, onPress: () => router.replace('/leads'), visible: hasAccess('lead') },
+    { key: 'lead-view', label: 'Lead View', icon: 'list-outline' as const, active: isLeadView, onPress: () => router.replace('/lead-view' as Href), visible: hasAccess('lead') },
+    { key: 'reminders', label: 'Reminder', icon: 'alarm-outline' as const, active: isReminder, onPress: () => router.replace('/reminders'), visible: hasAccess('reminder') },
+    { key: 'meetings', label: 'Meeting', icon: 'headset-outline' as const, active: isMeeting, onPress: () => router.replace('/meetings'), visible: hasAccess('meeting') },
   ].filter(i => i.visible);
 
   const productivityItems: NavEntry[] = [
-    { key: 'tasks', label: 'Task', icon: 'checkbox-outline', active: isTask, onPress: () => router.replace('/tasks'), visible: hasAccess('task') },
-    { key: 'notes', label: 'Notes', icon: 'bookmark-outline', active: isNote, onPress: () => router.replace('/notes'), visible: hasAccess('note') },
-    { key: 'calendar', label: 'Calendar', icon: 'calendar-outline', active: isCalendar, onPress: () => router.replace('/calendar'), visible: hasAccess('calendar') },
+    { key: 'notes', label: 'Notes', icon: 'bookmark-outline' as const, active: isNote, onPress: () => router.replace('/notes'), visible: hasAccess('note') },
+    { key: 'calendar', label: 'Calendar', icon: 'calendar-outline' as const, active: isCalendar, onPress: () => router.replace('/calendar'), visible: hasAccess('calendar') },
   ].filter(i => i.visible);
 
   const showCustomer = hasAccess('customer');
@@ -712,7 +715,7 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="General Settings"
+              accessibilityLabel="Master Data"
               accessibilityState={{ expanded: settingsExpanded, selected: isAnySettings }}
               onPress={() => (horizontal ? router.replace('/settings/web' as Href) : setSettingsExpanded(v => !v))}
               style={(state) => {
@@ -733,16 +736,44 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
                   { flex: 1, color: isAnySettings && (horizontal || !settingsExpanded) ? C.accent : C.text, fontWeight: isAnySettings && (horizontal || !settingsExpanded) ? '700' : '600' },
                 ]}
               >
-                General Settings
+                Master Data
               </Text>
               {!horizontal && <Ionicons name={settingsExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={C.muted} />}
             </Pressable>
 
+            {horizontal && renderNav({
+              key: 'invoice-settings',
+              label: 'Invoice Settings',
+              icon: 'document-text-outline',
+              active: isInvoiceSettings,
+              onPress: () => router.replace('/settings/invoices' as Href),
+              visible: true,
+            })}
+            {horizontal && renderNav({
+              key: 'service-hsn',
+              label: 'Service HSN',
+              icon: 'pricetag-outline',
+              active: isServiceHsn,
+              onPress: () => router.replace('/settings/service-hsn' as Href),
+              visible: true,
+            })}
+            {horizontal && renderNav({
+              key: 'product-hsn',
+              label: 'Product HSN',
+              icon: 'pricetag-outline',
+              active: isProductHsn,
+              onPress: () => router.replace('/settings/product-hsn' as Href),
+              visible: true,
+            })}
+
             {!horizontal && settingsExpanded && (
               <View style={s.subWrap}>
                 {([
-                  { key: 'web', label: 'Web Settings', icon: 'globe-outline' as const, path: '/settings/web' as Href, active: isWebSettings },
+                  { key: 'web', label: 'Company Profile', icon: 'globe-outline' as const, path: '/settings/web' as Href, active: isWebSettings },
                   { key: 'leads', label: 'Lead Settings', icon: 'funnel-outline' as const, path: '/settings/leads' as Href, active: isLeadSettings },
+                  { key: 'invoice-settings', label: 'Invoice Settings', icon: 'document-text-outline' as const, path: '/settings/invoices' as Href, active: isInvoiceSettings },
+                  { key: 'service-hsn', label: 'Service HSN', icon: 'pricetag-outline' as const, path: '/settings/service-hsn' as Href, active: isServiceHsn },
+                  { key: 'product-hsn', label: 'Product HSN', icon: 'pricetag-outline' as const, path: '/settings/product-hsn' as Href, active: isProductHsn },
                 ] as const).map(sub => (
                   <Pressable
                     key={sub.key}

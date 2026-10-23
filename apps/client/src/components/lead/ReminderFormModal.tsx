@@ -16,7 +16,7 @@ type Props = {
   onClose: () => void;
 };
 
-type LinkType = 'none' | 'followups' | 'tasks' | 'meetings';
+type LinkType = 'none' | 'followups' | 'meetings';
 
 export default function ReminderFormModal({
   visible,
@@ -29,21 +29,18 @@ export default function ReminderFormModal({
   const [message, setMessage] = useState(() => record?.message ?? '');
   const [remindAt, setRemindAt] = useState(() => formatDateTime(record?.remindAt));
   const [linkType, setLinkType] = useState<LinkType>(() =>
-    record?.followUpId ? 'followups' : record?.taskId ? 'tasks' : record?.meetingId ? 'meetings' : 'none'
+    record?.followUpId ? 'followups' : record?.meetingId ? 'meetings' : 'none'
   );
   const [linkedId, setLinkedId] = useState<string>(() =>
-    record?.followUpId ?? record?.taskId ?? record?.meetingId ?? ''
+    record?.followUpId ?? record?.meetingId ?? ''
   );
   const [error, setError] = useState('');
 
   const followups = useActivities(leadId, 'followups', { pageSize: 50, status: 'PENDING' }, linkType === 'followups');
-  const tasks = useActivities(leadId, 'tasks', { pageSize: 50, status: 'TODO' }, linkType === 'tasks');
   const meetings = useActivities(leadId, 'meetings', { pageSize: 50, status: 'SCHEDULED' }, linkType === 'meetings');
 
   const pendingList = linkType === 'followups'
     ? followups.data?.items ?? []
-    : linkType === 'tasks'
-    ? tasks.data?.items ?? []
     : linkType === 'meetings'
     ? meetings.data?.items ?? []
     : [];
@@ -75,7 +72,6 @@ export default function ReminderFormModal({
 
     if (linkType !== 'none' && linkedId) {
       if (linkType === 'followups') body.followUpId = linkedId;
-      if (linkType === 'tasks') body.taskId = linkedId;
       if (linkType === 'meetings') body.meetingId = linkedId;
     }
 
@@ -107,7 +103,7 @@ export default function ReminderFormModal({
       <Choices
         label="Link to an activity (optional)"
         value={linkType}
-        options={['none', 'followups', 'tasks', 'meetings']}
+        options={['none', 'followups', 'meetings']}
         onChange={(v) => {
           setLinkType(v as LinkType);
           setLinkedId('');
@@ -152,7 +148,7 @@ export default function ReminderFormModal({
             </View>
           ) : (
             <Text style={styles.emptyNotice}>
-              {followups.isLoading || tasks.isLoading || meetings.isLoading
+              {followups.isLoading || meetings.isLoading
                 ? 'Loading activities...'
                 : `No pending ${linkType} found for this lead.`}
             </Text>

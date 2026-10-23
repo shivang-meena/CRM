@@ -109,7 +109,6 @@ type Shortcut = { label: string; action: CreateAction; icon: React.ComponentProp
 
 const shortcuts: Shortcut[] = [
   { label: 'Lead', action: 'lead', icon: 'funnel-outline', color: '#F28A24' },
-  { label: 'Task', action: 'task', icon: 'calendar-outline', color: '#D84B63' },
   { label: 'Reminder', action: 'reminder', icon: 'alarm-outline', color: '#D84B63' },
   { label: 'Meeting', action: 'meeting', icon: 'headset-outline', color: '#F28A24' },
   { label: 'Note', action: 'note', icon: 'bookmark', color: '#D84B63' },
