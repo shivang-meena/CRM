@@ -31,7 +31,7 @@ export class LeaveController {
   }
 
   @Patch(':id/review')
-  @AdminOnly()
+  @AdminOnly('leave')
   review(@Param('id', ParseUUIDPipe) id: string, @Body() body: ReviewLeaveDto, @Req() req: { user: AuthenticatedUser }) {
     return this.leave.review(id, body, req.user);
   }

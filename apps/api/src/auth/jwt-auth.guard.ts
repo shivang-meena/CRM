@@ -13,12 +13,24 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (!authenticated) return false;
 
     const user = context.switchToHttp().getRequest<{ user: AuthenticatedUser }>().user;
-    if (user.role === 'admin') return true;
+
+    // The Super Admin must never use normal CRM endpoints (they have their own /super-admin/* routes).
+    if (user.role === 'super_admin') {
+      throw new ForbiddenException('The super admin account cannot use CRM endpoints.');
+    }
 
     const policy = this.reflector.getAllAndOverride<AccessPolicy>(ACCESS_POLICY, [
       context.getHandler(), context.getClass(),
     ]);
-    // Unclassified endpoints fail closed for staff.
+
+    if (user.role === 'admin') {
+      // Admin: unclassified endpoints stay allowed (as before), but a classified endpoint
+      // requires the module to be enabled for this Admin by the Super Admin.
+      if (policy) assertPermissions(user, ...policy.permissions);
+      return true;
+    }
+
+    // Staff: unclassified endpoints and admin-only endpoints fail closed.
     if (!policy || policy.adminOnly) {
       throw new ForbiddenException('Only an administrator can perform this action.');
     }

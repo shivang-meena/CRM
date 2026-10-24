@@ -17,17 +17,17 @@ export class StaffController {
   one(@Param('id', ParseUUIDPipe) id: string) { return this.staff.findOne(id); }
 
   @Post()
-  @AdminOnly()
+  @AdminOnly('staff')
   create(@Body() body: CreateStaffDto) { return this.staff.create(body); }
 
   @Patch(':id')
-  @AdminOnly()
+  @AdminOnly('staff')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() body: UpdateStaffDto) {
     return this.staff.update(id, body);
   }
 
   @Patch(':id/status')
-  @AdminOnly()
+  @AdminOnly('staff')
   updateStatus(@Param('id', ParseUUIDPipe) id: string, @Body() body: UpdateStaffStatusDto) {
     return this.staff.updateStatus(id, body);
   }

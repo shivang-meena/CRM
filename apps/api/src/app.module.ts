@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { TenantInterceptor } from './tenant/tenant.interceptor';
 import { AuthModule } from './auth/auth.module';
 import { LeadsModule } from './leads/leads.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -17,5 +19,6 @@ import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, CrmCoreModule, AuthModule, LeadsModule, LeadActivitiesModule, SalesDocumentsModule, NotificationsModule, NotesModule, StandaloneActivitiesModule, CalendarModule, CustomersModule, StaffModule, LeaveModule, SettingsModule],
+  providers: [{ provide: APP_INTERCEPTOR, useClass: TenantInterceptor }],
 })
 export class AppModule {}
