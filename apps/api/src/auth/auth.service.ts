@@ -1,34 +1,49 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
+import { runAsSystem } from '../tenant/tenant-context';
+import { adminFeatures, staffEffectivePermissions } from './features';
+import { BLOCKED_MESSAGE } from './jwt.strategy';
+import type { AuthenticatedUser } from './permissions';
 import { LoginDto } from './dto/login.dto';
 import { StaffLoginDto } from './dto/staff-login.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private config: ConfigService,
     private jwt: JwtService,
     private prisma: PrismaService,
   ) {}
 
+  /** ADMIN login (the customer business). Credentials are in the `admins` table, set by the Super Admin. */
   async login(dto: LoginDto) {
-    const id = this.config.get<string>('LOGIN_ID');
-    const pass = this.config.get<string>('LOGIN_PASS');
-    const name = this.config.get<string>('LOGIN_NAME') ?? 'Admin';
-    if (dto.id !== id || dto.password !== pass) {
-      throw new UnauthorizedException('Wrong ID or password');
-    }
-    const accessToken = await this.jwt.signAsync({ sub: id, name, role: 'admin' });
-    return { accessToken, user: { name, role: 'admin' } };
+    const loginId = dto.id.trim().toLowerCase();
+    const admin = await this.prisma.admin.findFirst({ where: { loginId, deletedAt: null } });
+    const valid = admin ? await bcrypt.compare(dto.password, admin.passwordHash) : false;
+    if (!admin || !valid) throw new UnauthorizedException('Wrong ID or password');
+    if (admin.status !== 'ACTIVE') throw new UnauthorizedException(BLOCKED_MESSAGE);
+
+    const accessToken = await this.jwt.signAsync({ sub: admin.id, name: admin.name, role: 'admin' });
+    return {
+      accessToken,
+      user: {
+        id: admin.id,
+        name: admin.name,
+        role: 'admin' as const,
+        permissions: adminFeatures(admin),
+        businessName: admin.businessName,
+      },
+    };
   }
 
   async staffLogin(dto: StaffLoginDto) {
-    const staff = await this.prisma.staffMember.findFirst({
-      where: { email: dto.email.trim().toLowerCase(), deletedAt: null, canLoginApp: true },
-    });
+    // runAsSystem is allowed here (G9): we do not know the tenant yet, we look the staff up by email.
+    const staff = await runAsSystem(() =>
+      this.prisma.staffMember.findFirst({
+        where: { email: dto.email.trim().toLowerCase(), deletedAt: null, canLoginApp: true },
+      }),
+    );
     if (!staff || !staff.passwordHash) {
       throw new UnauthorizedException('Invalid email or password');
     }
@@ -36,74 +51,35 @@ export class AuthService {
     if (!valid) throw new UnauthorizedException('Invalid email or password');
     if (staff.status !== 'ACTIVE') throw new UnauthorizedException('Your account is inactive. Contact admin.');
 
-    const permissions = {
-      lead: staff.permLead,
-      reminder: staff.permReminder,
-      meeting: staff.permMeeting,
-      note: staff.permNote,
-      calendar: staff.permCalendar,
-      customer: staff.permCustomer,
-      invoice: staff.permInvoice,
-      staff: staff.permStaff,
-      leave: staff.permLeave,
-    };
+    const admin = await this.prisma.admin.findFirst({ where: { id: staff.adminId, deletedAt: null } });
+    if (!admin) throw new UnauthorizedException('Invalid email or password');
+    if (admin.status !== 'ACTIVE') throw new UnauthorizedException(BLOCKED_MESSAGE);
 
-    const accessToken = await this.jwt.signAsync({
-      sub: staff.id,
-      name: `${staff.firstName} ${staff.lastName}`,
-      role: 'staff',
-      permissions,
-    });
+    const permissions = staffEffectivePermissions(staff, adminFeatures(admin));
+    const name = `${staff.firstName} ${staff.lastName}`;
+    const accessToken = await this.jwt.signAsync({ sub: staff.id, name, role: 'staff' });
     return {
       accessToken,
       user: {
         id: staff.id,
-        name: `${staff.firstName} ${staff.lastName}`,
+        name,
         email: staff.email,
         role: 'staff' as const,
         permissions,
+        businessName: admin.businessName,
       },
     };
   }
 
-  async getMe(user: { id: string; name: string; role?: string }) {
-    const adminId = this.config.get<string>('LOGIN_ID');
-    const adminName = this.config.get<string>('LOGIN_NAME') ?? 'Admin';
-    if (user.role === 'admin' || user.id === adminId) {
-      return {
-        id: user.id,
-        name: adminName,
-        role: 'admin' as const,
-        permissions: null,
-      };
-    }
-
-    const staff = await this.prisma.staffMember.findFirst({
-      where: { id: user.id, deletedAt: null },
-    });
-    if (!staff || staff.status !== 'ACTIVE' || !staff.canLoginApp) {
-      throw new UnauthorizedException('Staff account is inactive or access has been revoked');
-    }
-
-    const permissions = {
-      lead: staff.permLead,
-      reminder: staff.permReminder,
-      meeting: staff.permMeeting,
-      note: staff.permNote,
-      calendar: staff.permCalendar,
-      customer: staff.permCustomer,
-      invoice: staff.permInvoice,
-      staff: staff.permStaff,
-      leave: staff.permLeave,
-    };
-
+  /** /auth/me. `user` was already fully validated and built by JwtStrategy, so just return it. */
+  getMe(user: AuthenticatedUser) {
     return {
-      id: staff.id,
-      name: `${staff.firstName} ${staff.lastName}`,
-      email: staff.email,
-      role: 'staff' as const,
-      permissions,
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      permissions: user.permissions,
+      businessName: user.businessName,
     };
   }
 }
-

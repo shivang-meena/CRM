@@ -16,9 +16,10 @@ import { CustomersModule } from './customers/customers.module';
 import { StaffModule } from './staff/staff.module';
 import { LeaveModule } from './leave/leave.module';
 import { SettingsModule } from './settings/settings.module';
+import { SuperAdminModule } from './super-admin/super-admin.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, CrmCoreModule, AuthModule, LeadsModule, LeadActivitiesModule, SalesDocumentsModule, NotificationsModule, NotesModule, StandaloneActivitiesModule, CalendarModule, CustomersModule, StaffModule, LeaveModule, SettingsModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, CrmCoreModule, AuthModule, LeadsModule, LeadActivitiesModule, SalesDocumentsModule, NotificationsModule, NotesModule, StandaloneActivitiesModule, CalendarModule, CustomersModule, StaffModule, LeaveModule, SettingsModule, SuperAdminModule],
   providers: [{ provide: APP_INTERCEPTOR, useClass: TenantInterceptor }],
 })
 export class AppModule {}
