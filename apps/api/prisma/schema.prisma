@@ -7,6 +7,42 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AdminStatus {
+  ACTIVE
+  BLOCKED
+}
+
+model Admin {
+  id           String      @id @default(uuid())
+  loginId      String      @unique
+  passwordHash String
+  name         String
+  businessName String      @default("")
+  phone        String?
+  email        String?
+  status       AdminStatus @default(ACTIVE)
+  blockedAt    DateTime?   @db.Timestamptz(3)
+
+  // Features (one per CRM module). Super Admin switches these ON/OFF.
+  featLead     Boolean     @default(true)
+  featReminder Boolean     @default(true)
+  featMeeting  Boolean     @default(true)
+  featNote     Boolean     @default(true)
+  featCalendar Boolean     @default(true)
+  featCustomer Boolean     @default(true)
+  featInvoice  Boolean     @default(true)
+  featStaff    Boolean     @default(true)
+  featLeave    Boolean     @default(true)
+
+  version      Int         @default(1)
+  deletedAt    DateTime?   @db.Timestamptz(3)
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+
+  @@index([status, deletedAt])
+  @@map("admins")
+}
+
 enum LeadStatus {
   NEW
   PROCESSING
@@ -59,12 +95,14 @@ model Lead {
   @@index([status])
   @@index([serviceId])
   @@map("leads")
+  adminId String
+  @@index([adminId])
 }
 
 model ServiceMaster {
   id             String   @id @default(uuid())
   name           String
-  normalizedName String   @unique
+  normalizedName String
   hsnSac         String   @default("")
   description    String?  @default("")
   igstRate       Decimal  @default(0) @db.Decimal(5, 2)
@@ -75,13 +113,16 @@ model ServiceMaster {
   updatedAt      DateTime @updatedAt
   leads          Lead[]
 
+  @@unique([adminId, normalizedName])
   @@map("service_masters")
+  adminId String
+  @@index([adminId])
 }
 
 model ProductMaster {
   id             String   @id @default(uuid())
   name           String
-  normalizedName String   @unique
+  normalizedName String
   hsnSac         String   @default("")
   description    String?  @default("")
   igstRate       Decimal  @default(0) @db.Decimal(5, 2)
@@ -91,21 +132,28 @@ model ProductMaster {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  @@unique([adminId, normalizedName])
   @@map("product_masters")
+  adminId String
+  @@index([adminId])
 }
 
 model LeadStatusMaster {
   id             String   @id @default(uuid())
   name           String
-  normalizedName String   @unique
-  code           String?  @unique
+  normalizedName String
+  code           String?
   color          String   @default("#0284c7")
   order          Int      @default(0)
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  @@unique([adminId, normalizedName])
+  @@unique([adminId, code])
   @@map("lead_status_masters")
+  adminId String
+  @@index([adminId])
 }
 
 model Customer {
@@ -119,6 +167,8 @@ model Customer {
 
   @@index([convertedAt, id])
   @@map("customers")
+  adminId String
+  @@index([adminId])
 }
 
 enum FollowUpChannel {
@@ -245,6 +295,8 @@ model LeadFollowUp {
   @@index([leadId, deletedAt, scheduledAt])
   @@index([leadId, status, scheduledAt])
   @@map("lead_followups")
+  adminId String
+  @@index([adminId])
 }
 
 model LeadMeeting {
@@ -279,6 +331,8 @@ model LeadMeeting {
   @@index([leadId, deletedAt, startAt])
   @@index([status, startAt])
   @@map("lead_meetings")
+  adminId String
+  @@index([adminId])
 }
 
 model LeadReminder {
@@ -310,6 +364,8 @@ model LeadReminder {
   @@unique([createdById, requestKey])
   @@index([status, deletedAt, remindAt])
   @@map("lead_reminders")
+  adminId String
+  @@index([adminId])
 }
 
 model LeadHistory {
@@ -328,6 +384,8 @@ model LeadHistory {
 
   @@index([leadId, createdAt, id])
   @@map("lead_history")
+  adminId String
+  @@index([adminId])
 }
 
 enum SalesDocumentType {
@@ -371,7 +429,7 @@ enum InvoicePaymentStatus {
 
 model SalesDocument {
   id                      String                @id @default(uuid())
-  documentNo              String                @unique
+  documentNo              String
   type                    SalesDocumentType     @default(INVOICE)
   status                  SalesDocumentStatus   @default(ISSUED)
   sourceQuotationId       String?               @unique
@@ -421,14 +479,14 @@ model SalesDocument {
   companyProfileSnapshot  Json?
   gstInvoiceSettingsSnapshot Json?
   nonGstInvoiceSettingsSnapshot Json?
-  bankName                String                @default("HDFC Bank")
-  bankAccountNo           String                @default("50200103608173")
-  bankIfsc                String                @default("HDFC0009621")
-  signatoryName           String                @default("Vishwajeet")
+  bankName                String                @default("")
+  bankAccountNo           String                @default("")
+  bankIfsc                String                @default("")
+  signatoryName           String                @default("")
 
   createdById             String?
   createdByName           String                @default("System User")
-  requestKey              String?               @unique
+  requestKey              String?
   version                 Int                   @default(1)
   deletedAt               DateTime?
   createdAt               DateTime              @default(now())
@@ -437,9 +495,13 @@ model SalesDocument {
   items                   SalesDocumentItem[]
   payments                InvoicePayment[]
 
+  @@unique([adminId, documentNo])
+  @@unique([adminId, requestKey])
   @@index([type, deletedAt, issueDate])
   @@index([customerId])
   @@map("sales_documents")
+  adminId String
+  @@index([adminId])
 }
 
 model SalesDocumentItem {
@@ -476,7 +538,7 @@ model SalesDocumentItem {
 
 model HsnMaster {
   id          String   @id @default(uuid())
-  code        String   @unique
+  code        String
   description String
   igstRate    Decimal  @db.Decimal(5, 2)
   sgstRate    Decimal  @db.Decimal(5, 2)
@@ -485,7 +547,10 @@ model HsnMaster {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@unique([adminId, code])
   @@map("hsn_master")
+  adminId String
+  @@index([adminId])
 }
 
 model PaymentMethodMaster {
@@ -504,6 +569,8 @@ model PaymentMethodMaster {
   documents     SalesDocument[]
 
   @@map("payment_method_masters")
+  adminId String
+  @@index([adminId])
 }
 
 model BrochureMaster {
@@ -520,6 +587,8 @@ model BrochureMaster {
   documents     SalesDocument[]
 
   @@map("brochure_masters")
+  adminId String
+  @@index([adminId])
 }
 
 model DocumentSequence {
@@ -528,9 +597,11 @@ model DocumentSequence {
   year Int
   lastNumber Int @default(0)
 
-  @@unique([documentType, year])
+  @@unique([adminId, documentType, year])
 
   @@map("document_sequences")
+  adminId String
+  @@index([adminId])
 }
 
 model InvoicePayment {
@@ -553,6 +624,8 @@ model InvoicePayment {
   @@unique([createdById, requestKey])
   @@index([invoiceId, paidAt])
   @@map("invoice_payments")
+  adminId String
+  @@index([adminId])
 }
 
 model CrmNotification {
@@ -569,6 +642,8 @@ model CrmNotification {
 
   @@index([recipientId, readAt, createdAt])
   @@map("crm_notifications")
+  adminId String
+  @@index([adminId])
 }
 
 model Note {
@@ -586,6 +661,8 @@ model Note {
   @@unique([createdById, requestKey])
   @@index([createdById, deletedAt, createdAt, id])
   @@map("notes")
+  adminId String
+  @@index([adminId])
 }
 
 model CalendarEvent {
@@ -611,6 +688,8 @@ model CalendarEvent {
   @@unique([createdById, requestKey])
   @@index([createdById, deletedAt, startAt])
   @@map("calendar_events")
+  adminId String
+  @@index([adminId])
 }
 
 enum StaffStatus {
@@ -629,7 +708,7 @@ model StaffMember {
   status         StaffStatus @default(ACTIVE)
   department     String?
   designation    String?
-  employeeCode   String?     @unique
+  employeeCode   String?
   // Login credentials
   passwordHash   String?
   canLoginApp    Boolean     @default(false)
@@ -649,10 +728,13 @@ model StaffMember {
   updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
   leaves         LeaveRequest[]
 
+  @@unique([adminId, employeeCode])
   @@index([status, deletedAt])
   @@index([lastName, firstName])
   @@index([joiningDate])
   @@map("staff_members")
+  adminId String
+  @@index([adminId])
 }
 
 enum LeaveType {
@@ -674,7 +756,7 @@ enum LeaveStatus {
 }
 
 model GstInvoiceSettings {
-  id                 String   @id @default("gst")
+  id                 String   @id @default(uuid())
   invoicePrefix      String   @default("GST")
   invoiceStart       Int      @default(1)
   nextNumber         Int      @default(1)
@@ -690,10 +772,11 @@ model GstInvoiceSettings {
   updatedAt          DateTime @updatedAt @db.Timestamptz(3)
 
   @@map("gst_invoice_settings")
+  adminId String   @unique
 }
 
 model NonGstInvoiceSettings {
-  id                 String   @id @default("non-gst")
+  id                 String   @id @default(uuid())
   invoicePrefix      String   @default("NON-GST")
   invoiceStart       Int      @default(1)
   nextNumber         Int      @default(1)
@@ -708,10 +791,11 @@ model NonGstInvoiceSettings {
   updatedAt          DateTime @updatedAt @db.Timestamptz(3)
 
   @@map("non_gst_invoice_settings")
+  adminId String   @unique
 }
 
 model CompanyProfile {
-  id                            String   @id @default("company")
+  id                            String   @id @default(uuid())
   companyName                   String   @default("")
   contactNumber                 String   @default("")
   dialCode                      String   @default("+91")
@@ -733,6 +817,7 @@ model CompanyProfile {
   updatedAt                     DateTime @updatedAt @db.Timestamptz(3)
 
   @@map("company_profile")
+  adminId String   @unique
 }
 
 model LeaveRequest {
@@ -759,4 +844,6 @@ model LeaveRequest {
   @@index([staffId, deletedAt, appliedAt])
   @@index([status, deletedAt, appliedAt])
   @@map("leave_requests")
+  adminId String
+  @@index([adminId])
 }
