@@ -17,7 +17,7 @@ export const leadSectionPermissions: Record<LeadSection, ModulePermission> = {
 export function usePermissions() {
   const { token, loading, role, permissions } = useAuth();
   const canAccess = useCallback((module: ModulePermission) =>
-    !loading && !!token && (role === 'admin' || (role === 'staff' && permissions?.[module] === true)),
+    !loading && !!token && (role === 'admin' || role === 'staff') && permissions?.[module] === true,
   [token, loading, role, permissions]);
   return { canAccess, isAdmin: !loading && !!token && role === 'admin' };
 }

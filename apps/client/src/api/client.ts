@@ -25,7 +25,7 @@ api.interceptors.response.use(
   (res) => res,
   (error) => {
     const url: string = error?.config?.url ?? '';
-    if (error?.response?.status === 401 && !url.includes('/auth/login') && onUnauthorized) {
+    if (error?.response?.status === 401 && !url.includes('/auth/login') && !url.includes('/super-admin/login') && onUnauthorized) {
       onUnauthorized();
     }
     return Promise.reject(error);

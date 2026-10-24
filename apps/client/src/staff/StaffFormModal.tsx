@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
+import { useAuth } from '@/context/AuthContext';
 import { StaffFormValues, StaffPermissions, StaffStatus } from '@/types/staff';
 import { StaffDatePickerModal } from '@/staff/StaffDatePickerModal';
 
@@ -29,6 +30,7 @@ const PERMISSION_CONFIG: Array<{ key: keyof StaffPermissions; label: string }> =
 ];
 
 export function StaffFormModal({ visible, mode, values, error, pending, onChange, onClose, onSubmit }: Props) {
+  const { permissions: adminFeatures } = useAuth();
   const [datePicker, setDatePicker] = useState<'birthDate' | 'joiningDate' | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const edit = mode === 'edit';
@@ -222,7 +224,7 @@ export function StaffFormModal({ visible, mode, values, error, pending, onChange
               <Text style={styles.section}>Module Permissions</Text>
               <Text style={styles.permissionHint}>Select which modules this staff member can see and access in the sidebar:</Text>
               <View style={styles.permissionGrid}>
-                {PERMISSION_CONFIG.map(perm => {
+                {PERMISSION_CONFIG.filter(perm => adminFeatures?.[perm.key] === true).map(perm => {
                   const isActive = Boolean(values.permissions?.[perm.key]);
                   return (
                     <Pressable

@@ -24,9 +24,11 @@ export default function AppLayout() {
     );
   }
   if (!token) return <Redirect href={'/login' as any} />;
+  // The super admin has no CRM; send them to their own panel.
+  if (role === 'super_admin') return <Redirect href={'/super-admin' as any} />;
 
   const isUnauthorized = () => {
-    if (role !== 'staff') return false;
+    if (role !== 'staff' && role !== 'admin') return false;
     if (pathname.startsWith('/lead') && !permissions?.lead) return true;
     if (pathname.startsWith('/reminders') && !permissions?.reminder) return true;
     if (pathname.startsWith('/meetings') && !permissions?.meeting) return true;

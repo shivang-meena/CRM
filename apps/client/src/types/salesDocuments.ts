@@ -10,10 +10,10 @@
 // export type InvoicePaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'HALF_PAID' | 'PAID';
 
 // export const DEFAULT_DOCUMENT_CONFIG = {
-//   bankName: 'HDFC Bank',
-//   accountNo: '50200103608173',
-//   ifscCode: 'HDFC0009621',
-//   signatoryName: 'Vishwajeet',
+//   bankName: '',
+//   accountNo: '',
+//   ifscCode: '',
+//   signatoryName: '',
 //   defaultTerms:
 //     '1. Goods or services will be delivered after full payment.',
 // };
@@ -334,7 +334,7 @@
 
 // // Backward compatibility interfaces for Lead Activity sub-tabs
 // export interface Party { name: string; address?: string; phone?: string; email?: string; taxIdentifier?: string }
-// export interface DocumentItemInput { description: string; quantity: string; unit?: string; unitPrice: string; discountAmount: string; taxPercent: string }
+// export interface DocumentItemInput { description: string; quantity: string; unit?: string; unitPrice: string; discountAmount: string; taxPercent: string; productName?: string; discountValue?: number }
 // export interface DocumentItem extends DocumentItemInput { id: string; position: number; grossAmount: string; netAmount: string; taxAmount: string; totalAmount: string }
 // export interface PaymentRecord { id: string; amount: string; paidAt: string; method: string; reference: string | null; note: string | null; voidedAt: string | null; voidReason: string | null }
 // export interface SalesDocument {
@@ -357,10 +357,10 @@ export type DiscountType = 'FIXED' | 'PERCENTAGE' | 'OVERALL' | 'FLAT_PER_UNIT';
 export type InvoicePaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'HALF_PAID' | 'PAID';
  
 export const DEFAULT_DOCUMENT_CONFIG = {
-  bankName: 'HDFC Bank',
-  accountNo: '50200103608173',
-  ifscCode: 'HDFC0009621',
-  signatoryName: 'Vishwajeet',
+  bankName: '',
+  accountNo: '',
+  ifscCode: '',
+  signatoryName: '',
   defaultTerms:
     '1. Goods or services will be delivered after full payment.',
 };
@@ -682,7 +682,7 @@ export interface BrochureRecord {
  
 // Backward compatibility interfaces for Lead Activity sub-tabs
 export interface Party { name: string; address?: string; phone?: string; email?: string; taxIdentifier?: string }
-export interface DocumentItemInput { description: string; quantity: string; unit?: string; unitPrice: string; discountAmount: string; taxPercent: string }
+export interface DocumentItemInput { description: string; quantity: string; unit?: string; unitPrice: string; discountAmount: string; taxPercent: string; productName?: string; discountValue?: number }
 export interface DocumentItem extends DocumentItemInput { id: string; position: number; grossAmount: string; netAmount: string; taxAmount: string; totalAmount: string }
 export interface PaymentRecord { id: string; amount: string; paidAt: string; method: string; reference: string | null; note: string | null; voidedAt: string | null; voidReason: string | null }
 export interface SalesDocument {

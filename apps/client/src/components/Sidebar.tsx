@@ -484,8 +484,7 @@ export default function Sidebar({ horizontal, fillHeight = false }: { horizontal
   const [settingsExpanded, setSettingsExpanded] = useState(true);
 
   const hasAccess = (module: Module) => {
-    if (role === 'admin') return true;
-    if (role === 'staff') return Boolean(permissions?.[module]);
+    if (role === 'admin' || role === 'staff') return Boolean(permissions?.[module]);
     return false;
   };
 
