@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { HistoryEntity, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { CrmCoreService, Tx } from '../crm/crm-core.service';
 import { ListQueryDto, VersionDto } from '../crm/crm.dto';
 import { activityPermissions, assertPermissions, hasPermission } from '../auth/permissions';
@@ -91,11 +92,12 @@ export class ActivitiesService {
       if (existing) { this.core.replay(existing, hash); return existing; }
       const fields = this.fields(kind, input);
       await this.validate(tx, kind, leadId, fields);
-      const row = await db.create({ data: { ...fields, leadId, createdById: actor.id, createdByName: actor.name, requestKey: input.requestKey, requestHash: hash, ...(kind === 'reminders' ? { recipientId: actor.id } : {}) } });
+      const row = await db.create({ data: { ...fields, adminId: currentAdminId(), leadId, createdById: actor.id, createdByName: actor.name, requestKey: input.requestKey, requestHash: hash, ...(kind === 'reminders' ? { recipientId: actor.id } : {}) } });
       await this.core.history(tx, leadId, actor, config[kind].entity, row.id, 'CREATED', row.title + ' added');
       if (kind === 'followups') await this.core.syncFollowUp(tx, leadId);
       if (kind !== 'reminders' && input.reminderAt) {
         const reminder = await tx.leadReminder.create({ data: {
+          adminId: currentAdminId(),
           leadId, title: row.title, remindAt: new Date(input.reminderAt), recipientId: actor.id,
           createdById: actor.id, createdByName: actor.name, [config[kind].target]: row.id,
         } });

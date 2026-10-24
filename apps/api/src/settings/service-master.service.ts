@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { SaveServiceMasterDto } from './service-master.dto';
 
 @Injectable()
@@ -38,6 +39,7 @@ export class ServiceMasterService {
     }
 
     const values: Prisma.ServiceMasterCreateInput = {
+      adminId: currentAdminId(),
       name,
       normalizedName: name.toLowerCase(),
       isActive: data.isActive,

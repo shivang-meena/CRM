@@ -2,12 +2,14 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Prisma, SalesDocumentItem } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { runWithTenant } from '../tenant/tenant-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { SalesDocumentsService } from '../sales-documents/sales-documents.service';
 import {
   DiscountTypeDto,
   GstModeDto,
   SalesDocumentTypeDto,
+  SalesItemTypeDto,
 } from '../sales-documents/dto/sales-document.dto';
 import { GstInvoiceSettingsService } from './gst-invoice-settings.service';
 import { NonGstInvoiceSettingsService } from './non-gst-invoice-settings.service';
@@ -172,8 +174,8 @@ describe('HSN master invoice flow', () => {
     db.productMaster.findMany.mockResolvedValue([product]);
     db.serviceMaster.findMany.mockResolvedValue([serviceEntry]);
     const resolved = await service.resolveItems([
-      { ...line, id: 'service-line', itemType: 'SERVICE', hsnMasterId: serviceEntry.id },
-      { ...line, id: 'product-line', itemType: 'PRODUCT', hsnMasterId: product.id, productName: 'Keyboard' },
+      { ...line, id: 'service-line', itemType: SalesItemTypeDto.SERVICE, hsnMasterId: serviceEntry.id },
+      { ...line, id: 'product-line', itemType: SalesItemTypeDto.PRODUCT, hsnMasterId: product.id, productName: 'Keyboard' },
     ], GstModeDto.IGST);
     expect(resolved.map((item) => [item.itemType, item.productName, item.hsnSac])).toEqual([
       ['SERVICE', 'Consulting', '9983'],
@@ -195,21 +197,21 @@ describe('HSN master invoice flow', () => {
     const product = { id: 'product-1', name: 'Keyboard', hsnSac: '8471', description: 'Computer keyboard', igstRate: 18, sgstRate: 9, cgstRate: 9, isActive: true };
     db.productMaster.findFirst.mockResolvedValue(product);
     const resolved = await service.resolveItems([
-      { ...line, itemType: 'PRODUCT', hsnMasterId: product.id, hsnSac: '8471', igstRate: 18 },
+      { ...line, itemType: SalesItemTypeDto.PRODUCT, hsnMasterId: product.id, hsnSac: '8471', igstRate: 18 },
     ], GstModeDto.NON_GST);
     expect(resolved[0]).toMatchObject({ itemType: 'PRODUCT', hsnMasterId: product.id, hsnSac: '', igstRate: 0, sgstRate: 0, cgstRate: 0 });
   });
 
   it('rejects an inactive product selected for a new GST line', async () => {
     await expect(service.resolveItems([
-      { ...line, itemType: 'PRODUCT', hsnMasterId: 'inactive-product' },
+      { ...line, itemType: SalesItemTypeDto.PRODUCT, hsnMasterId: 'inactive-product' },
     ], GstModeDto.IGST)).rejects.toThrow('Select an active product');
   });
 
   it('requires an HSN/SAC code for a GST product', async () => {
     db.productMaster.findMany.mockResolvedValue([{ id: 'product-1', name: 'Keyboard', hsnSac: '', description: '', igstRate: 18, sgstRate: 9, cgstRate: 9, isActive: true }]);
     await expect(service.resolveItems([
-      { ...line, itemType: 'PRODUCT', hsnMasterId: 'product-1' },
+      { ...line, itemType: SalesItemTypeDto.PRODUCT, hsnMasterId: 'product-1' },
     ], GstModeDto.IGST)).rejects.toThrow('HSN/SAC code is required for Keyboard');
   });
 
@@ -318,10 +320,12 @@ describe('HSN master invoice flow', () => {
   });
 
   it('saves configured rates and rejects inconsistent GST totals', async () => {
-    expect(await service.save(master)).toMatchObject(master);
-    await expect(service.save({ ...master, cgstRate: 5 })).rejects.toThrow(
-      'IGST must equal SGST + CGST',
-    );
+    expect(
+      await runWithTenant('test-admin', () => service.save(master)),
+    ).toMatchObject(master);
+    await expect(
+      runWithTenant('test-admin', () => service.save({ ...master, cgstRate: 5 })),
+    ).rejects.toThrow('IGST must equal SGST + CGST');
   });
 
   it('reports duplicate HSN codes without exposing a database error', async () => {
@@ -331,6 +335,8 @@ describe('HSN master invoice flow', () => {
         clientVersion: '6.19.3',
       }),
     );
-    await expect(service.save(master)).rejects.toThrow(ConflictException);
+    await expect(
+      runWithTenant('test-admin', () => service.save(master)),
+    ).rejects.toThrow(ConflictException);
   });
 });

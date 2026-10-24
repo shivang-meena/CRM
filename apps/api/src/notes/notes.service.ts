@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Note, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { Actor, CrmCoreService } from '../crm/crm-core.service';
 import { CreateNoteDto, NoteQueryDto, UpdateNoteDto } from './dto/note.dto';
 
@@ -57,6 +58,7 @@ export class NotesService {
         return this.format(existing);
       }
       const note = await tx.note.create({ data: {
+        adminId: currentAdminId(),
         content,
         createdById: actor.id,
         createdByName: actor.name,

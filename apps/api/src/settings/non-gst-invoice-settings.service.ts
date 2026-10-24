@@ -6,6 +6,7 @@ import {
 import { Prisma } from '@prisma/client';
 import type { NonGstInvoiceSettings } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { SaveNonGstInvoiceSettingsDto } from './non-gst-invoice-settings.dto';
 
 export function nonGstDocumentNumber(prefix: string, number: number): string {
@@ -32,13 +33,11 @@ export class NonGstInvoiceSettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   get() {
-    return this.prisma.nonGstInvoiceSettings.findUnique({
-      where: { id: 'non-gst' },
-    });
+    return this.prisma.nonGstInvoiceSettings.findFirst();
   }
 
   private async lock(tx: Prisma.TransactionClient) {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(36502026)::text AS locked`;
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(36502026, hashtext(${currentAdminId()}))::text AS locked`;
   }
 
   private async assertAvailable(
@@ -47,7 +46,7 @@ export class NonGstInvoiceSettingsService {
     number: number,
   ) {
     const documentNo = nonGstDocumentNumber(prefix, number);
-    const existing = await tx.salesDocument.findUnique({
+    const existing = await tx.salesDocument.findFirst({
       where: { documentNo },
       select: { id: true },
     });
@@ -66,9 +65,7 @@ export class NonGstInvoiceSettingsService {
     data: SaveNonGstInvoiceSettingsDto,
   ) {
     await this.lock(tx);
-    const existing = await tx.nonGstInvoiceSettings.findUnique({
-      where: { id: 'non-gst' },
-    });
+    const existing = await tx.nonGstInvoiceSettings.findFirst();
     const restart =
       !existing ||
       existing.invoicePrefix !== data.invoicePrefix ||
@@ -76,10 +73,10 @@ export class NonGstInvoiceSettingsService {
     if (restart)
       await this.assertAvailable(tx, data.invoicePrefix, data.invoiceStart);
     return tx.nonGstInvoiceSettings.upsert({
-      where: { id: 'non-gst' },
+      where: { adminId: currentAdminId() },
       create: {
         ...data,
-        id: 'non-gst',
+        adminId: currentAdminId(),
         invoiceCurrency: data.invoiceCurrency ?? 'INR',
         hsnSac: data.hsnSac ?? '9983',
         ifscCode: data.ifscCode.toUpperCase(),
@@ -99,9 +96,7 @@ export class NonGstInvoiceSettingsService {
   reset() {
     return this.prisma.$transaction(async (tx) => {
       await this.lock(tx);
-      const settings = await tx.nonGstInvoiceSettings.findUnique({
-        where: { id: 'non-gst' },
-      });
+      const settings = await tx.nonGstInvoiceSettings.findFirst();
       if (!settings)
         throw new BadRequestException(
           'Save Non GST Invoice settings before resetting the invoice start.',
@@ -112,7 +107,7 @@ export class NonGstInvoiceSettingsService {
         settings.invoiceStart,
       );
       return tx.nonGstInvoiceSettings.update({
-        where: { id: 'non-gst' },
+        where: { adminId: currentAdminId() },
         data: { nextNumber: settings.invoiceStart },
       });
     });
@@ -131,9 +126,7 @@ export class NonGstInvoiceSettingsService {
         await this.lock(tx);
         const existingResult = replay ? await replay(tx) : null;
         if (existingResult) return existingResult;
-        const settings = await tx.nonGstInvoiceSettings.findUnique({
-          where: { id: 'non-gst' },
-        });
+        const settings = await tx.nonGstInvoiceSettings.findFirst();
         if (!settings)
           throw new BadRequestException(
             'Save Non GST Invoice settings in Web Settings → Invoice Settings before creating a Non GST invoice.',
@@ -141,14 +134,14 @@ export class NonGstInvoiceSettingsService {
         let next = settings.nextNumber;
         while (next < 2147483647) {
           const documentNo = nonGstDocumentNumber(settings.invoicePrefix, next);
-          const existing = await tx.salesDocument.findUnique({
+          const existing = await tx.salesDocument.findFirst({
             where: { documentNo },
             select: { id: true },
           });
           if (!existing) {
             const result = await write(tx, settings, documentNo);
             await tx.nonGstInvoiceSettings.update({
-              where: { id: 'non-gst' },
+              where: { adminId: currentAdminId() },
               data: { nextNumber: next + 1 },
             });
             return result;
@@ -159,7 +152,7 @@ export class NonGstInvoiceSettingsService {
           'Non GST invoice numbering has reached its limit. Choose a new invoice prefix and start number.',
         );
       },
-      { maxWait: 10000, timeout: 15000 },
+      { timeout: 15000 },
     );
   }
 }

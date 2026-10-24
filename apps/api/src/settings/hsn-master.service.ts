@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { SaveHsnMasterDto } from './hsn-master.dto';
 import type { HsnMaster, SalesDocumentItem, ServiceMaster } from '@prisma/client';
 import {
@@ -234,6 +235,7 @@ export class HsnMasterService {
     }
     try {
       const values = {
+        adminId: currentAdminId(),
         ...data,
         code: data.code.trim(),
         description: data.description.trim(),

@@ -3,9 +3,9 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { HsnMasterService } from '../settings/hsn-master.service';
 import type {
   GstInvoiceSettings,
@@ -34,19 +34,6 @@ import {
   UpsertPaymentMethodDto,
 } from './dto/sales-document.dto';
 
-const DEFAULT_PAYMENT_METHODS = [
-  {
-    method: 'Internet Banking (NEFT/RTGS/IMPS)',
-    bankName: 'HDFC Bank',
-    accountNo: '50200103608173',
-    ifscCode: 'HDFC0009621',
-    isDefault: true,
-  },
-  { method: 'Cash', isDefault: false },
-  { method: 'Credit Card', isDefault: false },
-  { method: 'UPI', isDefault: false },
-];
-
 const DEFAULT_TERMS =
   '1. Goods or services will be delivered after full payment.';
 
@@ -65,7 +52,7 @@ function assertFiniteNumber(val: unknown, fieldName: string): number {
 }
 
 @Injectable()
-export class SalesDocumentsService implements OnModuleInit {
+export class SalesDocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly gstSettings: GstInvoiceSettingsService,
@@ -82,8 +69,7 @@ export class SalesDocumentsService implements OnModuleInit {
 
   getInvoiceCompanyProfile() {
     // Invoice users can read branding and issuer details, not administrative settings.
-    return this.prisma.companyProfile.findUnique({
-      where: { id: 'company' },
+    return this.prisma.companyProfile.findFirst({
       select: {
         companyName: true,
         contactNumber: true,
@@ -100,17 +86,6 @@ export class SalesDocumentsService implements OnModuleInit {
         fontColor: true,
       },
     });
-  }
-
-  async onModuleInit() {
-    const count = await this.prisma.paymentMethodMaster.count({
-      where: { deletedAt: null },
-    });
-    if (count === 0) {
-      await this.prisma.paymentMethodMaster.createMany({
-        data: DEFAULT_PAYMENT_METHODS,
-      });
-    }
   }
 
   /**
@@ -505,7 +480,7 @@ export class SalesDocumentsService implements OnModuleInit {
   ) {
     // Idempotency check by requestKey
     if (dto.requestKey) {
-      const existingByKey = await this.prisma.salesDocument.findUnique({
+      const existingByKey = await this.prisma.salesDocument.findFirst({
         where: { requestKey: dto.requestKey },
         include: {
           customer: { include: { lead: true } },
@@ -588,6 +563,7 @@ export class SalesDocumentsService implements OnModuleInit {
         throw new BadRequestException('GST Invoice settings are required.');
       return tx.salesDocument.create({
         data: {
+          adminId: currentAdminId(),
           requestKey: dto.requestKey,
           documentNo: gstDocumentNo ?? documentNo,
           type: dto.type,
@@ -654,17 +630,17 @@ export class SalesDocumentsService implements OnModuleInit {
             invoiceSettings?.bankName ??
             (dto.type === SalesDocumentTypeDto.INVOICE
               ? ''
-              : defaultBankMethod?.bankName || 'HDFC Bank'),
+              : defaultBankMethod?.bankName || ''),
           bankAccountNo:
             invoiceSettings?.accountNo ??
             (dto.type === SalesDocumentTypeDto.INVOICE
               ? ''
-              : defaultBankMethod?.accountNo || '50200103608173'),
+              : defaultBankMethod?.accountNo || ''),
           bankIfsc:
             invoiceSettings?.ifscCode ??
             (dto.type === SalesDocumentTypeDto.INVOICE
               ? ''
-              : defaultBankMethod?.ifscCode || 'HDFC0009621'),
+              : defaultBankMethod?.ifscCode || ''),
           ...(dto.type === SalesDocumentTypeDto.INVOICE
             ? { signatoryName: '' }
             : {}),
@@ -699,7 +675,7 @@ export class SalesDocumentsService implements OnModuleInit {
     };
 
     const replay = (tx: Prisma.TransactionClient) =>
-      tx.salesDocument.findUnique({
+      tx.salesDocument.findFirst({
         where: { requestKey: dto.requestKey },
         include: {
           customer: { include: { lead: true } },
@@ -894,6 +870,7 @@ export class SalesDocumentsService implements OnModuleInit {
     ) =>
       tx.salesDocument.create({
         data: {
+          adminId: currentAdminId(),
           documentNo: gstDocumentNo ?? documentNo,
           type: SalesDocumentTypeDto.INVOICE,
           status: 'ISSUED',
@@ -1030,6 +1007,7 @@ export class SalesDocumentsService implements OnModuleInit {
     }
     return this.prisma.paymentMethodMaster.create({
       data: {
+        adminId: currentAdminId(),
         method: dto.method.trim(),
         bankName: dto.bankName?.trim() || null,
         accountNo: dto.accountNo?.trim() || null,
@@ -1081,6 +1059,7 @@ export class SalesDocumentsService implements OnModuleInit {
   async createBrochure(dto: UpsertBrochureDto) {
     return this.prisma.brochureMaster.create({
       data: {
+        adminId: currentAdminId(),
         brochureName: dto.brochureName.trim(),
         type: dto.type.trim(),
         startAfter: dto.startAfter.trim(),
@@ -1251,6 +1230,7 @@ export class SalesDocumentsService implements OnModuleInit {
     if (!customer) {
       customer = await this.prisma.customer.create({
         data: {
+          adminId: currentAdminId(),
           leadId,
           convertedById: actor?.id ?? 'system',
           convertedByName: actor?.name ?? 'System',
@@ -1314,6 +1294,7 @@ export class SalesDocumentsService implements OnModuleInit {
   async pay(leadId: string, id: string, body: any, actor: any) {
     const payment = await this.prisma.invoicePayment.create({
       data: {
+        adminId: currentAdminId(),
         invoiceId: id,
         amount: body.amount,
         method: body.method || 'CASH',

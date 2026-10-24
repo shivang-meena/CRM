@@ -6,6 +6,7 @@ import {
 import { Prisma } from '@prisma/client';
 import type { GstInvoiceSettings } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { SaveGstInvoiceSettingsDto } from './gst-invoice-settings.dto';
 
 export function gstDocumentNumber(prefix: string, number: number): string {
@@ -33,11 +34,11 @@ export class GstInvoiceSettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   get() {
-    return this.prisma.gstInvoiceSettings.findUnique({ where: { id: 'gst' } });
+    return this.prisma.gstInvoiceSettings.findFirst();
   }
 
   private async lock(tx: Prisma.TransactionClient) {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(36502026)::text AS locked`;
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(36502026, hashtext(${currentAdminId()}))::text AS locked`;
   }
 
   private async assertAvailable(
@@ -46,7 +47,7 @@ export class GstInvoiceSettingsService {
     number: number,
   ) {
     const documentNo = gstDocumentNumber(prefix, number);
-    const existing = await tx.salesDocument.findUnique({
+    const existing = await tx.salesDocument.findFirst({
       where: { documentNo },
       select: { id: true },
     });
@@ -65,9 +66,7 @@ export class GstInvoiceSettingsService {
     data: SaveGstInvoiceSettingsDto,
   ) {
     await this.lock(tx);
-    const existing = await tx.gstInvoiceSettings.findUnique({
-      where: { id: 'gst' },
-    });
+    const existing = await tx.gstInvoiceSettings.findFirst();
     const restart =
       !existing ||
       existing.invoicePrefix !== data.invoicePrefix ||
@@ -75,10 +74,10 @@ export class GstInvoiceSettingsService {
     if (restart)
       await this.assertAvailable(tx, data.invoicePrefix, data.invoiceStart);
     return tx.gstInvoiceSettings.upsert({
-      where: { id: 'gst' },
+      where: { adminId: currentAdminId() },
       create: {
         ...data,
-        id: 'gst',
+        adminId: currentAdminId(),
         invoiceCurrency: data.invoiceCurrency ?? 'INR',
         hsnSac: data.hsnSac ?? '9983',
         ifscCode: data.ifscCode.toUpperCase(),
@@ -98,9 +97,7 @@ export class GstInvoiceSettingsService {
   reset() {
     return this.prisma.$transaction(async (tx) => {
       await this.lock(tx);
-      const settings = await tx.gstInvoiceSettings.findUnique({
-        where: { id: 'gst' },
-      });
+      const settings = await tx.gstInvoiceSettings.findFirst();
       if (!settings)
         throw new BadRequestException(
           'Save GST Invoice settings before resetting the invoice start.',
@@ -111,7 +108,7 @@ export class GstInvoiceSettingsService {
         settings.invoiceStart,
       );
       return tx.gstInvoiceSettings.update({
-        where: { id: 'gst' },
+        where: { adminId: currentAdminId() },
         data: { nextNumber: settings.invoiceStart },
       });
     });
@@ -130,9 +127,7 @@ export class GstInvoiceSettingsService {
         await this.lock(tx);
         const existingResult = replay ? await replay(tx) : null;
         if (existingResult) return existingResult;
-        const settings = await tx.gstInvoiceSettings.findUnique({
-          where: { id: 'gst' },
-        });
+        const settings = await tx.gstInvoiceSettings.findFirst();
         if (!settings)
           throw new BadRequestException(
             'Save GST Invoice settings in Web Settings → Invoice Settings before creating a GST invoice.',
@@ -140,14 +135,14 @@ export class GstInvoiceSettingsService {
         let next = settings.nextNumber;
         while (next < 2147483647) {
           const documentNo = gstDocumentNumber(settings.invoicePrefix, next);
-          const existing = await tx.salesDocument.findUnique({
+          const existing = await tx.salesDocument.findFirst({
             where: { documentNo },
             select: { id: true },
           });
           if (!existing) {
             const result = await write(tx, settings, documentNo);
             await tx.gstInvoiceSettings.update({
-              where: { id: 'gst' },
+              where: { adminId: currentAdminId() },
               data: { nextNumber: next + 1 },
             });
             return result;
@@ -158,7 +153,7 @@ export class GstInvoiceSettingsService {
           'GST invoice numbering has reached its limit. Choose a new invoice prefix and start number.',
         );
       },
-      { maxWait: 10000, timeout: 15000 },
+      { timeout: 15000 },
     );
   }
 }

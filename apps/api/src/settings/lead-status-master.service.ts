@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { SaveLeadStatusMasterDto } from './lead-status-master.dto';
 
 const MAX_LEAD_STATUSES = 30;
@@ -106,6 +107,7 @@ export class LeadStatusMasterService {
 
       return tx.leadStatusMaster.create({
         data: {
+          adminId: currentAdminId(),
           name,
           normalizedName,
           code,

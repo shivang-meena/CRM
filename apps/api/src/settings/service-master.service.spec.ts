@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { Reflector } from '@nestjs/core';
+import { runWithTenant } from '../tenant/tenant-context';
 import { ACCESS_POLICY } from '../auth/permissions';
 import { CrmCoreService } from '../crm/crm-core.service';
 import { CreateLeadDto } from '../leads/dto/create-lead.dto';
@@ -73,12 +74,13 @@ describe('Services master and lead selection', () => {
     });
     expect(dto.name).toBe('Website Development');
     expect(await validate(dto)).toHaveLength(0);
-    await masters.save(dto);
+    await runWithTenant('test-admin', () => masters.save(dto));
     expect(db.serviceMaster.create).toHaveBeenCalledWith({
       data: {
         name: 'Website Development',
         normalizedName: 'website development',
         isActive: undefined,
+        adminId: 'test-admin',
       },
     });
     for (const input of [
@@ -100,9 +102,11 @@ describe('Services master and lead selection', () => {
         clientVersion: '6.19.3',
       }),
     );
-    await expect(masters.save({ name: 'website development' })).rejects.toThrow(
-      ConflictException,
-    );
+    await expect(
+      runWithTenant('test-admin', () =>
+        masters.save({ name: 'website development' }),
+      ),
+    ).rejects.toThrow(ConflictException);
   });
 
   it('allows administrators to manage services and lead users to read choices', () => {
@@ -124,14 +128,16 @@ describe('Services master and lead selection', () => {
   });
 
   it('saves the selected service on a new lead', async () => {
-    const saved = await leads.create(
-      { name: 'Customer', phone: '1234567890', serviceId },
-      actor,
+    const saved = await runWithTenant('test-admin', () =>
+      leads.create(
+        { name: 'Customer', phone: '1234567890', serviceId },
+        actor,
+      ),
     );
     expect(saved.serviceId).toBe(serviceId);
     expect(db.lead.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ serviceId }) as unknown,
+        data: expect.objectContaining({ serviceId, adminId: 'test-admin' }) as unknown,
         include: { service: true },
       }),
     );
@@ -140,7 +146,9 @@ describe('Services master and lead selection', () => {
   it('rejects unknown and inactive selections before creating or updating a lead', async () => {
     db.serviceMaster.findFirst.mockResolvedValue(null);
     await expect(
-      leads.create({ name: 'Customer', phone: '1234567890', serviceId }, actor),
+      runWithTenant('test-admin', () =>
+        leads.create({ name: 'Customer', phone: '1234567890', serviceId }, actor),
+      ),
     ).rejects.toThrow(BadRequestException);
     await expect(
       leads.update(
@@ -172,7 +180,9 @@ describe('Services master and lead selection', () => {
   });
 
   it('allows leads without a service and explicitly clearing a saved service', async () => {
-    await leads.create({ name: 'Customer', phone: '1234567890' }, actor);
+    await runWithTenant('test-admin', () =>
+      leads.create({ name: 'Customer', phone: '1234567890' }, actor),
+    );
     await leads.update(lead.id, { version: 1, serviceId: null }, actor);
     expect(db.serviceMaster.findFirst).not.toHaveBeenCalled();
     expect(db.lead.update).toHaveBeenCalledWith(
@@ -229,7 +239,7 @@ describe('Services master and lead selection', () => {
       sgstRate: 9,
       isActive: true,
     });
-    const res = await masters.save(validDto);
+    const res = await runWithTenant('test-admin', () => masters.save(validDto));
     expect(res.igstRate).toBe(18);
     expect(res.cgstRate).toBe(9);
     expect(res.sgstRate).toBe(9);
@@ -241,6 +251,8 @@ describe('Services master and lead selection', () => {
       cgstRate: 8,
       sgstRate: 8, // 8+8 != 18
     });
-    await expect(masters.save(invalidDto)).rejects.toThrow(BadRequestException);
+    await expect(
+      runWithTenant('test-admin', () => masters.save(invalidDto)),
+    ).rejects.toThrow(BadRequestException);
   });
 });

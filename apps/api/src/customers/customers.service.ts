@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { currentAdminId } from '../tenant/tenant-context';
 import { Actor, CrmCoreService } from '../crm/crm-core.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CustomerListQueryDto } from './customers.dto';
@@ -96,6 +97,7 @@ export class CustomersService {
 
       const customer = await tx.customer.create({
         data: {
+          adminId: currentAdminId(),
           leadId,
           convertedById: actor.id,
           convertedByName: actor.name,

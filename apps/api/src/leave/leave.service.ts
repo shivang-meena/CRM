@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { LeaveRequest, LeaveStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { ApplyLeaveDto, ListLeaveQueryDto, ReviewLeaveDto, UpdateLeaveDto } from './dto/leave.dto';
 import type { AuthenticatedUser } from '../auth/permissions';
 
@@ -120,6 +121,7 @@ export class LeaveService {
 
     const record = await this.prisma.leaveRequest.create({
       data: {
+        adminId: currentAdminId(),
         staffId: user.id,
         staffName: user.name,
         type: dto.type,

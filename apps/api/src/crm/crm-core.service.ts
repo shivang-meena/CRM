@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { HistoryAction, HistoryEntity, Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
+import { currentAdminId } from '../tenant/tenant-context';
 
 export type Actor = { id: string; name: string };
 export type Tx = Prisma.TransactionClient;
@@ -46,6 +47,7 @@ export class CrmCoreService {
       }
     }
     return tx.leadHistory.create({ data: {
+      adminId: currentAdminId(),
       leadId, actorId: actor.id, actorName: actor.name, entityType, entityId, action, summary,
       ...(Object.keys(changes).length ? { changes: changes as Prisma.InputJsonObject } : {}),
     } });

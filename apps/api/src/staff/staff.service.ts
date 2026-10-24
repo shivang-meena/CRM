@@ -2,6 +2,8 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import * as bcrypt from 'bcryptjs';
 import { Prisma, StaffMember, StaffStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { adminFeatures } from '../auth/features';
+import { currentAdminId } from '../tenant/tenant-context';
 import { CreateStaffDto, isValidCalendarDateString, ListStaffQueryDto, UpdateStaffDto, UpdateStaffStatusDto } from './dto/staff.dto';
 
 function dateOnly(value: Date | null): string | null {
@@ -11,6 +13,12 @@ function dateOnly(value: Date | null): string | null {
 @Injectable()
 export class StaffService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async adminFeatureMap() {
+    const admin = await this.prisma.admin.findFirst({ where: { id: currentAdminId(), deletedAt: null } });
+    if (!admin) throw new NotFoundException('Admin not found');
+    return adminFeatures(admin);
+  }
 
   private serialize(record: StaffMember) {
     return {
@@ -129,10 +137,12 @@ export class StaffService {
     const birthDate = dto.birthDate ? this.toDate(dto.birthDate, 'birthDate') : null;
     const joiningDate = this.toDate(dto.joiningDate, 'joiningDate');
     this.validateDates(birthDate, joiningDate);
+    const features = await this.adminFeatureMap();
     const passwordHash = dto.password ? await bcrypt.hash(dto.password, 10) : null;
     try {
       const record = await this.prisma.staffMember.create({
         data: {
+          adminId: currentAdminId(),
           firstName: dto.firstName.trim(),
           lastName: dto.lastName.trim(),
           email: dto.email.trim().toLowerCase(),
@@ -145,15 +155,15 @@ export class StaffService {
           employeeCode: dto.employeeCode ?? null,
           passwordHash,
           canLoginApp: dto.canLoginApp ?? false,
-          permLead: dto.permissions?.lead ?? true,
-          permReminder: dto.permissions?.reminder ?? true,
-          permMeeting: dto.permissions?.meeting ?? true,
-          permNote: dto.permissions?.note ?? true,
-          permCalendar: dto.permissions?.calendar ?? true,
-          permCustomer: dto.permissions?.customer ?? true,
-          permInvoice: dto.permissions?.invoice ?? false,
-          permStaff: dto.permissions?.staff ?? false,
-          permLeave: dto.permissions?.leave ?? true,
+          permLead: features.lead && (dto.permissions?.lead ?? true),
+          permReminder: features.reminder && (dto.permissions?.reminder ?? true),
+          permMeeting: features.meeting && (dto.permissions?.meeting ?? true),
+          permNote: features.note && (dto.permissions?.note ?? true),
+          permCalendar: features.calendar && (dto.permissions?.calendar ?? true),
+          permCustomer: features.customer && (dto.permissions?.customer ?? true),
+          permInvoice: features.invoice && (dto.permissions?.invoice ?? false),
+          permStaff: features.staff && (dto.permissions?.staff ?? false),
+          permLeave: features.leave && (dto.permissions?.leave ?? true),
         },
       });
       return this.serialize(record);
@@ -170,6 +180,7 @@ export class StaffService {
     const birthDate = dto.birthDate ? this.toDate(dto.birthDate, 'birthDate') : null;
     const joiningDate = this.toDate(dto.joiningDate, 'joiningDate');
     this.validateDates(birthDate, joiningDate);
+    const features = await this.adminFeatureMap();
 
     // Only re-hash password if a new one was provided
     const passwordHash = dto.password
@@ -192,15 +203,15 @@ export class StaffService {
           employeeCode: dto.employeeCode ?? null,
           passwordHash,
           canLoginApp: dto.canLoginApp ?? existing.canLoginApp,
-          permLead: dto.permissions?.lead ?? existing.permLead,
-          permReminder: dto.permissions?.reminder ?? existing.permReminder,
-          permMeeting: dto.permissions?.meeting ?? existing.permMeeting,
-          permNote: dto.permissions?.note ?? existing.permNote,
-          permCalendar: dto.permissions?.calendar ?? existing.permCalendar,
-          permCustomer: dto.permissions?.customer ?? existing.permCustomer,
-          permInvoice: dto.permissions?.invoice ?? existing.permInvoice,
-          permStaff: dto.permissions?.staff ?? existing.permStaff,
-          permLeave: dto.permissions?.leave ?? existing.permLeave,
+          permLead: features.lead ? (dto.permissions?.lead ?? existing.permLead) : existing.permLead,
+          permReminder: features.reminder ? (dto.permissions?.reminder ?? existing.permReminder) : existing.permReminder,
+          permMeeting: features.meeting ? (dto.permissions?.meeting ?? existing.permMeeting) : existing.permMeeting,
+          permNote: features.note ? (dto.permissions?.note ?? existing.permNote) : existing.permNote,
+          permCalendar: features.calendar ? (dto.permissions?.calendar ?? existing.permCalendar) : existing.permCalendar,
+          permCustomer: features.customer ? (dto.permissions?.customer ?? existing.permCustomer) : existing.permCustomer,
+          permInvoice: features.invoice ? (dto.permissions?.invoice ?? existing.permInvoice) : existing.permInvoice,
+          permStaff: features.staff ? (dto.permissions?.staff ?? existing.permStaff) : existing.permStaff,
+          permLeave: features.leave ? (dto.permissions?.leave ?? existing.permLeave) : existing.permLeave,
           version: { increment: 1 },
         },
       });

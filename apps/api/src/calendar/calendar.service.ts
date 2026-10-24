@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CalendarEventCategory } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { Actor, CrmCoreService } from '../crm/crm-core.service';
 import { CalendarItemsQueryDto, CreateCalendarEventDto, UpdateCalendarEventDto } from './dto/calendar.dto';
 import { hasPermission } from '../auth/permissions';
@@ -96,6 +97,7 @@ export class CalendarService {
     const existing = await this.prisma.calendarEvent.findFirst({ where: { createdById: actor.id, requestKey: input.requestKey } });
     if (existing) { this.core.replay(existing, hash); return this.manualItem(existing); }
     const data = {
+      adminId: currentAdminId(),
       category: input.category ?? CalendarEventCategory.EVENT,
       title: input.title.trim(),
       description: input.description?.trim() || null,

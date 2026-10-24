@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { Actor, CrmCoreService } from '../crm/crm-core.service';
 import { ListQueryDto, VersionDto } from '../crm/crm.dto';
 
@@ -83,6 +84,7 @@ export class StandaloneActivitiesService {
     const fields = this.fields(kind, input);
     this.validate(kind, { ...input, ...fields });
     const row = await this.db(kind).create({ data: {
+      adminId: currentAdminId(),
       ...fields,
       leadId: null,
       createdById: actor.id,

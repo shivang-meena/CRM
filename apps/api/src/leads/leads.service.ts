@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Lead, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentAdminId } from '../tenant/tenant-context';
 import { Actor, CrmCoreService } from '../crm/crm-core.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
@@ -58,10 +59,10 @@ export class LeadsService {
   async create(dto: CreateLeadDto, actor: Actor) {
     return this.prisma.$transaction(async tx => {
       await this.validateService(tx, dto.serviceId);
-      const lead = await tx.lead.create({ data: { ...dto, nextFollowUpAt: dto.nextFollowUpAt ? new Date(dto.nextFollowUpAt) : null, createdBy: actor.name, assignedTo: dto.assignedTo || actor.name }, include: { service: true } });
+      const lead = await tx.lead.create({ data: { ...dto, adminId: currentAdminId(), nextFollowUpAt: dto.nextFollowUpAt ? new Date(dto.nextFollowUpAt) : null, createdBy: actor.name, assignedTo: dto.assignedTo || actor.name }, include: { service: true } });
       await this.core.history(tx, lead.id, actor, 'LEAD', lead.id, 'CREATED', 'Lead created');
       if (dto.nextFollowUpAt) {
-        const followup = await tx.leadFollowUp.create({ data: { leadId: lead.id, title: 'Initial follow-up', scheduledAt: new Date(dto.nextFollowUpAt), assignedTo: lead.assignedTo, createdById: actor.id, createdByName: actor.name } });
+        const followup = await tx.leadFollowUp.create({ data: { adminId: currentAdminId(), leadId: lead.id, title: 'Initial follow-up', scheduledAt: new Date(dto.nextFollowUpAt), assignedTo: lead.assignedTo, createdById: actor.id, createdByName: actor.name } });
         await this.core.history(tx, lead.id, actor, 'FOLLOWUP', followup.id, 'CREATED', 'Initial follow-up scheduled');
       }
       return this.format(lead);
