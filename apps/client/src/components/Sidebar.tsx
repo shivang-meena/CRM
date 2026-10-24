@@ -476,7 +476,7 @@ type Module =
   | 'note' | 'calendar' | 'customer' | 'invoice'
   | 'staff' | 'leave';
 
-export default function Sidebar({ horizontal }: { horizontal: boolean }) {
+export default function Sidebar({ horizontal, fillHeight = false }: { horizontal: boolean; fillHeight?: boolean }) {
   const { userName, role, permissions, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -574,7 +574,7 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
     ) : null;
 
   return (
-    <View style={[s.base, horizontal ? s.bar : styles.side]}>
+    <View style={[s.base, horizontal ? s.bar : styles.side, fillHeight && styles.drawerFill]}>
       {/* Brand lockup — serif wordmark like ERP, CRM colors */}
       <View style={s.brand}>
         <View style={s.logoTile}>
@@ -591,9 +591,10 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
       </View>
 
       <ScrollView
-        style={horizontal ? undefined : styles.menuScroll}
+        horizontal={horizontal}
+        style={horizontal ? styles.menuScrollHorizontal : styles.menuScroll}
         contentContainerStyle={horizontal ? styles.menuH : styles.menuV}
-        scrollEnabled={!horizontal}
+        scrollEnabled
         showsVerticalScrollIndicator={false}
       >
         {mainItems.length > 0 && groupLabel('Main', false)}
@@ -742,6 +743,14 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
             </Pressable>
 
             {horizontal && renderNav({
+              key: 'lead-settings',
+              label: 'Lead Settings',
+              icon: 'funnel-outline',
+              active: isLeadSettings,
+              onPress: () => router.replace('/settings/leads' as Href),
+              visible: true,
+            })}
+            {horizontal && renderNav({
               key: 'invoice-settings',
               label: 'Invoice Settings',
               icon: 'document-text-outline',
@@ -764,6 +773,26 @@ export default function Sidebar({ horizontal }: { horizontal: boolean }) {
               active: isProductHsn,
               onPress: () => router.replace('/settings/product-hsn' as Href),
               visible: true,
+            })}
+            {horizontal && renderNav({
+              key: 'invoice-list', label: 'Invoice List', icon: 'receipt-outline', active: isInvoiceList,
+              onPress: () => router.replace('/invoice' as Href), visible: true,
+            })}
+            {horizontal && renderNav({
+              key: 'invoice-add', label: 'Add Invoice', icon: 'add-circle-outline', active: pathname === '/invoice/add',
+              onPress: () => router.replace('/invoice/add' as Href), visible: true,
+            })}
+            {horizontal && renderNav({
+              key: 'invoice-quotation', label: 'Quotation', icon: 'document-text-outline', active: pathname === '/invoice/quotation',
+              onPress: () => router.replace('/invoice/quotation' as Href), visible: true,
+            })}
+            {horizontal && renderNav({
+              key: 'invoice-payment', label: 'Payment Method', icon: 'card-outline', active: pathname === '/invoice/payment-method',
+              onPress: () => router.replace('/invoice/payment-method' as Href), visible: true,
+            })}
+            {horizontal && renderNav({
+              key: 'invoice-brochure', label: 'Brochure', icon: 'albums-outline', active: pathname === '/invoice/brochure',
+              onPress: () => router.replace('/invoice/brochure' as Href), visible: true,
             })}
 
             {!horizontal && settingsExpanded && (
@@ -844,9 +873,11 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     paddingVertical: 18,
   },
+  drawerFill: { flex: 1, flexGrow: 1, flexShrink: 1, flexBasis: 0, width: '100%', height: '100%' },
   menuScroll: { flex: 1 },
+  menuScrollHorizontal: { maxHeight: 50, flexGrow: 0, flexShrink: 0 },
   menuV: { paddingHorizontal: 10, paddingBottom: 16, marginTop: 8 },
-  menuH: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  menuH: { flexDirection: 'row', gap: 6, flexWrap: 'nowrap', paddingHorizontal: 10 },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -855,6 +886,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#ECE9F7',
+    flexShrink: 0,
   },
 });
 
@@ -862,13 +894,14 @@ const s = StyleSheet.create({
   base: { backgroundColor: C.sidebar, borderColor: C.border, flex: 1 },
 
   bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flex: 0,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
     borderBottomWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    gap: 0,
   },
 
   // Brand
@@ -877,7 +910,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 8,
+    paddingTop: 8,
   },
   logoTile: {
     width: 38,

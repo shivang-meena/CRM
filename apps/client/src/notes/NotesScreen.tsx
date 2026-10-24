@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { errorMessage } from '@/api/client';
 import Button from '@/components/Button';
@@ -9,6 +9,7 @@ import NoteViewModal from '@/components/notes/NoteViewModal';
 import { useNote, useNoteActions, useNotes } from '@/hooks/useNotes';
 import { Note } from '@/types/note';
 import { colors } from '@/theme/colors';
+import { MOBILE_RECORD_LAYOUTS } from '@/layout/responsive';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 
@@ -18,6 +19,8 @@ function preview(value: string) {
 }
 
 export default function NotesScreen() {
+  const { width } = useWindowDimensions();
+  const cards = width < 960 && MOBILE_RECORD_LAYOUTS.notes === 'cards';
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -64,13 +67,17 @@ export default function NotesScreen() {
   }
 
   return <View style={styles.page}>
-    <View style={styles.toolbar}>
+      <View style={[styles.toolbar, cards && styles.toolbarCompact]}>
       <Text style={styles.heading}>Notes</Text>
-      <View style={styles.toolbarRight}><View style={styles.search}><Ionicons name="search-outline" size={17} color={colors.muted} /><TextInput value={search} onChangeText={setSearch} placeholder="Search notes" placeholderTextColor={colors.muted} style={styles.searchInput} accessibilityLabel="Search notes" />{search ? <Pressable accessibilityRole="button" accessibilityLabel="Clear note search" onPress={() => setSearch('')}><Ionicons name="close-circle-outline" size={16} color={colors.muted} /></Pressable> : null}</View><Button title="+ Add Note" onPress={openCreate} /></View>
+      <View style={[styles.toolbarRight, cards && styles.toolbarRightCompact]}><View style={[styles.search, cards && styles.searchCompact]}><Ionicons name="search-outline" size={17} color={colors.muted} /><TextInput value={search} onChangeText={setSearch} placeholder="Search notes" placeholderTextColor={colors.muted} style={styles.searchInput} accessibilityLabel="Search notes" />{search ? <Pressable accessibilityRole="button" accessibilityLabel="Clear note search" onPress={() => setSearch('')}><Ionicons name="close-circle-outline" size={16} color={colors.muted} /></Pressable> : null}</View><Button title="+ Add Note" onPress={openCreate} /></View>
     </View>
     {queryError ? <View accessibilityRole="alert" style={styles.errorBanner}><Text style={styles.errorText}>{errorMessage(queryError)}</Text><Pressable accessibilityRole="button" onPress={() => { void listQuery.refetch(); }}><Text style={styles.retry}>Retry</Text></Pressable></View> : null}
     <View style={styles.tableShell}>
-      {listQuery.isLoading && !listQuery.data ? <View style={styles.state}><ActivityIndicator color={colors.accent} /><Text style={styles.muted}>Loading notes…</Text></View> : listQuery.isError && !listQuery.data ? <View style={styles.state}><Text style={styles.errorText}>{errorMessage(listQuery.error)}</Text></View> : !notes.length ? <View style={styles.state}><Ionicons name="document-text-outline" size={28} color={colors.muted} /><Text style={styles.muted}>{search.trim() ? 'No notes match your search.' : 'No notes yet.'}</Text></View> : <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.tableScroll}><View style={styles.table}>
+      {listQuery.isLoading && !listQuery.data ? <View style={styles.state}><ActivityIndicator color={colors.accent} /><Text style={styles.muted}>Loading notes…</Text></View> : listQuery.isError && !listQuery.data ? <View style={styles.state}><Text style={styles.errorText}>{errorMessage(listQuery.error)}</Text></View> : !notes.length ? <View style={styles.state}><Ionicons name="document-text-outline" size={28} color={colors.muted} /><Text style={styles.muted}>{search.trim() ? 'No notes match your search.' : 'No notes yet.'}</Text></View> : cards ? <ScrollView contentContainerStyle={styles.cardsList}>{notes.map((note, index) => <View key={note.id} style={styles.noteCard}>
+        <View style={styles.noteCardHead}><Text style={styles.noteCardTitle}>Note {start + index}</Text><Text style={styles.typeBadge}>Note</Text></View>
+        <Text style={styles.notePreview}>{preview(note.content)}</Text>
+        <View style={styles.cardActions}><Pressable accessibilityRole="button" accessibilityLabel={`View note ${start + index}`} onPress={() => setViewId(note.id)} style={styles.cardAction}><Ionicons name="eye-outline" size={17} color="#2B78D4"/><Text>View</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Edit note ${start + index}`} onPress={() => openEdit(note)} style={styles.cardAction}><Ionicons name="create-outline" size={17} color="#F39A24"/><Text>Edit</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Delete note ${start + index}`} onPress={() => setDeleteNote(note)} style={styles.cardAction}><Ionicons name="trash-outline" size={17} color={colors.danger}/><Text>Delete</Text></Pressable></View>
+      </View>)}</ScrollView> : <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.tableScroll}><View style={styles.table}>
         <View style={styles.headerRow}><Text style={[styles.headerCell, styles.noCell]}>No.</Text><Text style={[styles.headerCell, styles.actionsCell]}>Actions</Text><Text style={[styles.headerCell, styles.noteCell]}>Note</Text><Text style={[styles.headerCell, styles.typeCell]}>Type</Text></View>
         {notes.map((note, index) => <View key={note.id} style={styles.dataRow}><Text style={[styles.cell, styles.noCell]}>{start + index}</Text><View style={[styles.actionsCell, styles.actionButtons]}><Pressable accessibilityRole="button" accessibilityLabel={`Edit note ${start + index}`} onPress={() => openEdit(note)}><Ionicons name="create-outline" size={17} color="#F39A24" /></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Delete note ${start + index}`} onPress={() => setDeleteNote(note)}><Ionicons name="trash-outline" size={17} color={colors.danger} /></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`View note ${start + index}`} onPress={() => setViewId(note.id)}><Ionicons name="eye-outline" size={17} color="#2B78D4" /></Pressable></View><Text style={[styles.cell, styles.noteCell]} numberOfLines={2}>{preview(note.content)}</Text><Text style={[styles.cell, styles.typeCell]}>Note</Text></View>)}
       </View></ScrollView>}
@@ -89,15 +96,21 @@ function PageButton({ icon, label, disabled, onPress }: { icon: React.ComponentP
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.canvas },
-  toolbar: { minHeight: 70, paddingHorizontal: 18, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  toolbar: { minHeight: 70, paddingHorizontal: 18, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
+  toolbarCompact: { paddingHorizontal: 12, alignItems: 'stretch' },
   heading: { color: colors.text, fontSize: 21, fontWeight: '800' },
-  toolbarRight: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
-  search: { width: 220, height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  toolbarRight: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1, flexWrap: 'wrap' },
+  toolbarRightCompact: { width: '100%' },
+  search: { width: 220, maxWidth: '100%', height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  searchCompact: { flex: 1, width: undefined, minWidth: 0 },
   searchInput: { flex: 1, color: colors.text, fontSize: 12, paddingVertical: 0 },
   errorBanner: { margin: 12, padding: 10, borderRadius: 7, backgroundColor: colors.dangerSoft, flexDirection: 'row', alignItems: 'center', gap: 12 },
   errorText: { color: colors.danger, fontSize: 12, flex: 1 }, retry: { color: colors.primaryText, fontWeight: '800', fontSize: 12 },
   tableShell: { flex: 1, margin: 14, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 7, overflow: 'hidden', position: 'relative' },
   tableScroll: { minWidth: '100%' }, table: { minWidth: 680, flex: 1 },
+  cardsList: { padding: 12, gap: 10 }, noteCard: { padding: 14, gap: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 10, backgroundColor: colors.white },
+  noteCardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }, noteCardTitle: { color: colors.text, fontSize: 14, fontWeight: '800' }, typeBadge: { color: colors.primaryText, backgroundColor: colors.primarySoft, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4, fontSize: 11, fontWeight: '700' },
+  notePreview: { color: colors.text, fontSize: 13, lineHeight: 19 }, cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 4 }, cardAction: { minHeight: 44, minWidth: 76, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: 8 },
   headerRow: { minHeight: 38, flexDirection: 'row', alignItems: 'center', backgroundColor: '#0B2F7D' },
   dataRow: { minHeight: 54, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border },
   headerCell: { color: colors.white, fontSize: 11, fontWeight: '800', paddingHorizontal: 9 }, cell: { color: colors.text, fontSize: 12, paddingHorizontal: 9 }, noCell: { width: 60 }, actionsCell: { width: 105 }, noteCell: { width: 390 }, typeCell: { width: 125 },

@@ -1,12 +1,235 @@
+// ORIGINAL IMPLEMENTATION PRESERVED BELOW AS COMMENTS.
+// // // apps/client/src/components/lead/LeadHeader.tsx
+// // import React from 'react';
+// // import { StyleSheet, Text, View } from 'react-native';
+// // import { Lead, statusLabel } from '@/types/lead';
+// // import { useLeadStatuses } from '@/hooks/useLeadStatuses';
+// // import { formatDateTime, formatINR } from '@/utils/format';
+// // import { colors } from '@/theme/colors';
+// // import Stars from '@/components/Stars';
+//
+// // export default function LeadHeader({ lead }: { lead: Lead }) {
+// //   const statusesQuery = useLeadStatuses();
+// //   const matchedStatus = statusesQuery.data?.find(
+// //     (s) => s.code === lead.status || s.name.toLowerCase() === (lead.status || '').toLowerCase()
+// //   );
+// //   const statusName = matchedStatus?.name ?? statusLabel(lead.status);
+// //   const statusColor = matchedStatus?.color;
+//
+// //   return (
+// //     <View style={styles.header}>
+// //       <View style={styles.row}>
+// //         <View style={styles.avatar}>
+// //           <Text style={styles.avatarText}>{(lead.name || 'L').charAt(0).toUpperCase()}</Text>
+// //         </View>
+// //         <View style={styles.titleInfo}>
+// //           <View style={styles.nameRow}>
+// //             <Text style={styles.name}>{lead.name}</Text>
+// //             <View style={[styles.statusBadge, statusColor && { backgroundColor: statusColor + '1A' }]}>
+// //               <Text style={[styles.statusText, statusColor && { color: statusColor }]}>{statusName}</Text>
+// //             </View>
+// //           </View>
+// //           {lead.companyName ? <Text style={styles.company}>{lead.companyName}</Text> : null}
+// //           <View style={styles.metaRow}>
+// //             <Text style={styles.metaText}>Assigned to: <Text style={styles.metaBold}>{lead.assignedTo || 'Unassigned'}</Text></Text>
+// //             <Text style={styles.dot}>•</Text>
+// //             <Text style={styles.metaText}>Phone: <Text style={styles.metaBold}>{lead.phone}</Text></Text>
+// //             {lead.email ? (
+// //               <>
+// //                 <Text style={styles.dot}>•</Text>
+// //                 <Text style={styles.metaText}>Email: <Text style={styles.metaBold}>{lead.email}</Text></Text>
+// //               </>
+// //             ) : null}
+// //           </View>
+// //         </View>
+// //       </View>
+//
+// //       <View style={styles.summaryBar}>
+// //         <View style={styles.summaryItem}>
+// //           <Text style={styles.summaryLabel}>Next Follow-up</Text>
+// //           <Text style={[styles.summaryVal, !lead.nextFollowUpAt && styles.emptyVal]}>
+// //             {lead.nextFollowUpAt ? formatDateTime(lead.nextFollowUpAt) : 'None scheduled'}
+// //           </Text>
+// //         </View>
+// //         <View style={styles.divider} />
+// //         <View style={styles.summaryItem}>
+// //           <Text style={styles.summaryLabel}>Estimated Amount</Text>
+// //           <Text style={styles.summaryVal}>{formatINR(Number(lead.estimatedAmount))}</Text>
+// //         </View>
+// //         <View style={styles.divider} />
+// //         <View style={styles.summaryItem}>
+// //           <Text style={styles.summaryLabel}>Rating</Text>
+// //           <Stars value={lead.rating} size={15} />
+// //         </View>
+// //       </View>
+// //     </View>
+// //   );
+// // }
+//
+// // const styles = StyleSheet.create({
+// //   header: {
+// //     backgroundColor: colors.white,
+// //     borderWidth: 1,
+// //     borderColor: colors.border,
+// //     borderRadius: 8,
+// //     padding: 16,
+// //     gap: 14,
+// //   },
+// //   row: {
+// //     flexDirection: 'row',
+// //     gap: 14,
+// //     alignItems: 'flex-start',
+// //   },
+// //   avatar: {
+// //     width: 48,
+// //     height: 48,
+// //     borderRadius: 24,
+// //     backgroundColor: colors.primarySoft,
+// //     alignItems: 'center',
+// //     justifyContent: 'center',
+// //   },
+// //   avatarText: {
+// //     fontSize: 22,
+// //     fontWeight: '800',
+// //     color: colors.primaryText,
+// //   },
+// //   titleInfo: {
+// //     flex: 1,
+// //     gap: 4,
+// //   },
+// //   nameRow: {
+// //     flexDirection: 'row',
+// //     alignItems: 'center',
+// //     gap: 10,
+// //     flexWrap: 'wrap',
+// //   },
+// //   name: {
+// //     fontSize: 18,
+// //     fontWeight: '800',
+// //     color: colors.text,
+// //   },
+// //   statusBadge: {
+// //     backgroundColor: colors.primarySoft,
+// //     paddingHorizontal: 8,
+// //     paddingVertical: 2,
+// //     borderRadius: 12,
+// //   },
+// //   statusText: {
+// //     fontSize: 11,
+// //     fontWeight: '700',
+// //     color: colors.primaryText,
+// //   },
+// //   company: {
+// //     fontSize: 14,
+// //     color: colors.muted,
+// //     fontWeight: '500',
+// //   },
+// //   metaRow: {
+// //     flexDirection: 'row',
+// //     flexWrap: 'wrap',
+// //     alignItems: 'center',
+// //     gap: 8,
+// //     marginTop: 2,
+// //   },
+// //   metaText: {
+// //     fontSize: 12,
+// //     color: colors.muted,
+// //   },
+// //   metaBold: {
+// //     fontWeight: '700',
+// //     color: colors.text,
+// //   },
+// //   dot: {
+// //     fontSize: 12,
+// //     color: colors.muted,
+// //   },
+// //   summaryBar: {
+// //     flexDirection: 'row',
+// //     alignItems: 'center',
+// //     backgroundColor: colors.primarySoft,
+// //     borderRadius: 6,
+// //     paddingVertical: 8,
+// //     paddingHorizontal: 12,
+// //     flexWrap: 'wrap',
+// //     gap: 12,
+// //   },
+// //   summaryItem: {
+// //     flex: 1,
+// //     minWidth: 110,
+// //     gap: 2,
+// //   },
+// //   summaryLabel: {
+// //     fontSize: 11,
+// //     fontWeight: '700',
+// //     color: colors.primaryText,
+// //   },
+// //   summaryVal: {
+// //     fontSize: 13,
+// //     fontWeight: '700',
+// //     color: colors.text,
+// //   },
+// //   emptyVal: {
+// //     color: colors.muted,
+// //     fontStyle: 'italic',
+// //     fontWeight: '400',
+// //   },
+// //   divider: {
+// //     width: 1,
+// //     height: 24,
+// //     backgroundColor: colors.border,
+// //   },
+// // });
+//
+//
 // // apps/client/src/components/lead/LeadHeader.tsx
 // import React from 'react';
 // import { StyleSheet, Text, View } from 'react-native';
+// import { Ionicons } from '@expo/vector-icons';
 // import { Lead, statusLabel } from '@/types/lead';
 // import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 // import { formatDateTime, formatINR } from '@/utils/format';
 // import { colors } from '@/theme/colors';
 // import Stars from '@/components/Stars';
-
+//
+// function MetaChip({
+//   icon,
+//   text,
+// }: {
+//   icon: keyof typeof Ionicons.glyphMap;
+//   text: string;
+// }) {
+//   return (
+//     <View style={styles.metaChip}>
+//       <Ionicons name={icon} size={13} color={colors.muted} />
+//       <Text style={styles.metaText} numberOfLines={1}>
+//         {text}
+//       </Text>
+//     </View>
+//   );
+// }
+//
+// function Stat({
+//   icon,
+//   label,
+//   children,
+// }: {
+//   icon: keyof typeof Ionicons.glyphMap;
+//   label: string;
+//   children: React.ReactNode;
+// }) {
+//   return (
+//     <View style={styles.stat}>
+//       <View style={styles.statIcon}>
+//         <Ionicons name={icon} size={16} color={colors.primaryText} />
+//       </View>
+//       <View style={styles.statBody}>
+//         <Text style={styles.statLabel}>{label}</Text>
+//         {children}
+//       </View>
+//     </View>
+//   );
+// }
+//
 // export default function LeadHeader({ lead }: { lead: Lead }) {
 //   const statusesQuery = useLeadStatuses();
 //   const matchedStatus = statusesQuery.data?.find(
@@ -14,65 +237,79 @@
 //   );
 //   const statusName = matchedStatus?.name ?? statusLabel(lead.status);
 //   const statusColor = matchedStatus?.color;
-
+//
 //   return (
 //     <View style={styles.header}>
 //       <View style={styles.row}>
 //         <View style={styles.avatar}>
 //           <Text style={styles.avatarText}>{(lead.name || 'L').charAt(0).toUpperCase()}</Text>
 //         </View>
+//
 //         <View style={styles.titleInfo}>
 //           <View style={styles.nameRow}>
-//             <Text style={styles.name}>{lead.name}</Text>
-//             <View style={[styles.statusBadge, statusColor && { backgroundColor: statusColor + '1A' }]}>
-//               <Text style={[styles.statusText, statusColor && { color: statusColor }]}>{statusName}</Text>
+//             <Text style={styles.name} numberOfLines={2}>
+//               {lead.name}
+//             </Text>
+//             <View
+//               style={[
+//                 styles.statusBadge,
+//                 statusColor ? { backgroundColor: statusColor + '1A' } : null,
+//               ]}
+//             >
+//               <View
+//                 style={[
+//                   styles.statusDot,
+//                   { backgroundColor: statusColor || colors.primaryText },
+//                 ]}
+//               />
+//               <Text style={[styles.statusText, statusColor ? { color: statusColor } : null]}>
+//                 {statusName}
+//               </Text>
 //             </View>
 //           </View>
-//           {lead.companyName ? <Text style={styles.company}>{lead.companyName}</Text> : null}
+//
+//           {lead.companyName ? (
+//             <View style={styles.companyRow}>
+//               <Ionicons name="business-outline" size={14} color={colors.muted} />
+//               <Text style={styles.company}>{lead.companyName}</Text>
+//             </View>
+//           ) : null}
+//
 //           <View style={styles.metaRow}>
-//             <Text style={styles.metaText}>Assigned to: <Text style={styles.metaBold}>{lead.assignedTo || 'Unassigned'}</Text></Text>
-//             <Text style={styles.dot}>•</Text>
-//             <Text style={styles.metaText}>Phone: <Text style={styles.metaBold}>{lead.phone}</Text></Text>
-//             {lead.email ? (
-//               <>
-//                 <Text style={styles.dot}>•</Text>
-//                 <Text style={styles.metaText}>Email: <Text style={styles.metaBold}>{lead.email}</Text></Text>
-//               </>
-//             ) : null}
+//             <MetaChip icon="person-outline" text={lead.assignedTo || 'Unassigned'} />
+//             <MetaChip icon="call-outline" text={lead.phone} />
+//             {lead.email ? <MetaChip icon="mail-outline" text={lead.email} /> : null}
 //           </View>
 //         </View>
 //       </View>
-
+//
 //       <View style={styles.summaryBar}>
-//         <View style={styles.summaryItem}>
-//           <Text style={styles.summaryLabel}>Next Follow-up</Text>
-//           <Text style={[styles.summaryVal, !lead.nextFollowUpAt && styles.emptyVal]}>
+//         <Stat icon="calendar-outline" label="Next Follow-up">
+//           <Text style={[styles.statVal, !lead.nextFollowUpAt && styles.emptyVal]} numberOfLines={1}>
 //             {lead.nextFollowUpAt ? formatDateTime(lead.nextFollowUpAt) : 'None scheduled'}
 //           </Text>
-//         </View>
+//         </Stat>
 //         <View style={styles.divider} />
-//         <View style={styles.summaryItem}>
-//           <Text style={styles.summaryLabel}>Estimated Amount</Text>
-//           <Text style={styles.summaryVal}>{formatINR(Number(lead.estimatedAmount))}</Text>
-//         </View>
+//         <Stat icon="cash-outline" label="Estimated Amount">
+//           <Text style={styles.statVal}>{formatINR(Number(lead.estimatedAmount))}</Text>
+//         </Stat>
 //         <View style={styles.divider} />
-//         <View style={styles.summaryItem}>
-//           <Text style={styles.summaryLabel}>Rating</Text>
+//         <Stat icon="star-outline" label="Rating">
 //           <Stars value={lead.rating} size={15} />
-//         </View>
+//         </Stat>
 //       </View>
 //     </View>
 //   );
 // }
-
+//
 // const styles = StyleSheet.create({
 //   header: {
 //     backgroundColor: colors.white,
 //     borderWidth: 1,
 //     borderColor: colors.border,
-//     borderRadius: 8,
+//     borderRadius: 12,
 //     padding: 16,
-//     gap: 14,
+//     gap: 16,
 //   },
 //   row: {
 //     flexDirection: 'row',
@@ -80,21 +317,21 @@
 //     alignItems: 'flex-start',
 //   },
 //   avatar: {
-//     width: 48,
-//     height: 48,
-//     borderRadius: 24,
+//     width: 56,
+//     height: 56,
+//     borderRadius: 16,
 //     backgroundColor: colors.primarySoft,
 //     alignItems: 'center',
 //     justifyContent: 'center',
 //   },
 //   avatarText: {
-//     fontSize: 22,
+//     fontSize: 24,
 //     fontWeight: '800',
 //     color: colors.primaryText,
 //   },
 //   titleInfo: {
 //     flex: 1,
-//     gap: 4,
+//     gap: 6,
 //   },
 //   nameRow: {
 //     flexDirection: 'row',
@@ -103,20 +340,34 @@
 //     flexWrap: 'wrap',
 //   },
 //   name: {
-//     fontSize: 18,
+//     fontSize: 20,
 //     fontWeight: '800',
 //     color: colors.text,
+//     flexShrink: 1,
 //   },
 //   statusBadge: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     gap: 6,
 //     backgroundColor: colors.primarySoft,
-//     paddingHorizontal: 8,
-//     paddingVertical: 2,
-//     borderRadius: 12,
+//     paddingHorizontal: 10,
+//     paddingVertical: 4,
+//     borderRadius: 999,
+//   },
+//   statusDot: {
+//     width: 6,
+//     height: 6,
+//     borderRadius: 3,
 //   },
 //   statusText: {
 //     fontSize: 11,
 //     fontWeight: '700',
 //     color: colors.primaryText,
+//   },
+//   companyRow: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     gap: 6,
 //   },
 //   company: {
 //     fontSize: 14,
@@ -130,41 +381,63 @@
 //     gap: 8,
 //     marginTop: 2,
 //   },
+//   metaChip: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     gap: 5,
+//     backgroundColor: '#F4F6FA',
+//     borderRadius: 8,
+//     paddingHorizontal: 8,
+//     paddingVertical: 4,
+//     maxWidth: '100%',
+//   },
 //   metaText: {
 //     fontSize: 12,
-//     color: colors.muted,
-//   },
-//   metaBold: {
-//     fontWeight: '700',
 //     color: colors.text,
-//   },
-//   dot: {
-//     fontSize: 12,
-//     color: colors.muted,
+//     fontWeight: '600',
+//     flexShrink: 1,
 //   },
 //   summaryBar: {
 //     flexDirection: 'row',
 //     alignItems: 'center',
-//     backgroundColor: colors.primarySoft,
-//     borderRadius: 6,
-//     paddingVertical: 8,
+//     backgroundColor: '#F8FAFD',
+//     borderWidth: 1,
+//     borderColor: colors.border,
+//     borderRadius: 10,
+//     paddingVertical: 10,
 //     paddingHorizontal: 12,
 //     flexWrap: 'wrap',
 //     gap: 12,
 //   },
-//   summaryItem: {
+//   stat: {
 //     flex: 1,
-//     minWidth: 110,
+//     minWidth: 150,
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     gap: 10,
+//   },
+//   statIcon: {
+//     width: 32,
+//     height: 32,
+//     borderRadius: 8,
+//     backgroundColor: colors.primarySoft,
+//     alignItems: 'center',
+//     justifyContent: 'center',
+//   },
+//   statBody: {
+//     flex: 1,
 //     gap: 2,
 //   },
-//   summaryLabel: {
+//   statLabel: {
 //     fontSize: 11,
 //     fontWeight: '700',
-//     color: colors.primaryText,
+//     color: colors.muted,
+//     textTransform: 'uppercase',
+//     letterSpacing: 0.4,
 //   },
-//   summaryVal: {
-//     fontSize: 13,
-//     fontWeight: '700',
+//   statVal: {
+//     fontSize: 14,
+//     fontWeight: '800',
 //     color: colors.text,
 //   },
 //   emptyVal: {
@@ -174,13 +447,20 @@
 //   },
 //   divider: {
 //     width: 1,
-//     height: 24,
+//     height: 28,
 //     backgroundColor: colors.border,
 //   },
 // });
+//
+//
+//
+//
+//
+//
+//
 
-
-// apps/client/src/components/lead/LeadHeader.tsx
+// REDESIGN NOTES: status-coloured accent strip, bigger avatar, contact chips, and three separate
+// stat tiles (follow-up / amount / rating) instead of one cramped bar. Data logic unchanged.
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -190,13 +470,7 @@ import { formatDateTime, formatINR } from '@/utils/format';
 import { colors } from '@/theme/colors';
 import Stars from '@/components/Stars';
 
-function MetaChip({
-  icon,
-  text,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-}) {
+function MetaChip({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
   return (
     <View style={styles.metaChip}>
       <Ionicons name={icon} size={13} color={colors.muted} />
@@ -207,7 +481,7 @@ function MetaChip({
   );
 }
 
-function Stat({
+function StatTile({
   icon,
   label,
   children,
@@ -217,12 +491,12 @@ function Stat({
   children: React.ReactNode;
 }) {
   return (
-    <View style={styles.stat}>
-      <View style={styles.statIcon}>
-        <Ionicons name={icon} size={16} color={colors.primaryText} />
+    <View style={styles.tile}>
+      <View style={styles.tileIcon}>
+        <Ionicons name={icon} size={17} color={colors.primaryText} />
       </View>
-      <View style={styles.statBody}>
-        <Text style={styles.statLabel}>{label}</Text>
+      <View style={styles.tileBody}>
+        <Text style={styles.tileLabel}>{label}</Text>
         {children}
       </View>
     </View>
@@ -236,66 +510,56 @@ export default function LeadHeader({ lead }: { lead: Lead }) {
   );
   const statusName = matchedStatus?.name ?? statusLabel(lead.status);
   const statusColor = matchedStatus?.color;
+  const tint = statusColor || colors.primary;
 
   return (
     <View style={styles.header}>
-      <View style={styles.row}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{(lead.name || 'L').charAt(0).toUpperCase()}</Text>
-        </View>
+      <View style={[styles.accent, { backgroundColor: tint }]} />
+      <View style={styles.inner}>
+        <View style={styles.row}>
+          <View style={[styles.avatar, { backgroundColor: `${tint}18` }]}>
+            <Text style={[styles.avatarText, { color: tint }]}>{(lead.name || 'L').charAt(0).toUpperCase()}</Text>
+          </View>
 
-        <View style={styles.titleInfo}>
-          <View style={styles.nameRow}>
-            <Text style={styles.name} numberOfLines={2}>
-              {lead.name}
-            </Text>
-            <View
-              style={[
-                styles.statusBadge,
-                statusColor ? { backgroundColor: statusColor + '1A' } : null,
-              ]}
-            >
-              <View
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: statusColor || colors.primaryText },
-                ]}
-              />
-              <Text style={[styles.statusText, statusColor ? { color: statusColor } : null]}>
-                {statusName}
+          <View style={styles.titleInfo}>
+            <View style={styles.nameRow}>
+              <Text style={styles.name} numberOfLines={2}>
+                {lead.name}
               </Text>
+              <View style={[styles.statusBadge, { backgroundColor: `${tint}16`, borderColor: `${tint}40` }]}>
+                <View style={[styles.statusDot, { backgroundColor: tint }]} />
+                <Text style={[styles.statusText, { color: tint }]}>{statusName}</Text>
+              </View>
             </View>
-          </View>
 
-          {lead.companyName ? (
-            <View style={styles.companyRow}>
-              <Ionicons name="business-outline" size={14} color={colors.muted} />
-              <Text style={styles.company}>{lead.companyName}</Text>
+            {lead.companyName ? (
+              <View style={styles.companyRow}>
+                <Ionicons name="business-outline" size={15} color={colors.muted} />
+                <Text style={styles.company}>{lead.companyName}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.metaRow}>
+              <MetaChip icon="person-outline" text={lead.assignedTo || 'Unassigned'} />
+              <MetaChip icon="call-outline" text={lead.phone} />
+              {lead.email ? <MetaChip icon="mail-outline" text={lead.email} /> : null}
             </View>
-          ) : null}
-
-          <View style={styles.metaRow}>
-            <MetaChip icon="person-outline" text={lead.assignedTo || 'Unassigned'} />
-            <MetaChip icon="call-outline" text={lead.phone} />
-            {lead.email ? <MetaChip icon="mail-outline" text={lead.email} /> : null}
           </View>
         </View>
-      </View>
 
-      <View style={styles.summaryBar}>
-        <Stat icon="calendar-outline" label="Next Follow-up">
-          <Text style={[styles.statVal, !lead.nextFollowUpAt && styles.emptyVal]} numberOfLines={1}>
-            {lead.nextFollowUpAt ? formatDateTime(lead.nextFollowUpAt) : 'None scheduled'}
-          </Text>
-        </Stat>
-        <View style={styles.divider} />
-        <Stat icon="cash-outline" label="Estimated Amount">
-          <Text style={styles.statVal}>{formatINR(Number(lead.estimatedAmount))}</Text>
-        </Stat>
-        <View style={styles.divider} />
-        <Stat icon="star-outline" label="Rating">
-          <Stars value={lead.rating} size={15} />
-        </Stat>
+        <View style={styles.tiles}>
+          <StatTile icon="calendar-outline" label="Next follow-up">
+            <Text style={[styles.tileVal, !lead.nextFollowUpAt && styles.emptyVal]} numberOfLines={1}>
+              {lead.nextFollowUpAt ? formatDateTime(lead.nextFollowUpAt) : 'None scheduled'}
+            </Text>
+          </StatTile>
+          <StatTile icon="cash-outline" label="Estimated amount">
+            <Text style={styles.tileVal}>{formatINR(Number(lead.estimatedAmount))}</Text>
+          </StatTile>
+          <StatTile icon="star-outline" label="Rating">
+            <Stars value={lead.rating} size={15} />
+          </StatTile>
+        </View>
       </View>
     </View>
   );
@@ -306,153 +570,72 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 12,
-    padding: 16,
-    gap: 16,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 14,
-    alignItems: 'flex-start',
-  },
-  avatar: {
-    width: 56,
-    height: 56,
     borderRadius: 16,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
+    boxShadow: '0 1px 2px rgba(15,27,61,0.04), 0 8px 24px rgba(15,27,61,0.04)',
+  },
+  accent: { height: 4 },
+  inner: { padding: 18, gap: 18 },
+  row: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.primaryText,
-  },
-  titleInfo: {
-    flex: 1,
-    gap: 6,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.text,
-    flexShrink: 1,
-  },
+  avatarText: { fontSize: 28, fontWeight: '800' },
+  titleInfo: { flex: 1, gap: 8 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  name: { fontSize: 22, fontWeight: '800', color: colors.text, flexShrink: 1, letterSpacing: -0.4 },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
     borderRadius: 999,
+    borderWidth: 1,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primaryText,
-  },
-  companyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  company: {
-    fontSize: 14,
-    color: colors.muted,
-    fontWeight: '500',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 2,
-  },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { fontSize: 12, fontWeight: '800' },
+  companyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  company: { fontSize: 14.5, color: colors.muted, fontWeight: '600' },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
   metaChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
     backgroundColor: '#F4F6FA',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     maxWidth: '100%',
   },
-  metaText: {
-    fontSize: 12,
-    color: colors.text,
-    fontWeight: '600',
-    flexShrink: 1,
-  },
-  summaryBar: {
+  metaText: { fontSize: 12.5, color: colors.text, fontWeight: '600', flexShrink: 1 },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tile: {
+    flex: 1,
+    minWidth: 190,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
     backgroundColor: '#F8FAFD',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    flexWrap: 'wrap',
-    gap: 12,
+    borderRadius: 14,
+    padding: 12,
   },
-  stat: {
-    flex: 1,
-    minWidth: 150,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+  tileIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statBody: {
-    flex: 1,
-    gap: 2,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  statVal: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  emptyVal: {
-    color: colors.muted,
-    fontStyle: 'italic',
-    fontWeight: '400',
-  },
-  divider: {
-    width: 1,
-    height: 28,
-    backgroundColor: colors.border,
-  },
+  tileBody: { flex: 1, gap: 3 },
+  tileLabel: { fontSize: 12, fontWeight: '600', color: colors.muted },
+  tileVal: { fontSize: 15, fontWeight: '800', color: colors.text },
+  emptyVal: { color: colors.muted, fontStyle: 'italic', fontWeight: '500' },
 });
-
-
-
-
-
-

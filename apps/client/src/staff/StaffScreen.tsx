@@ -16,6 +16,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useCreateStaff, useStaffList, useUpdateStaff, useUpdateStaffStatus } from '@/hooks/useStaff';
 import { StaffFormModal } from '@/staff/StaffFormModal';
 import { colors } from '@/theme/colors';
+import { MOBILE_RECORD_LAYOUTS } from '@/layout/responsive';
 import { StaffFilterStatus, StaffFormValues, StaffMember, StaffPayload, StaffStatus } from '@/types/staff';
 
 const PAGE_SIZES = [10, 25, 50];
@@ -59,7 +60,7 @@ function TableCell({ width, children }: { width: number; children: React.ReactNo
 export function StaffScreen() {
   const { isAdmin } = usePermissions();
   const { width: windowWidth } = useWindowDimensions();
-  const desktop = windowWidth >= 960;
+  const desktop = windowWidth >= 960 || MOBILE_RECORD_LAYOUTS.staff === 'table';
   const [draftSearch, setDraftSearch] = useState('');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StaffFilterStatus>('ALL');

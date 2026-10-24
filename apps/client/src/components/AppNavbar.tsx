@@ -126,7 +126,7 @@ const SHOW_PLACEHOLDER_UTILITIES = false;
 // Appends an alpha byte to a 6-digit hex colour so we can tint with the existing brand colours.
 const tint = (hex: string, alpha: string) => `${hex}${alpha}`;
 
-export default function AppNavbar() {
+export default function AppNavbar({ onMenuPress }: { onMenuPress?: () => void }) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { userName, role, logout } = useAuth();
@@ -168,6 +168,17 @@ export default function AppNavbar() {
 
   return <>
     <View style={styles.navbar}>
+      {onMenuPress ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open navigation menu"
+          onPress={onMenuPress}
+          style={({ pressed }) => [styles.utility, pressed && styles.utilityPressed]}
+        >
+          <Ionicons name="menu-outline" size={22} color={colors.primary} />
+        </Pressable>
+      ) : null}
+
       {/* Quick-create shortcuts */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shortcuts} style={styles.shortcutScroll}>
         {visibleShortcuts.map((shortcut) => {

@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
@@ -16,8 +17,11 @@ import {
   usePaymentMethods,
 } from '@/hooks/useSalesDocuments';
 import { PaymentMethodRecord } from '@/types/salesDocuments';
+import { MOBILE_RECORD_LAYOUTS } from '@/layout/responsive';
 
 export function PaymentMethodScreen() {
+  const { width } = useWindowDimensions();
+  const cards = width < 960 && MOBILE_RECORD_LAYOUTS.paymentMethods === 'cards';
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -62,13 +66,13 @@ export function PaymentMethodScreen() {
   };
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
-      <View style={styles.topHeaderCard}>
+    <ScrollView style={styles.page} contentContainerStyle={[styles.pageContent, width < 600 && styles.mobilePage]}>
+      <View style={[styles.topHeaderCard, cards && styles.mobileHeader]}>
         <Text style={styles.pageTitle}>Payment Method</Text>
-        <View style={styles.rightActions}>
+        <View style={[styles.rightActions, cards && styles.mobileActions]}>
           {searchOpen && (
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, cards && styles.mobileSearch]}
               value={search}
               onChangeText={setSearch}
               placeholder="Search method..."
@@ -89,11 +93,11 @@ export function PaymentMethodScreen() {
       </View>
 
       <View style={styles.tableCard}>
-        <View style={styles.tableHeaderRow}>
+        {!cards && <View style={styles.tableHeaderRow}>
           <Text style={[styles.thText, styles.colNo]}>No.</Text>
           <Text style={[styles.thText, styles.colActions]}>Actions</Text>
           <Text style={[styles.thText, styles.colMethod]}>Method</Text>
-        </View>
+        </View>}
 
         {isLoading ? (
           <View style={styles.emptyBox}>
@@ -104,7 +108,15 @@ export function PaymentMethodScreen() {
             <Text style={styles.emptyText}>There are no records to display</Text>
           </View>
         ) : (
-          methods.map((item, idx) => (
+          methods.map((item, idx) => cards ? (
+            <View key={item.id} style={styles.methodCard}>
+              <Text style={styles.methodCardTitle}>{item.method}</Text>
+              <View style={styles.cardActions}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${item.method}`} onPress={() => openEditModal(item)} style={styles.cardAction}><Ionicons name="create-outline" size={18} color="#F59E0B" /><Text>Edit</Text></Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${item.method}`} onPress={() => remove.mutate(item.id)} style={styles.cardAction}><Ionicons name="trash-outline" size={18} color="#EF4444" /><Text>Delete</Text></Pressable>
+              </View>
+            </View>
+          ) : (
             <View key={item.id} style={styles.tableBodyRow}>
               <Text style={[styles.tdText, styles.colNo]}>{idx + 1}</Text>
               <View style={[styles.colActions, styles.actionsCell]}>
@@ -190,6 +202,8 @@ export function PaymentMethodScreen() {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#F7F9FC' },
   pageContent: { padding: 20, gap: 16, backgroundColor: '#F7F9FC' },
+  mobilePage: { padding: 12 }, mobileHeader: { alignItems: 'stretch', paddingHorizontal: 12 }, mobileActions: { width: '100%', flexWrap: 'wrap' }, mobileSearch: { width: '100%' },
+  methodCard: { padding: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.white }, methodCardTitle: { fontSize: 14, color: colors.text, fontWeight: '700' }, cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, cardAction: { minHeight: 44, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: 6 },
   topHeaderCard: {
     backgroundColor: colors.white,
     borderWidth: 1,

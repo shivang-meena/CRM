@@ -9,6 +9,7 @@ import Button from '@/components/Button';
 import Stars from '@/components/Stars';
 import { useCustomers } from '@/hooks/useCustomers';
 import { colors } from '@/theme/colors';
+import { MOBILE_RECORD_LAYOUTS } from '@/layout/responsive';
 import { Customer } from '@/types/customer';
 import { formatDateTime } from '@/utils/format';
 
@@ -123,7 +124,7 @@ export default function CustomersScreen() {
             {search ? 'Try another name, email or phone number.' : 'Open a lead and select Convert to Customer.'}
           </Text>
         </View>
-      ) : width >= 1000 ? (
+      ) : width >= 960 || MOBILE_RECORD_LAYOUTS.customers === 'table' ? (
         <View style={styles.tableFrame}>
           <ScrollView horizontal showsHorizontalScrollIndicator>
             <View>

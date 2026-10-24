@@ -17,6 +17,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useApplyLeave, useCancelLeave, useLeaveList, useReviewLeave, useUpdateLeave } from '@/hooks/useLeave';
 import { LeaveFormModal, LeaveFormValues } from '@/leave/LeaveFormModal';
 import { colors } from '@/theme/colors';
+import { MOBILE_RECORD_LAYOUTS } from '@/layout/responsive';
 import { LeaveFilterStatus, LeaveRequest, LeaveStatus, LeaveType } from '@/types/leave';
 import { formatDateTime as formatCrmDateTime, parseDateTimeInput } from '@/utils/format';
 
@@ -61,7 +62,7 @@ export function LeaveScreen() {
   const { isAdmin, canAccess } = usePermissions();
   const canApply = isAdmin || (role === 'staff' && canAccess('leave'));
   const { width: windowWidth } = useWindowDimensions();
-  const desktop = windowWidth >= 960;
+  const desktop = windowWidth >= 960 || MOBILE_RECORD_LAYOUTS.leave === 'table';
 
   const [draftSearch, setDraftSearch] = useState('');
   const [search, setSearch] = useState('');

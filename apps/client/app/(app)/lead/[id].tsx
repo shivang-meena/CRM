@@ -1,4 +1,306 @@
-// apps/client/app/(app)/lead/[id].tsx
+// ORIGINAL IMPLEMENTATION PRESERVED BELOW AS COMMENTS.
+// // apps/client/app/(app)/lead/[id].tsx
+// import React, { useState } from 'react';
+// import {
+//   ActivityIndicator,
+//   ScrollView,
+//   StyleSheet,
+//   Text,
+//   View,
+// } from 'react-native';
+// import { useLocalSearchParams, useRouter } from 'expo-router';
+// import { colors } from '@/theme/colors';
+// import { useAuth } from '@/context/AuthContext';
+// import { leadSectionPermissions, usePermissions } from '@/hooks/usePermissions';
+// import { useDeleteLead, useLead } from '@/hooks/useLeads';
+// import { useSectionSummary } from '@/hooks/useLeadActivities';
+// import { LeadSection } from '@/types/leadActivities';
+// import { SalesDocument } from '@/types/salesDocuments';
+// import Button from '@/components/Button';
+// import ConfirmDialog from '@/components/ConfirmDialog';
+// import LeadFormModal from '@/components/LeadFormModal';
+//
+// import LeadHeader from '@/components/lead/LeadHeader';
+// import LeadActionBar from '@/components/lead/LeadActionBar';
+// import LeadSectionTabs from '@/components/lead/LeadSectionTabs';
+// import LeadDetailsSection from '@/components/lead/LeadDetailsSection';
+// import FollowUpsSection from '@/components/lead/FollowUpsSection';
+// import RemindersSection from '@/components/lead/RemindersSection';
+// import MeetingsSection from '@/components/lead/MeetingsSection';
+// import QuotationsSection from '@/components/lead/QuotationsSection';
+// import InvoicesSection from '@/components/lead/InvoicesSection';
+// import HistorySection from '@/components/lead/HistorySection';
+//
+// import FollowUpFormModal from '@/components/lead/FollowUpFormModal';
+// import ReminderFormModal from '@/components/lead/ReminderFormModal';
+// import MeetingFormModal from '@/components/lead/MeetingFormModal';
+// import SalesDocumentFormModal from '@/components/lead/SalesDocumentFormModal';
+//
+// export default function LeadDetails() {
+//   const { id, section } = useLocalSearchParams<{ id: string; section?: string }>();
+//   const router = useRouter();
+//   const { userName } = useAuth();
+//   const { canAccess } = usePermissions();
+//
+//   const validSections: LeadSection[] = [
+//     'details',
+//     'followups',
+//     'history',
+//     'reminders',
+//     'meetings',
+//     'quotations',
+//     'invoices',
+//   ];
+//   const initialSection = (section && validSections.includes(section as LeadSection))
+//     ? (section as LeadSection)
+//     : 'details';
+//
+//   const [requestedSection, setSelectedSection] = useState<LeadSection>(initialSection);
+//   const selectedSection = canAccess(leadSectionPermissions[requestedSection]) ? requestedSection : 'details';
+//
+//   // Queries
+//   const { data: lead, isLoading: leadLoading, isError: leadError, refetch: refetchLead } = useLead(id);
+//   const {
+//     data: summary,
+//     isLoading: summaryLoading,
+//     isError: summaryError,
+//     refetch: refetchSummary,
+//   } = useSectionSummary(id);
+//
+//   const del = useDeleteLead();
+//
+//   // Modals
+//   const [editLeadOpen, setEditLeadOpen] = useState(false);
+//   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+//   const [followUpOpen, setFollowUpOpen] = useState(false);
+//   const [reminderOpen, setReminderOpen] = useState(false);
+//   const [meetingOpen, setMeetingOpen] = useState(false);
+//   const [quotationOpen, setQuotationOpen] = useState(false);
+//   const [invoiceOpen, setInvoiceOpen] = useState(false);
+//
+//   const goBoard = () => router.replace('/leads' as any);
+//
+//   async function confirmDelete() {
+//     if (!lead) return;
+//     try {
+//       await del.mutateAsync(lead.id);
+//       goBoard();
+//     } finally {
+//       setDeleteConfirmOpen(false);
+//     }
+//   }
+//
+//   function handleRecordSaved(targetSection: LeadSection) {
+//     setSelectedSection(targetSection);
+//     void refetchSummary();
+//     void refetchLead();
+//   }
+//
+//   return (
+//     <View style={styles.page}>
+//       <View style={styles.titleBar}>
+//         <Text style={styles.titleText}>Lead Details</Text>
+//         <Button title="← Back to Leads" variant="outline" onPress={goBoard} />
+//       </View>
+//
+//       {leadLoading ? (
+//         <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
+//       ) : leadError || !lead ? (
+//         <View style={{ padding: 24, gap: 12, alignItems: 'flex-start' }}>
+//           <Text style={{ color: colors.danger }}>Lead not found.</Text>
+//           <Button title="Back to Leads" variant="outline" onPress={goBoard} />
+//         </View>
+//       ) : (
+//         <ScrollView contentContainerStyle={styles.content}>
+//           {/* Header Card */}
+//           <LeadHeader lead={lead} />
+//
+//           {/* Quick Action Buttons */}
+//           <LeadActionBar
+//             leadId={lead.id}
+//             onAddFollowUp={() => setFollowUpOpen(true)}
+//             onAddReminder={() => setReminderOpen(true)}
+//             onAddMeeting={() => setMeetingOpen(true)}
+//             onCreateQuotation={() => setQuotationOpen(true)}
+//             onCreateInvoice={() => setInvoiceOpen(true)}
+//           />
+//
+//           {/* 8 Section Tabs */}
+//           <LeadSectionTabs
+//             selected={selectedSection}
+//             onSelect={setSelectedSection}
+//             summary={summary}
+//             loading={summaryLoading}
+//             error={summaryError}
+//           />
+//
+//           {/* Selected Section View */}
+//           <View style={styles.sectionBody}>
+//             {selectedSection === 'details' && (
+//               <LeadDetailsSection
+//                 lead={lead}
+//                 onEdit={() => setEditLeadOpen(true)}
+//                 onDelete={() => setDeleteConfirmOpen(true)}
+//                 onCancel={goBoard}
+//               />
+//             )}
+//
+//             {selectedSection === 'followups' && (
+//               <FollowUpsSection leadId={lead.id} summary={summary} />
+//             )}
+//
+//             {selectedSection === 'history' && (
+//               <HistorySection leadId={lead.id} />
+//             )}
+//
+//             {selectedSection === 'reminders' && (
+//               <RemindersSection leadId={lead.id} summary={summary} />
+//             )}
+//
+//             {selectedSection === 'meetings' && (
+//               <MeetingsSection leadId={lead.id} summary={summary} />
+//             )}
+//
+//             {selectedSection === 'quotations' && (
+//               <QuotationsSection
+//                 leadId={lead.id}
+//                 summary={summary}
+//                 onCreateInvoiceFromQuote={(_invoice: SalesDocument) => {
+//                   setSelectedSection('invoices');
+//                   void refetchSummary();
+//                 }}
+//               />
+//             )}
+//
+//             {selectedSection === 'invoices' && (
+//               <InvoicesSection leadId={lead.id} summary={summary} />
+//             )}
+//           </View>
+//         </ScrollView>
+//       )}
+//
+//       {/* Edit Lead Modal */}
+//       <LeadFormModal
+//         visible={editLeadOpen && canAccess('lead')}
+//         lead={lead ?? null}
+//         defaultAssignee={userName}
+//         onClose={() => setEditLeadOpen(false)}
+//       />
+//
+//       {/* Delete Lead Confirm Dialog */}
+//       <ConfirmDialog
+//         visible={deleteConfirmOpen && canAccess('lead')}
+//         title="Delete lead?"
+//         message={`This will archive ${lead?.name ?? 'this lead'} and retain all its linked records.`}
+//         loading={del.isPending}
+//         onConfirm={confirmDelete}
+//         onCancel={() => setDeleteConfirmOpen(false)}
+//       />
+//
+//       {/* Add FollowUp Modal */}
+//       {followUpOpen && lead ? (
+//         <FollowUpFormModal
+//           visible={followUpOpen && canAccess('lead')}
+//           leadId={lead.id}
+//           defaultAssignee={lead.assignedTo || userName}
+//           onSaved={() => {
+//             setFollowUpOpen(false);
+//             handleRecordSaved('followups');
+//           }}
+//           onClose={() => setFollowUpOpen(false)}
+//         />
+//       ) : null}
+//
+//       {/* Add Reminder Modal */}
+//       {reminderOpen && lead ? (
+//         <ReminderFormModal
+//           visible={reminderOpen && canAccess('reminder')}
+//           leadId={lead.id}
+//           onSaved={() => {
+//             setReminderOpen(false);
+//             handleRecordSaved('reminders');
+//           }}
+//           onClose={() => setReminderOpen(false)}
+//         />
+//       ) : null}
+//
+//       {/* Add Meeting Modal */}
+//       {meetingOpen && lead ? (
+//         <MeetingFormModal
+//           visible={meetingOpen && canAccess('meeting')}
+//           leadId={lead.id}
+//           defaultAssignee={lead.assignedTo || userName}
+//           onSaved={() => {
+//             setMeetingOpen(false);
+//             handleRecordSaved('meetings');
+//           }}
+//           onClose={() => setMeetingOpen(false)}
+//         />
+//       ) : null}
+//
+//       {/* Create Quotation Modal */}
+//       {quotationOpen && lead ? (
+//         <SalesDocumentFormModal
+//           visible={quotationOpen && canAccess('invoice')}
+//           leadId={lead.id}
+//           type="QUOTATION"
+//           lead={lead}
+//           onSaved={() => {
+//             setQuotationOpen(false);
+//             handleRecordSaved('quotations');
+//           }}
+//           onClose={() => setQuotationOpen(false)}
+//         />
+//       ) : null}
+//
+//       {/* Create Invoice Modal */}
+//       {invoiceOpen && lead ? (
+//         <SalesDocumentFormModal
+//           visible={invoiceOpen && canAccess('invoice')}
+//           leadId={lead.id}
+//           type="INVOICE"
+//           lead={lead}
+//           onSaved={() => {
+//             setInvoiceOpen(false);
+//             handleRecordSaved('invoices');
+//           }}
+//           onClose={() => setInvoiceOpen(false)}
+//         />
+//       ) : null}
+//     </View>
+//   );
+// }
+//
+// const styles = StyleSheet.create({
+//   page: {
+//     flex: 1,
+//     backgroundColor: '#F7F9FC',
+//   },
+//   titleBar: {
+//     backgroundColor: colors.navy,
+//     paddingHorizontal: 16,
+//     paddingVertical: 12,
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     justifyContent: 'space-between',
+//   },
+//   titleText: {
+//     color: colors.white,
+//     fontWeight: '800',
+//     fontSize: 16,
+//   },
+//   content: {
+//     padding: 16,
+//     gap: 16,
+//   },
+//   sectionBody: {
+//     minHeight: 280,
+//   },
+// });
+//
+
+// REDESIGN NOTES: light top bar with back button, centred max-width content column, and the
+// same hero + actions + tabs/body card composition as the popup. Logic is unchanged.
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -7,6 +309,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
 import { useAuth } from '@/context/AuthContext';
@@ -98,82 +401,100 @@ export default function LeadDetails() {
   return (
     <View style={styles.page}>
       <View style={styles.titleBar}>
-        <Text style={styles.titleText}>Lead Details</Text>
+        <View style={styles.titleLeft}>
+          <View style={styles.titleIcon}>
+            <Ionicons name="person-outline" size={18} color={colors.primaryText} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.titleText}>Lead details</Text>
+            {lead ? <Text style={styles.titleSub} numberOfLines={1}>{lead.name}</Text> : null}
+          </View>
+        </View>
         <Button title="← Back to Leads" variant="outline" onPress={goBoard} />
       </View>
 
       {leadLoading ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.centerText}>Loading lead details...</Text>
+        </View>
       ) : leadError || !lead ? (
-        <View style={{ padding: 24, gap: 12, alignItems: 'flex-start' }}>
-          <Text style={{ color: colors.danger }}>Lead not found.</Text>
+        <View style={styles.center}>
+          <View style={styles.errorIcon}>
+            <Ionicons name="alert-circle-outline" size={32} color={colors.danger} />
+          </View>
+          <Text style={styles.errorTitle}>Lead not found</Text>
+          <Text style={styles.centerText}>It may have been deleted or you may not have access.</Text>
           <Button title="Back to Leads" variant="outline" onPress={goBoard} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
-          {/* Header Card */}
-          <LeadHeader lead={lead} />
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.column}>
+            {/* Hero card */}
+            <LeadHeader lead={lead} />
 
-          {/* Quick Action Buttons */}
-          <LeadActionBar
-            leadId={lead.id}
-            onAddFollowUp={() => setFollowUpOpen(true)}
-            onAddReminder={() => setReminderOpen(true)}
-            onAddMeeting={() => setMeetingOpen(true)}
-            onCreateQuotation={() => setQuotationOpen(true)}
-            onCreateInvoice={() => setInvoiceOpen(true)}
-          />
+            {/* Quick action buttons */}
+            <LeadActionBar
+              leadId={lead.id}
+              onAddFollowUp={() => setFollowUpOpen(true)}
+              onAddReminder={() => setReminderOpen(true)}
+              onAddMeeting={() => setMeetingOpen(true)}
+              onCreateQuotation={() => setQuotationOpen(true)}
+              onCreateInvoice={() => setInvoiceOpen(true)}
+            />
 
-          {/* 8 Section Tabs */}
-          <LeadSectionTabs
-            selected={selectedSection}
-            onSelect={setSelectedSection}
-            summary={summary}
-            loading={summaryLoading}
-            error={summaryError}
-          />
-
-          {/* Selected Section View */}
-          <View style={styles.sectionBody}>
-            {selectedSection === 'details' && (
-              <LeadDetailsSection
-                lead={lead}
-                onEdit={() => setEditLeadOpen(true)}
-                onDelete={() => setDeleteConfirmOpen(true)}
-                onCancel={goBoard}
-              />
-            )}
-
-            {selectedSection === 'followups' && (
-              <FollowUpsSection leadId={lead.id} summary={summary} />
-            )}
-
-            {selectedSection === 'history' && (
-              <HistorySection leadId={lead.id} />
-            )}
-
-            {selectedSection === 'reminders' && (
-              <RemindersSection leadId={lead.id} summary={summary} />
-            )}
-
-            {selectedSection === 'meetings' && (
-              <MeetingsSection leadId={lead.id} summary={summary} />
-            )}
-
-            {selectedSection === 'quotations' && (
-              <QuotationsSection
-                leadId={lead.id}
+            {/* Tabs + selected section */}
+            <View style={styles.tabsAndBody}>
+              <LeadSectionTabs
+                selected={selectedSection}
+                onSelect={setSelectedSection}
                 summary={summary}
-                onCreateInvoiceFromQuote={(_invoice: SalesDocument) => {
-                  setSelectedSection('invoices');
-                  void refetchSummary();
-                }}
+                loading={summaryLoading}
+                error={summaryError}
               />
-            )}
 
-            {selectedSection === 'invoices' && (
-              <InvoicesSection leadId={lead.id} summary={summary} />
-            )}
+              <View style={styles.sectionBody}>
+                {selectedSection === 'details' && (
+                  <LeadDetailsSection
+                    lead={lead}
+                    onEdit={() => setEditLeadOpen(true)}
+                    onDelete={() => setDeleteConfirmOpen(true)}
+                    onCancel={goBoard}
+                  />
+                )}
+
+                {selectedSection === 'followups' && (
+                  <FollowUpsSection leadId={lead.id} summary={summary} />
+                )}
+
+                {selectedSection === 'history' && (
+                  <HistorySection leadId={lead.id} />
+                )}
+
+                {selectedSection === 'reminders' && (
+                  <RemindersSection leadId={lead.id} summary={summary} />
+                )}
+
+                {selectedSection === 'meetings' && (
+                  <MeetingsSection leadId={lead.id} summary={summary} />
+                )}
+
+                {selectedSection === 'quotations' && (
+                  <QuotationsSection
+                    leadId={lead.id}
+                    summary={summary}
+                    onCreateInvoiceFromQuote={(_invoice: SalesDocument) => {
+                      setSelectedSection('invoices');
+                      void refetchSummary();
+                    }}
+                  />
+                )}
+
+                {selectedSection === 'invoices' && (
+                  <InvoicesSection leadId={lead.id} summary={summary} />
+                )}
+              </View>
+            </View>
           </View>
         </ScrollView>
       )}
@@ -273,26 +594,71 @@ export default function LeadDetails() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#F7F9FC',
+    backgroundColor: '#F4F6FA',
   },
   titleBar: {
-    backgroundColor: colors.navy,
-    paddingHorizontal: 16,
+    backgroundColor: colors.white,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  titleLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  titleIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   titleText: {
-    color: colors.white,
+    color: colors.text,
     fontWeight: '800',
-    fontSize: 16,
+    fontSize: 17,
+    letterSpacing: -0.2,
   },
-  content: {
-    padding: 16,
-    gap: 16,
+  titleSub: { color: colors.muted, fontSize: 12.5, marginTop: 1 },
+  scrollContent: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  column: {
+    width: '100%',
+    maxWidth: 1080,
+    gap: 14,
+  },
+  tabsAndBody: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    overflow: 'hidden',
+    boxShadow: '0 1px 2px rgba(15,27,61,0.04), 0 8px 24px rgba(15,27,61,0.04)',
   },
   sectionBody: {
     minHeight: 280,
+    padding: 16,
   },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: 32,
+  },
+  centerText: { color: colors.muted, fontSize: 14, textAlign: 'center' },
+  errorIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
 });

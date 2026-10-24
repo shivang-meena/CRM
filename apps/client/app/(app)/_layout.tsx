@@ -1,5 +1,5 @@
-import React from 'react';
-import { ActivityIndicator, Text, View, useWindowDimensions } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { Redirect, Slot, usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
@@ -13,6 +13,8 @@ export default function AppLayout() {
   const { width } = useWindowDimensions();
   const pathname = usePathname();
   const router = useRouter();
+  const [navigationOpenForPath, setNavigationOpenForPath] = useState<string | null>(null);
+  const navigationOpen = navigationOpenForPath === pathname;
 
   if (loading) {
     return (
@@ -44,7 +46,7 @@ export default function AppLayout() {
     <View style={{ flex: 1, flexDirection: wide ? 'row' : 'column', backgroundColor: colors.canvas }}>
       <Sidebar horizontal={!wide} />
       <View style={{ flex: 1, backgroundColor: colors.canvas }}>
-        <AppNavbar />
+        <AppNavbar onMenuPress={!wide ? () => setNavigationOpenForPath(pathname) : undefined} />
         <View style={{ flex: 1, backgroundColor: colors.canvas }}>
           {blocked ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 }}>
@@ -60,6 +62,26 @@ export default function AppLayout() {
           )}
         </View>
       </View>
+      {!wide ? (
+        <Modal
+          visible={navigationOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setNavigationOpenForPath(null)}
+        >
+          <View style={{ flex: 1, flexDirection: 'row', backgroundColor: 'rgba(14, 27, 61, 0.32)' }}>
+            <View style={{ width: 260, maxWidth: '86%', height: '100%', backgroundColor: colors.white }}>
+              <Sidebar horizontal={false} fillHeight />
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close navigation menu"
+              style={{ flex: 1 }}
+              onPress={() => setNavigationOpenForPath(null)}
+            />
+          </View>
+        </Modal>
+      ) : null}
     </View>
   );
 }
