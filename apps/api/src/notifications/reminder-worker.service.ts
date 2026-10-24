@@ -22,7 +22,7 @@ export class ReminderWorkerService implements OnModuleInit, OnModuleDestroy {
     if (this.running || this.stopping) return;
     this.running = true;
     try {
-      const candidates = await runAsSystem(() => this.prisma.leadReminder.findMany({
+      const candidates = await runAsSystem(async () => await this.prisma.leadReminder.findMany({
         where: { status: 'PENDING', deletedAt: null, remindAt: { lte: new Date() }, OR: [{ leadId: null }, { lead: { deletedAt: null } }] },
         orderBy: [{ remindAt: 'asc' }, { id: 'asc' }],
         take: 50,
@@ -30,7 +30,7 @@ export class ReminderWorkerService implements OnModuleInit, OnModuleDestroy {
       }));
       for (const candidate of candidates) {
         if (this.stopping) break;
-        await runWithTenant(candidate.adminId, () => this.prisma.$transaction(async tx => {
+        await runWithTenant(candidate.adminId, async () => await this.prisma.$transaction(async tx => {
           // Lead-linked reminders keep the existing lead lock order. Independent reminders lock only themselves.
           if (candidate.leadId) {
             await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "leads" WHERE "id" = ${candidate.leadId} FOR UPDATE`);
@@ -53,8 +53,8 @@ export class ReminderWorkerService implements OnModuleInit, OnModuleDestroy {
           if (reminder.leadId) await this.core.history(tx, reminder.leadId, actor, 'REMINDER', reminder.id, 'TRIGGERED', 'In-app reminder delivered: ' + reminder.title);
         }));
       }
-    } catch {
-      this.logger.error('Reminder processing failed; pending reminders will be retried on the next interval.');
+    } catch (e: any) {
+      this.logger.error(`Reminder processing failed: ${e?.message ?? e}`);
     } finally { this.running = false; }
   }
 }
