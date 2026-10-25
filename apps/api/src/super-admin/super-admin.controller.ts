@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGua
 import type { AuthenticatedUser } from '../auth/permissions';
 import {
   CreateAdminDto, ListAdminsQueryDto, ResetAdminPasswordDto, SuperAdminLoginDto,
-  UpdateAdminDto, UpdateAdminFeaturesDto, UpdateAdminStatusDto,
+  UpdateAdminDto, UpdateAdminFeaturesDto, UpdateAdminLoginIdDto, UpdateAdminStatusDto,
 } from './dto/super-admin.dto';
 import { SuperAdminAuthService } from './super-admin-auth.service';
 import { SuperAdminGuard } from './super-admin.guard';
@@ -51,4 +51,7 @@ export class SuperAdminController {
 
   @Patch('admins/:id/password')
   password(@Param('id') id: string, @Body() body: ResetAdminPasswordDto) { return this.admins.resetPassword(id, body); }
+
+  @Patch('admins/:id/login-id')
+  loginId(@Param('id') id: string, @Body() body: UpdateAdminLoginIdDto) { return this.admins.changeLoginId(id, body); }
 }

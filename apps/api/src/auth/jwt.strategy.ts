@@ -55,8 +55,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     // Never trust permissions embedded in an older JWT. Revocations apply on the next request.
     // runAsSystem is allowed here (G9): we do not know the tenant yet, we are looking it up.
-    const staff = await runAsSystem(() =>
-      this.prisma.staffMember.findFirst({
+    const staff = await runAsSystem(async () =>
+      await this.prisma.staffMember.findFirst({
         where: { id: payload.sub, deletedAt: null, status: 'ACTIVE', canLoginApp: true },
         select: {
           id: true, adminId: true, firstName: true, lastName: true, email: true,

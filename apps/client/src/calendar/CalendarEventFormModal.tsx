@@ -57,6 +57,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Button from '@/components/Button';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
 import { errorMessage } from '@/api/client';
+import { useErrorToast } from '@/components/FeedbackToast';
 import { colors } from '@/theme/colors';
 import { CALENDAR_CATEGORY_COLORS, CalendarEventInput, CalendarItem } from '@/types/calendar';
 import { addDays, dateKeyToIstMidnightIso, dateTimeKeyToIstIso, formatCalendarTime, formatDateKey, parseDateKey, todayIstKey } from './calendarDates';
@@ -79,6 +80,7 @@ export default function CalendarEventFormModal({ visible, selectedDate, event, o
   const [form, setForm] = useState<FormState>(() => initial(selectedDate, event));
   const [picker, setPicker] = useState<'startDate' | 'endDate' | 'startTime' | 'endTime' | null>(null);
   const [error, setError] = useState('');
+  useErrorToast(error, 'Calendar event needs attention');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { if (visible) { setForm(initial(selectedDate, event)); setPicker(null); setError(''); } }, [visible, selectedDate, event]);

@@ -2232,6 +2232,7 @@ import { INDIA_STATES } from '@/settings/profileOptions';
 import { Href, useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
 import { errorMessage } from '@/api/client';
+import { useErrorToast } from '@/components/FeedbackToast';
 import { useInvoiceCompanyProfile } from '@/hooks/useInvoiceCompanyProfile';
 import { useInvoiceGstSettings } from '@/hooks/useInvoiceGstSettings';
 import { useInvoiceNonGstSettings } from '@/hooks/useInvoiceNonGstSettings';
@@ -2748,6 +2749,7 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
   const [whatsappAutomation, setWhatsappAutomation] = useState<boolean>(existingDocument?.whatsappAutomation ?? false);
  
   const [formError, setFormError] = useState<string | null>(null);
+  useErrorToast(formError, 'Invoice needs attention');
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
  
   const { data: customerPage, isLoading: loadingCustomers } = useCustomers({

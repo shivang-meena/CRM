@@ -42,7 +42,7 @@ export class CrmCoreService {
     if (before && after && typeof before === 'object' && typeof after === 'object') {
       const a = plain(before) as Record<string, unknown>, b = plain(after) as Record<string, unknown>;
       for (const key of Object.keys(b)) {
-        if (['updatedAt', 'version', 'updatedById', 'updatedByName', 'requestKey', 'requestHash'].includes(key)) continue;
+        if (['updatedAt', 'version', 'updatedById', 'updatedByName', 'requestKey', 'requestHash', 'recipientId'].includes(key)) continue;
         if (JSON.stringify(a[key]) !== JSON.stringify(b[key])) changes[key] = { before: a[key] ?? null, after: b[key] };
       }
     }

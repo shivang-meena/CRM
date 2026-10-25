@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import AssigneeSelect from '@/components/AssigneeSelect';
 import {
   ActivityIndicator,
   Modal,
@@ -24,6 +25,8 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
 import Button from '@/components/Button';
 import StandaloneMeetingFormModal from '@/components/meetings/StandaloneMeetingFormModal';
+import { fieldStyles } from '@/settings/ProfileFields';
+import { useErrorToast } from '@/components/FeedbackToast';
 
 function parseDateOnly(iso?: string | null): string {
   if (!iso) return '—';
@@ -175,6 +178,8 @@ export default function MeetingsScreen() {
 
   // Form state
   const [selectedLeadId, setSelectedLeadId] = useState('');
+  const [isLeadSelectOpen, setIsLeadSelectOpen] = useState(false);
+  const [leadSearch, setLeadSearch] = useState('');
   const [formTitle, setFormTitle] = useState('');
   const [formAgenda, setFormAgenda] = useState('');
   const [formStartAt, setFormStartAt] = useState('');
@@ -183,9 +188,11 @@ export default function MeetingsScreen() {
   const [formLocation, setFormLocation] = useState('');
   const [formMeetingUrl, setFormMeetingUrl] = useState('');
   const [formAssignTo, setFormAssignTo] = useState('');
+  const [formAssignToId, setFormAssignToId] = useState('');
   const [activePicker, setActivePicker] = useState<'start' | 'end' | null>(null);
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  useErrorToast(formError, 'Meeting needs attention');
 
   // Data queries
   const queryParams = useMemo(() => ({
@@ -198,6 +205,14 @@ export default function MeetingsScreen() {
   const activitiesQuery = useDashboardActivities('meetings', queryParams);
   const leadsQuery = useLeads('');
   const standaloneActions = useStandaloneActivityActions();
+
+  const selectedLead = leadsQuery.data?.find((lead) => lead.id === selectedLeadId);
+  const filteredLeads = useMemo(() => {
+    const search = leadSearch.trim().toLowerCase();
+    return (leadsQuery.data ?? []).filter((lead) => !search ||
+      [lead.name, lead.companyName, lead.company, lead.phone, lead.email]
+        .some((value) => value?.toLowerCase().includes(search)));
+  }, [leadsQuery.data, leadSearch]);
 
   const items = activitiesQuery.data?.items ?? [];
   const total = activitiesQuery.data?.total ?? 0;
@@ -241,7 +256,8 @@ export default function MeetingsScreen() {
     setFormMode('ONLINE');
     setFormLocation('');
     setFormMeetingUrl('');
-    setFormAssignTo(userName || 'Shivang Meena');
+    setFormAssignTo(userName);
+    setFormAssignToId('');
     setFormError('');
     setEditingItem(null);
     setIsAddOpen(true);
@@ -258,7 +274,8 @@ export default function MeetingsScreen() {
     setFormMode((item.mode as any) || 'ONLINE');
     setFormLocation(item.location || '');
     setFormMeetingUrl(item.meetingUrl || '');
-    setFormAssignTo(item.assignedTo || item.createdByName || userName || 'Shivang Meena');
+    setFormAssignTo(item.assignedTo || item.createdByName || userName);
+    setFormAssignToId(item.assignedToId ?? '');
     setFormError('');
     setEditingItem(item);
     setIsAddOpen(true);
@@ -311,7 +328,8 @@ export default function MeetingsScreen() {
         mode: formMode,
         location: formLocation.trim() || undefined,
         meetingUrl: formMeetingUrl.trim() || undefined,
-        assignedTo: formAssignTo.trim() || userName || 'Shivang Meena',
+        assignedTo: formAssignTo.trim() || userName,
+        assignedToId: formAssignToId || undefined,
         requestKey,
       };
 
@@ -899,33 +917,27 @@ export default function MeetingsScreen() {
                 </Pressable>
               </View>
 
-              <ScrollView contentContainerStyle={styles.modalBody}>
+              <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
                 {/* Select Customer / Lead */}
                 <View style={styles.formGroup}>
                   <Text style={styles.formLabel}>Customer / Lead *</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={styles.leadChipRow}>
-                      {(leadsQuery.data ?? []).map((lead) => (
-                        <Pressable
-                          key={lead.id}
-                          style={[
-                            styles.leadChip,
-                            selectedLeadId === lead.id && styles.leadChipActive,
-                          ]}
-                          onPress={() => setSelectedLeadId(lead.id)}
-                        >
-                          <Text
-                            style={[
-                              styles.leadChipText,
-                              selectedLeadId === lead.id && styles.leadChipTextActive,
-                            ]}
-                          >
-                            {lead.name} {lead.company ? `(${lead.company})` : ''}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </ScrollView>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Customer / Lead: ${selectedLead?.name || 'Select a customer or lead'}`}
+                    accessibilityState={{ expanded: isLeadSelectOpen }}
+                    style={[styles.formInput, styles.leadSelectTrigger]}
+                    onPress={() => {
+                      setLeadSearch('');
+                      setIsLeadSelectOpen(true);
+                    }}
+                  >
+                    <Text style={[styles.leadSelectValue, styles.leadSelectLabel, !selectedLead && styles.leadSelectMuted]} numberOfLines={1}>
+                      {selectedLead
+                        ? `${selectedLead.name}${selectedLead.companyName || selectedLead.company ? ` (${selectedLead.companyName || selectedLead.company})` : ''}`
+                        : 'Select a customer or lead'}
+                    </Text>
+                    <Ionicons name={isLeadSelectOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.muted} />
+                  </Pressable>
                 </View>
 
                 {/* Meeting Title */}
@@ -1028,16 +1040,7 @@ export default function MeetingsScreen() {
                 </View>
 
                 {/* Assigned To */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Assign To</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Assignee name"
-                    placeholderTextColor={colors.muted}
-                    value={formAssignTo}
-                    onChangeText={setFormAssignTo}
-                  />
-                </View>
+                <AssigneeSelect value={formAssignTo} assigneeId={formAssignToId} onChange={(name, id) => { setFormAssignTo(name); setFormAssignToId(id); }} />
 
                 {formError ? <Text style={styles.formErrorText}>{formError}</Text> : null}
               </ScrollView>
@@ -1057,6 +1060,98 @@ export default function MeetingsScreen() {
               </View>
             </View>
           </View>
+          <Modal
+            visible={isLeadSelectOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setIsLeadSelectOpen(false)}
+          >
+            <View style={fieldStyles.backdrop}>
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onPress={() => setIsLeadSelectOpen(false)}
+                accessibilityLabel="Close lead selection"
+              />
+              <View style={fieldStyles.dialog} accessibilityViewIsModal>
+                <View style={fieldStyles.dialogHeader}>
+                  <Text accessibilityRole="header" style={fieldStyles.dialogTitle}>Customer / Lead</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Close lead selection"
+                    hitSlop={12}
+                    onPress={() => setIsLeadSelectOpen(false)}
+                  >
+                    <Ionicons name="close" size={22} color="#514759" />
+                  </Pressable>
+                </View>
+                <TextInput
+                  accessibilityLabel="Search customers or leads"
+                  style={fieldStyles.input}
+                  placeholder="Search..."
+                  placeholderTextColor="#96919D"
+                  value={leadSearch}
+                  onChangeText={setLeadSearch}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoFocus
+                />
+                {leadsQuery.isLoading ? (
+                  <ActivityIndicator style={styles.leadSelectStatus} size="small" color="#0B2F7D" />
+                ) : leadsQuery.isError ? (
+                  <View style={styles.leadSelectStatus}>
+                    <Text style={styles.formErrorText}>Could not load leads.</Text>
+                    <Button title="Retry" variant="outline" onPress={() => { void leadsQuery.refetch(); }} />
+                  </View>
+                ) : (
+                  <ScrollView style={fieldStyles.options} keyboardShouldPersistTaps="handled">
+                    {filteredLeads.map((lead) => (
+                      <Pressable
+                        key={lead.id}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: selectedLeadId === lead.id }}
+                        style={[fieldStyles.option, selectedLeadId === lead.id && fieldStyles.selected]}
+                        onPress={() => {
+                          setSelectedLeadId(lead.id);
+                          setIsLeadSelectOpen(false);
+                          setLeadSearch('');
+                        }}
+                      >
+                        <View style={styles.leadOptionContent}>
+                          <Text style={fieldStyles.value}>
+                            {lead.name}{lead.companyName || lead.company ? ` (${lead.companyName || lead.company})` : ''}
+                          </Text>
+                          <Text style={styles.leadOptionDetail}>
+                            {[lead.phone, lead.email].filter(Boolean).join(' · ')}
+                          </Text>
+                        </View>
+                        {selectedLeadId === lead.id && <Ionicons name="checkmark" size={18} color="#0B2F7D" />}
+                      </Pressable>
+                    ))}
+                    {filteredLeads.length === 0 && (
+                      <Text style={fieldStyles.hint}>
+                        {leadSearch.trim() ? 'No matching leads found.' : 'No leads available.'}
+                      </Text>
+                    )}
+                  </ScrollView>
+                )}
+              </View>
+            </View>
+          </Modal>
+          {/* Date & Time Picker Modal */}
+          <DateTimePickerModal
+            visible={activePicker !== null}
+            value={activePicker === 'end' ? formEndAt : formStartAt}
+            title={activePicker === 'end' ? 'Choose Meeting End Time' : 'Choose Meeting Start Time'}
+            onSelect={(val) => {
+              if (activePicker === 'end') {
+                setFormEndAt(val);
+              } else {
+                setFormStartAt(val);
+              }
+              setActivePicker(null);
+            }}
+            onClose={() => setActivePicker(null)}
+          />
         </Modal>
       )}
 
@@ -1069,22 +1164,6 @@ export default function MeetingsScreen() {
           if (!standaloneEditItem) return;
           await standaloneActions.updateMeeting.mutateAsync({ id: standaloneEditItem.id, data: { ...data, version: standaloneEditItem.version } });
         }}
-      />
-
-      {/* Date & Time Picker Modal */}
-      <DateTimePickerModal
-        visible={activePicker !== null}
-        value={activePicker === 'end' ? formEndAt : formStartAt}
-        title={activePicker === 'end' ? 'Choose Meeting End Time' : 'Choose Meeting Start Time'}
-        onSelect={(val) => {
-          if (activePicker === 'end') {
-            setFormEndAt(val);
-          } else {
-            setFormStartAt(val);
-          }
-          setActivePicker(null);
-        }}
-        onClose={() => setActivePicker(null)}
       />
 
       {/* Analytics Modal */}
@@ -1733,30 +1812,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text,
   },
-  leadChipRow: {
+  leadSelectTrigger: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    paddingVertical: 4,
   },
-  leadChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: colors.white,
-  },
-  leadChipActive: {
-    borderColor: '#0B2F7D',
-    backgroundColor: '#E4EFFD',
-  },
-  leadChipText: {
-    fontSize: 12,
+  leadSelectValue: {
+    fontSize: 13,
     color: colors.text,
   },
-  leadChipTextActive: {
-    color: '#0B2F7D',
-    fontWeight: '700',
+  leadSelectLabel: {
+    flex: 1,
+  },
+  leadSelectMuted: {
+    color: colors.muted,
+    fontSize: 13,
+  },
+  leadOptionContent: {
+    flex: 1,
+    gap: 3,
+  },
+  leadOptionDetail: {
+    fontSize: 12,
+    color: colors.muted,
+  },
+  leadSelectStatus: {
+    padding: 14,
+    gap: 8,
   },
   modeChip: {
     paddingHorizontal: 14,

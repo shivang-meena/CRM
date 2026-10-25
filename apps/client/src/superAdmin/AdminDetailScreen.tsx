@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { colors } from '@/theme/colors';
 import { errorMessage } from '@/api/client';
 import Button from '@/components/Button';
-import { getAdmin, resetAdminPassword, updateAdmin, updateAdminFeatures, updateAdminStatus } from '@/api/superAdmin';
+import { changeAdminLoginId, getAdmin, resetAdminPassword, updateAdmin, updateAdminFeatures, updateAdminStatus } from '@/api/superAdmin';
 import { AdminRecord, FEATURE_LIST, FeatureKey } from '@/types/superAdmin';
 import { FeatureSwitch } from '@/superAdmin/FeatureSwitch';
 
@@ -16,6 +16,7 @@ export default function AdminDetailScreen() {
   const qc = useQueryClient();
   const [info, setInfo] = useState({ businessName: '', name: '', phone: '', email: '' });
   const [newPassword, setNewPassword] = useState('');
+  const [newLoginId, setNewLoginId] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [confirmStatus, setConfirmStatus] = useState(false);
@@ -59,6 +60,17 @@ export default function AdminDetailScreen() {
   const passwordMutation = useMutation({
     mutationFn: () => resetAdminPassword(id, newPassword),
     onSuccess: () => { setError(''); setNewPassword(''); setMessage('Password changed. Give the new password to the customer.'); },
+    onError: (e) => { setMessage(''); setError(errorMessage(e)); },
+  });
+
+  const loginIdMutation = useMutation({
+    mutationFn: () => changeAdminLoginId(id, newLoginId.trim().toLowerCase()),
+    onSuccess: (updated) => {
+      setError('');
+      setNewLoginId('');
+      setMessage(`Login ID changed to "${updated.loginId}". Share the new Login ID with the customer.`);
+      applyUpdated(updated);
+    },
     onError: (e) => { setMessage(''); setError(errorMessage(e)); },
   });
 
@@ -126,6 +138,33 @@ export default function AdminDetailScreen() {
           ))}
           <View style={{ alignSelf: 'flex-start' }}>
             <Button title="Save details" onPress={() => { setMessage(''); infoMutation.mutate(); }} loading={infoMutation.isPending} disabled={!info.name.trim()} />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Change Login ID</Text>
+          <Text style={styles.meta}>Current Login ID: {admin.loginId}</Text>
+          <View style={styles.field}>
+            <Text style={styles.label}>New Login ID (3-50 characters)</Text>
+            <TextInput
+              accessibilityLabel="New Login ID"
+              style={styles.input}
+              value={newLoginId}
+              onChangeText={setNewLoginId}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={50}
+              editable={!loginIdMutation.isPending}
+            />
+            <Text style={styles.meta}>Use letters, numbers, dot (.), underscore (_) or hyphen (-).</Text>
+          </View>
+          <View style={{ alignSelf: 'flex-start' }}>
+            <Button
+              title="Change Login ID"
+              onPress={() => { setMessage(''); setError(''); loginIdMutation.mutate(); }}
+              loading={loginIdMutation.isPending}
+              disabled={!/^[a-zA-Z0-9._-]{3,50}$/.test(newLoginId.trim()) || newLoginId.trim().toLowerCase() === admin.loginId}
+            />
           </View>
         </View>
 

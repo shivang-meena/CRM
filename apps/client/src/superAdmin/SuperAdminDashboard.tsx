@@ -6,6 +6,7 @@ import { colors } from '@/theme/colors';
 import { errorMessage } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/Button';
+import { useErrorToast } from '@/components/FeedbackToast';
 import { createAdmin, listAdmins, updateAdminStatus } from '@/api/superAdmin';
 import { ALL_FEATURES_ON, AdminRecord, FEATURE_LIST, FeatureMap } from '@/types/superAdmin';
 import { FeatureSwitch } from '@/superAdmin/FeatureSwitch';
@@ -22,6 +23,7 @@ export default function SuperAdminDashboard() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [features, setFeatures] = useState<FeatureMap>(ALL_FEATURES_ON);
   const [formError, setFormError] = useState('');
+  useErrorToast(formError, 'Account details need attention');
   const [notice, setNotice] = useState('');
   const [statusTarget, setStatusTarget] = useState<AdminRecord | null>(null);
 

@@ -39,8 +39,8 @@ export class AuthService {
 
   async staffLogin(dto: StaffLoginDto) {
     // runAsSystem is allowed here (G9): we do not know the tenant yet, we look the staff up by email.
-    const staff = await runAsSystem(() =>
-      this.prisma.staffMember.findFirst({
+    const staff = await runAsSystem(async () =>
+      await this.prisma.staffMember.findFirst({
         where: { email: dto.email.trim().toLowerCase(), deletedAt: null, canLoginApp: true },
       }),
     );

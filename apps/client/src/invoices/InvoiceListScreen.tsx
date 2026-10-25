@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   Modal,
   Platform,
@@ -147,6 +148,26 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+  };
+
+  const handleCallCustomer = async (row: SalesDocumentRecord) => {
+    const phone = (row.mobile ?? '').trim().replace(/[\s().-]/g, '');
+    const showError = (message: string) => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(message);
+      } else {
+        Alert.alert('Call customer', message);
+      }
+    };
+    if (!/^\+?\d+$/.test(phone)) {
+      showError(`No valid mobile number registered for customer "${row.customerName}".`);
+      return;
+    }
+    try {
+      await Linking.openURL(`tel:${phone}`);
+    } catch {
+      showError('Unable to open the phone dialpad on this device.');
+    }
   };
 
   const handleDownloadPdf = () => {
@@ -373,7 +394,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
               <View style={styles.cellExpand} />
 
               <Text style={[styles.thText, styles.cellNo]}>No.</Text>
-              <Text style={[styles.thText, styles.cellActions]}>Actions</Text>
+              <Text style={[styles.thText, styles.cellActions, mode === 'INVOICE' && styles.cellActionsWithCall]}>Actions</Text>
               <Text style={[styles.thText, styles.cellDocNo]}>
                 {mode === 'QUOTATION' ? 'Quotation No.' : 'Invoice No.'}
               </Text>
@@ -445,7 +466,7 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                       </View>
 
                       {/* 4. Quick Action Icons */}
-                      <View style={[styles.cellActions, styles.actionsRow]}>
+                      <View style={[styles.cellActions, mode === 'INVOICE' && styles.cellActionsWithCall, styles.actionsRow]}>
                         {/* View / Preview */}
                         <Pressable
                           onPress={(e) => {
@@ -565,6 +586,21 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                         >
                           <Ionicons color="#D946EF" name="copy-outline" size={16} />
                         </Pressable>
+
+                        {mode === 'INVOICE' && (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Call ${row.customerName || 'customer'}`}
+                            accessibilityHint="Open the phone dialpad with the customer's number"
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              void handleCallCustomer(row);
+                            }}
+                            hitSlop={4}
+                          >
+                            <Ionicons color="#16A34A" name="call-outline" size={16} />
+                          </Pressable>
+                        )}
                       </View>
 
                       {/* 5. Standard Columns */}
@@ -1549,6 +1585,9 @@ const styles = StyleSheet.create({
   cellNo: { width: 50 },
   cellActions: {
     width: 210,
+  },
+  cellActionsWithCall: {
+    width: 236,
   },
   cellDocNo: { width: 140 },
   cellCompany: { width: 170 },

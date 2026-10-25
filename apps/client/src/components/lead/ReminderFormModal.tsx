@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import AssigneeSelect from '@/components/AssigneeSelect';
+import { useAuth } from '@/context/AuthContext';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { errorMessage } from '@/api/client';
 import { saveActivity } from '@/api/leadActivities';
@@ -25,6 +27,9 @@ export default function ReminderFormModal({
   onSaved,
   onClose,
 }: Props) {
+  const { userName } = useAuth();
+  const [assignedTo, setAssignedTo] = useState(record?.assignedTo ?? userName);
+  const [assignedToId, setAssignedToId] = useState(record?.assignedToId ?? '');
   const [title, setTitle] = useState(() => record?.title ?? '');
   const [message, setMessage] = useState(() => record?.message ?? '');
   const [remindAt, setRemindAt] = useState(() => formatDateTime(record?.remindAt));
@@ -68,6 +73,8 @@ export default function ReminderFormModal({
       title: title.trim(),
       message: message.trim() || undefined,
       remindAt: parsedRemind.value,
+      assignedTo,
+      assignedToId: assignedToId || undefined,
     };
 
     if (linkType !== 'none' && linkedId) {
@@ -99,6 +106,7 @@ export default function ReminderFormModal({
       <Field label="Title *" value={title} onChange={setTitle} placeholder="e.g. Call client about invoice" />
       <DateField label="Alert Date & Time *" value={remindAt} onChange={setRemindAt} />
       <Field label="Message" value={message} onChange={setMessage} multiline placeholder="Reminder details..." />
+      <AssigneeSelect value={assignedTo} assigneeId={assignedToId} onChange={(name, id) => { setAssignedTo(name); setAssignedToId(id); }} />
 
       <Choices
         label="Link to an activity (optional)"

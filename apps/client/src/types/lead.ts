@@ -23,6 +23,7 @@ export interface Lead {
   nextFollowUpAt: string | null;
   createdBy: string;
   assignedTo: string;
+  assignedToId?: string | null;
   createdAt: string;
   updatedAt: string;
   version: number;
@@ -46,6 +47,7 @@ export interface LeadInput {
   rating?: number;
   nextFollowUpAt?: string | null;
   assignedTo?: string;
+  assignedToId?: string | null;
 }
 
 export const STATUS_LIST: { key: LeadStatus; label: string }[] = [

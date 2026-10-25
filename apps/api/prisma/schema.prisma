@@ -80,6 +80,7 @@ model Lead {
   nextFollowUpAt  DateTime?
   createdBy       String
   assignedTo      String
+  assignedToId    String?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   deletedAt       DateTime?  @db.Timestamptz(3)
@@ -285,6 +286,7 @@ model LeadFollowUp {
   channel FollowUpChannel @default(CALL)
   status FollowUpStatus @default(PENDING)
   assignedTo String
+  assignedToId String?
   outcome String?
   completedAt DateTime? @db.Timestamptz(3)
   origin ActivityOrigin @default(USER)
@@ -322,6 +324,7 @@ model LeadMeeting {
   meetingUrl String?
   attendees Json @default("[]")
   assignedTo String
+  assignedToId String?
   status MeetingStatus @default(SCHEDULED)
   outcome String?
   completedAt DateTime? @db.Timestamptz(3)
@@ -352,6 +355,8 @@ model LeadReminder {
   message String?
   remindAt DateTime @db.Timestamptz(3)
   recipientId String
+  assignedTo String?
+  assignedToId String?
   status ReminderStatus @default(PENDING)
   followUpId String?
   meetingId String?

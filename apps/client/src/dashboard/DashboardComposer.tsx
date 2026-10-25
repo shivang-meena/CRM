@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatDateTime, parseDateTimeInput } from '@/utils/format';
 import { DashboardEntry } from './model';
 import { dashboardColors as palette } from './DashboardPanel';
+import { useErrorToast } from '@/components/FeedbackToast';
 
 type Props = {
   kind: DashboardEntry['kind'];
@@ -17,6 +18,7 @@ export default function DashboardComposer({ kind, entry, defaultDate, onSave, on
   const [text, setText] = useState(entry?.text ?? '');
   const [date, setDate] = useState(formatDateTime(entry?.date ?? defaultDate.toISOString()));
   const [error, setError] = useState('');
+  useErrorToast(error, 'Dashboard item needs attention');
   const [saving, setSaving] = useState(false);
   const label = kind === 'note' ? 'Note' : kind === 'Events' ? 'Event' : kind;
 

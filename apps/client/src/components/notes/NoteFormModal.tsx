@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { errorMessage } from '@/api/client';
 import { Note } from '@/types/note';
 import { colors } from '@/theme/colors';
+import { useErrorToast } from '@/components/FeedbackToast';
 
 export default function NoteFormModal({ visible, note, onClose, onSave }: {
   visible: boolean;
@@ -13,6 +14,7 @@ export default function NoteFormModal({ visible, note, onClose, onSave }: {
 }) {
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
+  useErrorToast(error, 'Note needs attention');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {

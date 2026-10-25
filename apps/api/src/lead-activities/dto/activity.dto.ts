@@ -7,6 +7,7 @@ import { CreateRequestDto, LinkedReminderDto, VersionDto } from '../../crm/crm.d
 class ActivityBaseDto extends LinkedReminderDto {
   @IsString() @IsNotEmpty() @Matches(/\S/) @MaxLength(200) title: string;
   @IsString() @IsNotEmpty() @Matches(/\S/) @MaxLength(200) assignedTo: string;
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(200) assignedToId?: string;
 }
 export class FollowUpFieldsDto extends ActivityBaseDto {
   @IsOptional() @IsString() @MaxLength(4000) description?: string;
@@ -28,6 +29,8 @@ export class MeetingFieldsDto extends ActivityBaseDto {
   @IsOptional() @IsArray() @ArrayMaxSize(50) @ValidateNested({ each: true }) @Type(() => AttendeeDto) attendees?: AttendeeDto[];
 }
 export class ReminderFieldsDto {
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(200) assignedTo: string;
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(200) assignedToId?: string;
   @IsString() @IsNotEmpty() @Matches(/\S/) @MaxLength(200) title: string;
   @IsOptional() @IsString() @MaxLength(4000) message?: string;
   @IsDateString() @Matches(/(Z|[+-]\d{2}:\d{2})$/) remindAt: string;

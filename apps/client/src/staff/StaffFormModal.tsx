@@ -5,6 +5,7 @@ import { colors } from '@/theme/colors';
 import { useAuth } from '@/context/AuthContext';
 import { StaffFormValues, StaffPermissions, StaffStatus } from '@/types/staff';
 import { StaffDatePickerModal } from '@/staff/StaffDatePickerModal';
+import { useErrorToast } from '@/components/FeedbackToast';
 
 interface Props {
   visible: boolean;
@@ -30,6 +31,7 @@ const PERMISSION_CONFIG: Array<{ key: keyof StaffPermissions; label: string }> =
 ];
 
 export function StaffFormModal({ visible, mode, values, error, pending, onChange, onClose, onSubmit }: Props) {
+  useErrorToast(error, 'Staff details need attention');
   const { permissions: adminFeatures } = useAuth();
   const [datePicker, setDatePicker] = useState<'birthDate' | 'joiningDate' | null>(null);
   const [showPassword, setShowPassword] = useState(false);

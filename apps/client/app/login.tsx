@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { Image, StyleSheet, Text, TextInput, View, Pressable } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, TextInput, View, Pressable } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
 import { errorMessage } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/Button';
+import PasswordInput from '@/components/PasswordInput';
+import { useErrorToast } from '@/components/FeedbackToast';
 
 export default function Login() {
-  const { token, login } = useAuth();
+  const { token, role, loading, login } = useAuth();
   const router = useRouter();
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  useErrorToast(error, 'Sign in failed');
 
 
   async function submit() {
@@ -31,7 +34,8 @@ export default function Login() {
     }
   }
 
-  if (token) return <Redirect href={'/' as any} />;
+  if (loading) return <View style={styles.page}><ActivityIndicator color={colors.primary} /></View>;
+  if (token) return <Redirect href={(role === 'super_admin' ? '/super-admin' : '/') as any} />;
 
   return (
     <View style={styles.page}>
@@ -50,15 +54,13 @@ export default function Login() {
         </View>
         <View style={styles.field}>
           <Text style={styles.label}>Password</Text>
-          <TextInput
+          <PasswordInput
             style={styles.input}
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
             onSubmitEditing={submit}
           />
         </View>
-        {!!error && <Text style={styles.error}>{error}</Text>}
         <Button title="Sign in" onPress={submit} loading={busy} />
         <Pressable onPress={() => router.replace('/staff-login' as any)} style={styles.switchLink}>
           <Text style={styles.switchText}>Staff? Sign in here</Text>

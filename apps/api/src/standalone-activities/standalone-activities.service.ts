@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { currentAdminId } from '../tenant/tenant-context';
 import { Actor, CrmCoreService } from '../crm/crm-core.service';
+import { AssigneesService } from '../crm/assignees.service';
 import { ListQueryDto, VersionDto } from '../crm/crm.dto';
 
 type StandaloneKind = 'meetings' | 'reminders';
@@ -13,7 +14,7 @@ const config = {
 
 @Injectable()
 export class StandaloneActivitiesService {
-  constructor(private prisma: PrismaService, private core: CrmCoreService) {}
+  constructor(private prisma: PrismaService, private core: CrmCoreService, private assignees: AssigneesService) {}
 
   private db(kind: StandaloneKind) { return (this.prisma as any)[config[kind].delegate] as any; }
 
@@ -82,6 +83,8 @@ export class StandaloneActivitiesService {
     const existing = await this.db(kind).findFirst({ where: { createdById: actor.id, requestKey: input.requestKey } });
     if (existing) { this.core.replay(existing, hash); return existing; }
     const fields = this.fields(kind, input);
+    const assignment = await this.assignees.resolve(this.prisma, input, actor);
+    Object.assign(fields, assignment);
     this.validate(kind, { ...input, ...fields });
     const row = await this.db(kind).create({ data: {
       adminId: currentAdminId(),
@@ -91,7 +94,7 @@ export class StandaloneActivitiesService {
       createdByName: actor.name,
       requestKey: input.requestKey,
       requestHash: hash,
-      ...(kind === 'reminders' ? { recipientId: actor.id } : {}),
+      ...(kind === 'reminders' ? { recipientId: assignment.assignedToId } : {}),
     } });
     return { ...row, independent: true, lead: null };
   }
@@ -107,6 +110,10 @@ export class StandaloneActivitiesService {
     if (action === 'complete' && kind === 'reminders') throw new BadRequestException('Dismiss reminders instead.');
     if (action === 'dismiss' && (kind !== 'reminders' || !['PENDING', 'TRIGGERED'].includes(before.status))) throw new BadRequestException('This reminder cannot be dismissed.');
     const data: Record<string, any> = action === 'update' ? this.fields(kind, input) : {};
+    if (action === 'update') {
+      const assignment = await this.assignees.resolve(this.prisma, input, actor, before);
+      Object.assign(data, assignment, kind === 'reminders' && assignment.assignedToId ? { recipientId: assignment.assignedToId } : {});
+    }
     if (action === 'update') this.validate(kind, { ...before, ...data });
     if (action === 'complete') Object.assign(data, { status: 'COMPLETED', completedAt: new Date(), ...(kind === 'meetings' ? { outcome: input.outcome ?? null } : {}) });
     if (action === 'cancel') data.status = 'CANCELLED';

@@ -32,7 +32,7 @@ export async function superAdminLoginRequest(id: string, password: string) {
   return res.data;
 }
 
-export async function getMeRequest() {
+export async function getMeRequest(token?: string) {
   const res = await api.get<{
     id: string;
     name: string;
@@ -40,11 +40,11 @@ export async function getMeRequest() {
     role: 'admin' | 'staff';
     permissions: StaffPermissions | null;
     businessName?: string;
-  }>('/auth/me');
+  }>('/auth/me', token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
   return res.data;
 }
 
-export async function getSuperAdminMeRequest() {
-  const res = await api.get<{ id: string; name: string; role: 'super_admin' }>('/super-admin/me');
+export async function getSuperAdminMeRequest(token?: string) {
+  const res = await api.get<{ id: string; name: string; role: 'super_admin' }>('/super-admin/me', token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
   return res.data;
 }

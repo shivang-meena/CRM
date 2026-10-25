@@ -4,6 +4,8 @@ import { colors } from '@/theme/colors';
 import { errorMessage } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/Button';
+import PasswordInput from '@/components/PasswordInput';
+import { useErrorToast } from '@/components/FeedbackToast';
 
 export default function SuperAdminLogin() {
   const { superAdminLogin } = useAuth();
@@ -11,6 +13,7 @@ export default function SuperAdminLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  useErrorToast(error, 'Sign in failed');
 
   async function submit() {
     setError('');
@@ -42,9 +45,8 @@ export default function SuperAdminLogin() {
         </View>
         <View style={styles.field}>
           <Text style={styles.label}>Password</Text>
-          <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry onSubmitEditing={submit} />
+          <PasswordInput style={styles.input} value={password} onChangeText={setPassword} onSubmitEditing={submit} />
         </View>
-        {!!error && <Text style={styles.error}>{error}</Text>}
         <Button title="Sign in" onPress={submit} loading={busy} />
       </View>
     </View>

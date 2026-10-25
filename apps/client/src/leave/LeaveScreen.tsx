@@ -20,6 +20,7 @@ import { colors } from '@/theme/colors';
 import { MOBILE_RECORD_LAYOUTS } from '@/layout/responsive';
 import { LeaveFilterStatus, LeaveRequest, LeaveStatus, LeaveType } from '@/types/leave';
 import { formatDateTime as formatCrmDateTime, parseDateTimeInput } from '@/utils/format';
+import { useErrorToast } from '@/components/FeedbackToast';
 
 const PAGE_SIZES = [10, 25, 50];
 
@@ -77,6 +78,7 @@ export function LeaveScreen() {
   const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
   const [formValues, setFormValues] = useState<LeaveFormValues>(blankForm);
   const [formError, setFormError] = useState<string | null>(null);
+  useErrorToast(formError, 'Leave request needs attention');
 
   // Review modal (admin approve/reject)
   const [reviewTarget, setReviewTarget] = useState<{ leave: LeaveRequest; action: 'APPROVED' | 'REJECTED' } | null>(null);

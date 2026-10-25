@@ -7,25 +7,32 @@ import { ActivityRecord } from '@/types/leadActivities';
 import { formatDateTime, parseDateTimeInput } from '@/utils/format';
 import Button from '../Button';
 import DateTimePickerModal from '../DateTimePickerModal';
+import AssigneeSelect from '../AssigneeSelect';
+import { useAuth } from '@/context/AuthContext';
+import { useErrorToast } from '../FeedbackToast';
 
 type Props = { visible: boolean; record: ActivityRecord | null; onClose: () => void; onSave: (data: Record<string, unknown>) => Promise<void> };
 const requestKey = () => 'crm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2);
 
 export default function StandaloneReminderFormModal({ visible, record, onClose, onSave }: Props) {
+  const { userName } = useAuth();
+  const [assignedTo, setAssignedTo] = useState(record?.assignedTo ?? userName);
+  const [assignedToId, setAssignedToId] = useState(record?.assignedToId ?? '');
   const [title, setTitle] = useState(record?.title ?? '');
   const [message, setMessage] = useState(record?.message ?? '');
   const [remindAt, setRemindAt] = useState(record?.remindAt ? formatDateTime(record.remindAt) : formatDateTime(new Date(Date.now() + 60 * 60000).toISOString()));
   const [picker, setPicker] = useState(false); const [error, setError] = useState(''); const [saving, setSaving] = useState(false);
-  useEffect(() => { if (visible) { setTitle(record?.title ?? ''); setMessage(record?.message ?? ''); setRemindAt(record?.remindAt ? formatDateTime(record.remindAt) : formatDateTime(new Date(Date.now() + 60 * 60000).toISOString())); setPicker(false); setError(''); } }, [visible, record]);
+  useErrorToast(error, 'Reminder needs attention');
+  useEffect(() => { if (visible) { setAssignedTo(record?.assignedTo ?? userName); setAssignedToId(record?.assignedToId ?? ''); setTitle(record?.title ?? ''); setMessage(record?.message ?? ''); setRemindAt(record?.remindAt ? formatDateTime(record.remindAt) : formatDateTime(new Date(Date.now() + 60 * 60000).toISOString())); setPicker(false); setError(''); } }, [visible, record, userName]);
   async function save() {
     if (!title.trim()) return setError('Title is required.');
     const parsed = parseDateTimeInput(remindAt); if (!parsed.ok || !parsed.value) return setError('Enter a valid reminder date like 25-12-2026 18:30.');
     setSaving(true); setError('');
-    try { await onSave({ title: title.trim(), message: message.trim(), remindAt: parsed.value, ...(!record ? { requestKey: requestKey() } : {}) }); onClose(); } catch (e) { setError(errorMessage(e)); } finally { setSaving(false); }
+    try { await onSave({ title: title.trim(), message: message.trim(), remindAt: parsed.value, assignedTo, assignedToId: assignedToId || undefined, ...(!record ? { requestKey: requestKey() } : {}) }); onClose(); } catch (e) { setError(errorMessage(e)); } finally { setSaving(false); }
   }
   return <Modal visible={visible} transparent animationType="fade" onRequestClose={() => !saving && onClose()}><View style={styles.overlay}><View style={styles.box}>
     <View style={styles.header}><Text style={styles.title}>{record ? 'Edit Reminder' : 'Add Reminder'}</Text></View>
-    <ScrollView contentContainerStyle={styles.body}><Field label="Title *" value={title} onChangeText={setTitle} /><Field label="Message" value={message} onChangeText={setMessage} multiline /><View style={styles.field}><Text style={styles.label}>Remind At *</Text><Pressable style={styles.date} onPress={() => setPicker(true)}><Ionicons name="calendar-outline" size={18} color={colors.primaryText} /><Text style={styles.dateText}>{remindAt || 'Choose Date & Time'}</Text><Ionicons name="time-outline" size={18} color={colors.muted} /></Pressable></View></ScrollView>
+    <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled"><Field label="Title *" value={title} onChangeText={setTitle} /><Field label="Message" value={message} onChangeText={setMessage} multiline /><View style={styles.field}><Text style={styles.label}>Remind At *</Text><Pressable style={styles.date} onPress={() => setPicker(true)}><Ionicons name="calendar-outline" size={18} color={colors.primaryText} /><Text style={styles.dateText}>{remindAt || 'Choose Date & Time'}</Text><Ionicons name="time-outline" size={18} color={colors.muted} /></Pressable></View><AssigneeSelect value={assignedTo} assigneeId={assignedToId} onChange={(name, id) => { setAssignedTo(name); setAssignedToId(id); }} /></ScrollView>
     <View style={styles.footer}>{!!error && <Text style={styles.error}>{error}</Text>}<View style={styles.buttons}><Button title="Cancel" variant="outline" onPress={onClose} disabled={saving} /><Button title={record ? 'Save Reminder' : 'Add Reminder'} onPress={save} loading={saving} /></View></View>
   </View></View><DateTimePickerModal visible={picker} value={remindAt} onSelect={setRemindAt} onClose={() => setPicker(false)} /></Modal>;
 }

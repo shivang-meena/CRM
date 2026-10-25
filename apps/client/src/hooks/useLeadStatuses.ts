@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useModuleQuery } from './useModuleQuery';
 import {
   fetchLeadStatusMaster,
   saveLeadStatusMaster,
@@ -9,7 +10,7 @@ import {
 import { SaveLeadStatusMasterPayload } from '@/types/leadStatus';
 
 export function useLeadStatuses() {
-  return useQuery({
+  return useModuleQuery('lead', {
     queryKey: LEAD_STATUS_MASTER_KEY,
     queryFn: fetchLeadStatusMaster,
   });

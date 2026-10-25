@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWi
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { errorMessage } from '@/api/client';
+import { useErrorToast } from '@/components/FeedbackToast';
 import { resetGstInvoiceStart } from '@/api/gstInvoiceSettings';
 import { fetchInvoiceSettings, resetNonGstInvoiceStart, saveInvoiceSettings } from '@/api/nonGstInvoiceSettings';
 import { EMPTY_GST_INVOICE_SETTINGS, gstInvoiceNumber, gstSettingsPayload } from '@/types/gstInvoiceSettings';
@@ -121,6 +122,7 @@ function InvoiceSettingsForm({ initial }: { initial: InvoiceSettings }) {
     nonGst: draft(initial.nonGst ?? EMPTY_NON_GST_INVOICE_SETTINGS),
   }));
   const [error, setError] = useState('');
+  useErrorToast(error, 'Invoice settings need attention');
   const [message, setMessage] = useState('');
   const [signatureErrors, setSignatureErrors] = useState({
     gst: '',

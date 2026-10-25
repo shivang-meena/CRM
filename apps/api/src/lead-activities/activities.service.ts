@@ -3,6 +3,7 @@ import { HistoryEntity, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { currentAdminId } from '../tenant/tenant-context';
 import { CrmCoreService, Tx } from '../crm/crm-core.service';
+import { AssigneesService } from '../crm/assignees.service';
 import { ListQueryDto, VersionDto } from '../crm/crm.dto';
 import { activityPermissions, assertPermissions, hasPermission } from '../auth/permissions';
 import type { AuthenticatedUser, ModulePermission } from '../auth/permissions';
@@ -18,7 +19,7 @@ type Delegate = { findFirst(args: any): Promise<any>; findMany(args: any): Promi
 
 @Injectable()
 export class ActivitiesService {
-  constructor(private prisma: PrismaService, private core: CrmCoreService) {}
+  constructor(private prisma: PrismaService, private core: CrmCoreService, private assignees: AssigneesService) {}
   private db(tx: Tx, kind: ActivityKind) { return tx[config[kind].delegate] as unknown as Delegate; }
 
   private fields(kind: ActivityKind, input: Record<string, any>) {
@@ -91,17 +92,19 @@ export class ActivitiesService {
       const existing = await db.findFirst({ where: { createdById: actor.id, requestKey: input.requestKey } });
       if (existing) { this.core.replay(existing, hash); return existing; }
       const fields = this.fields(kind, input);
+      const assignment = await this.assignees.resolve(tx, input, actor);
+      Object.assign(fields, assignment, kind === 'reminders' ? { recipientId: assignment.assignedToId } : {});
       await this.validate(tx, kind, leadId, fields);
-      const row = await db.create({ data: { ...fields, adminId: currentAdminId(), leadId, createdById: actor.id, createdByName: actor.name, requestKey: input.requestKey, requestHash: hash, ...(kind === 'reminders' ? { recipientId: actor.id } : {}) } });
-      await this.core.history(tx, leadId, actor, config[kind].entity, row.id, 'CREATED', row.title + ' added');
+      const row = await db.create({ data: { ...fields, adminId: currentAdminId(), leadId, createdById: actor.id, createdByName: actor.name, requestKey: input.requestKey, requestHash: hash } });
+      await this.core.history(tx, leadId, actor, config[kind].entity, row.id, 'CREATED', `${row.title} added; assigned to ${assignment.assignedTo}`, { assignedTo: null, assignedToId: null }, assignment);
       if (kind === 'followups') await this.core.syncFollowUp(tx, leadId);
       if (kind !== 'reminders' && input.reminderAt) {
         const reminder = await tx.leadReminder.create({ data: {
           adminId: currentAdminId(),
-          leadId, title: row.title, remindAt: new Date(input.reminderAt), recipientId: actor.id,
+          leadId, title: row.title, remindAt: new Date(input.reminderAt), ...assignment, recipientId: assignment.assignedToId!,
           createdById: actor.id, createdByName: actor.name, [config[kind].target]: row.id,
         } });
-        await this.core.history(tx, leadId, actor, 'REMINDER', reminder.id, 'CREATED', 'Linked reminder added');
+        await this.core.history(tx, leadId, actor, 'REMINDER', reminder.id, 'CREATED', `Linked reminder added; assigned to ${assignment.assignedTo}`);
       }
       return row;
     });
@@ -121,6 +124,10 @@ export class ActivitiesService {
       if (action === 'complete' && kind === 'reminders') throw new BadRequestException('Dismiss reminders instead.');
       if (action === 'dismiss' && (kind !== 'reminders' || !['PENDING','TRIGGERED'].includes(before.status))) throw new BadRequestException('This reminder cannot be dismissed.');
       const data = action === 'update' ? this.fields(kind, input) : {};
+      if (action === 'update') {
+        const assignment = await this.assignees.resolve(tx, input, actor, before);
+        Object.assign(data, assignment, kind === 'reminders' && assignment.assignedToId ? { recipientId: assignment.assignedToId } : {});
+      }
       if (action === 'complete') Object.assign(data, { status: 'COMPLETED', completedAt: new Date(), outcome: input.outcome ?? null });
       if (action === 'cancel') data.status = 'CANCELLED';
       if (action === 'dismiss') Object.assign(data, { status: 'DISMISSED', dismissedAt: new Date() });
@@ -140,7 +147,8 @@ export class ActivitiesService {
         }
       }
       const actions = { update: 'UPDATED', complete: 'COMPLETED', cancel: 'CANCELLED', dismiss: 'DISMISSED', delete: 'DELETED' } as const;
-      await this.core.history(tx, leadId, actor, config[kind].entity, id, actions[action], after.title + ' ' + action, before, after);
+      const assignmentSummary = action === 'update' ? this.assignees.summary(before, after) : null;
+      await this.core.history(tx, leadId, actor, config[kind].entity, id, actions[action], after.title + ' ' + action + (assignmentSummary ? `; ${assignmentSummary}` : ''), before, after);
       return after;
     });
   }

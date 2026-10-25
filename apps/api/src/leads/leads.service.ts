@@ -3,12 +3,13 @@ import { Lead, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { currentAdminId } from '../tenant/tenant-context';
 import { Actor, CrmCoreService } from '../crm/crm-core.service';
+import { AssigneesService } from '../crm/assignees.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 
 @Injectable()
 export class LeadsService {
-  constructor(private prisma: PrismaService, private core: CrmCoreService) {}
+  constructor(private prisma: PrismaService, private core: CrmCoreService, private assignees: AssigneesService) {}
   private format(l: Lead) { return { ...l, estimatedAmount: Number(l.estimatedAmount) }; }
 
   async listServices() {
@@ -59,11 +60,12 @@ export class LeadsService {
   async create(dto: CreateLeadDto, actor: Actor) {
     return this.prisma.$transaction(async tx => {
       await this.validateService(tx, dto.serviceId);
-      const lead = await tx.lead.create({ data: { ...dto, adminId: currentAdminId(), nextFollowUpAt: dto.nextFollowUpAt ? new Date(dto.nextFollowUpAt) : null, createdBy: actor.name, assignedTo: dto.assignedTo || actor.name }, include: { service: true } });
-      await this.core.history(tx, lead.id, actor, 'LEAD', lead.id, 'CREATED', 'Lead created');
+      const assignment = await this.assignees.resolve(tx, dto, actor);
+      const lead = await tx.lead.create({ data: { ...dto, ...assignment, adminId: currentAdminId(), nextFollowUpAt: dto.nextFollowUpAt ? new Date(dto.nextFollowUpAt) : null, createdBy: actor.name }, include: { service: true } });
+      await this.core.history(tx, lead.id, actor, 'LEAD', lead.id, 'CREATED', `Lead created; assigned to ${lead.assignedTo}`, { assignedTo: null, assignedToId: null }, assignment);
       if (dto.nextFollowUpAt) {
-        const followup = await tx.leadFollowUp.create({ data: { adminId: currentAdminId(), leadId: lead.id, title: 'Initial follow-up', scheduledAt: new Date(dto.nextFollowUpAt), assignedTo: lead.assignedTo, createdById: actor.id, createdByName: actor.name } });
-        await this.core.history(tx, lead.id, actor, 'FOLLOWUP', followup.id, 'CREATED', 'Initial follow-up scheduled');
+        const followup = await tx.leadFollowUp.create({ data: { adminId: currentAdminId(), leadId: lead.id, title: 'Initial follow-up', scheduledAt: new Date(dto.nextFollowUpAt), ...assignment, createdById: actor.id, createdByName: actor.name } });
+        await this.core.history(tx, lead.id, actor, 'FOLLOWUP', followup.id, 'CREATED', `Initial follow-up scheduled; assigned to ${assignment.assignedTo}`);
       }
       return this.format(lead);
     });
@@ -76,8 +78,11 @@ export class LeadsService {
       await this.validateService(tx, dto.serviceId, before.serviceId);
       const { nextFollowUpAt, version: _version, ...rest } = dto;
       if (nextFollowUpAt !== undefined) throw new BadRequestException('Manage follow-up dates in the FollowUp section.');
-      const after = await tx.lead.update({ where: { id }, data: { ...rest, version: { increment: 1 } } });
-      await this.core.history(tx, id, actor, 'LEAD', id, 'UPDATED', before.status !== after.status ? 'Lead status changed' : 'Lead details updated', before, after);
+      const assignment = await this.assignees.resolve(tx, dto, actor, before);
+      const after = await tx.lead.update({ where: { id }, data: { ...rest, ...assignment, version: { increment: 1 } } });
+      const assignmentSummary = this.assignees.summary(before, after);
+      const summary = before.status !== after.status ? 'Lead status changed' : 'Lead details updated';
+      await this.core.history(tx, id, actor, 'LEAD', id, 'UPDATED', assignmentSummary ? `${summary}; ${assignmentSummary}` : summary, before, after);
       return this.format(await tx.lead.findUniqueOrThrow({ where: { id }, include: { service: true } }));
     });
   }

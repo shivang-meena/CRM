@@ -1,17 +1,19 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getMeRequest, getSuperAdminMeRequest, loginRequest, staffLoginRequest, superAdminLoginRequest,
 } from '@/api/auth';
-import { TOKEN_KEY, USER_KEY, setOnUnauthorized } from '@/api/client';
+import { setOnUnauthorized } from '@/api/client';
 import { getItem, removeItem, setItem } from '@/utils/storage';
 import { StaffPermissions } from '@/types/staff';
-
-const ROLE_KEY = 'crm_role';
-const PERMISSIONS_KEY = 'crm_permissions';
-
-export type UserRole = 'super_admin' | 'admin' | 'staff';
+import {
+  TOKEN_KEY, USER_KEY, ROLE_KEY, PERMISSIONS_KEY, parseSession,
+  readBrowserSession, writeBrowserSession, clearBrowserSession,
+  createBrowserSession, subscribeBrowserSession,
+} from '@/utils/browserSession';
+import type { AuthSession, UserRole } from '@/utils/browserSession';
+export type { UserRole } from '@/utils/browserSession';
 
 type AuthCtx = {
   token: string | null;
@@ -29,13 +31,33 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
-async function fetchMe(role: UserRole | null): Promise<{ name: string; role: UserRole; permissions: StaffPermissions | null }> {
+async function fetchMe(role: UserRole | null, token: string): Promise<{ name: string; role: UserRole; permissions: StaffPermissions | null }> {
   if (role === 'super_admin') {
-    const me = await getSuperAdminMeRequest();
+    const me = await getSuperAdminMeRequest(token);
     return { name: me.name, role: 'super_admin', permissions: null };
   }
-  const me = await getMeRequest();
+  const me = await getMeRequest(token);
   return { name: me.name, role: me.role, permissions: me.permissions };
+}
+
+async function readStoredSession(): Promise<AuthSession | null> {
+  if (Platform.OS === 'web') return readBrowserSession();
+  const [token, name, role, permissions] = await Promise.all([
+    getItem(TOKEN_KEY), getItem(USER_KEY), getItem(ROLE_KEY), getItem(PERMISSIONS_KEY),
+  ]);
+  return parseSession(token, name, role, permissions);
+}
+
+async function writeStoredSession(session: AuthSession, expectedToken?: string): Promise<boolean> {
+  if (Platform.OS === 'web') return writeBrowserSession(session, expectedToken);
+  if (expectedToken !== undefined && await getItem(TOKEN_KEY) !== expectedToken) return false;
+  await setItem(USER_KEY, session.userName);
+  if (session.role) await setItem(ROLE_KEY, session.role);
+  if (session.permissions) await setItem(PERMISSIONS_KEY, JSON.stringify(session.permissions));
+  else await removeItem(PERMISSIONS_KEY);
+  if (expectedToken !== undefined && await getItem(TOKEN_KEY) !== expectedToken) return false;
+  await setItem(TOKEN_KEY, session.token);
+  return true;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -45,53 +67,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<StaffPermissions | null>(null);
   const [loading, setLoading] = useState(true);
   const qc = useQueryClient();
-  const refreshInFlight = useRef(false);
+  const refreshInFlight = useRef<string | null>(null);
+  const loginInFlight = useRef(false);
+  const currentToken = useRef<string | null>(null);
 
-  const logout = useCallback(async () => {
-    await removeItem(TOKEN_KEY);
-    await removeItem(USER_KEY);
-    await removeItem(ROLE_KEY);
-    await removeItem(PERMISSIONS_KEY);
-    setToken(null);
-    setUserName('');
-    setRole(null);
-    setPermissions(null);
-    qc.clear();
+  const applySession = useCallback((session: AuthSession | null) => {
+    const nextToken = session?.token ?? null;
+    if (currentToken.current !== nextToken) qc.clear();
+    currentToken.current = nextToken;
+    setToken(nextToken);
+    setUserName(session?.userName ?? '');
+    setRole(session?.role ?? null);
+    const nextPermissions = session?.permissions ?? null;
+    setPermissions(current => JSON.stringify(current) === JSON.stringify(nextPermissions) ? current : nextPermissions);
   }, [qc]);
 
+  const endSession = useCallback(async (expectedToken?: string) => {
+    if (Platform.OS === 'web') {
+      clearBrowserSession(expectedToken);
+    } else if (expectedToken === undefined || await getItem(TOKEN_KEY) === expectedToken) {
+      for (const key of [USER_KEY, ROLE_KEY, PERMISSIONS_KEY, TOKEN_KEY]) await removeItem(key);
+    }
+    applySession(await readStoredSession());
+  }, [applySession]);
+
+  const logout = useCallback(() => endSession(currentToken.current ?? undefined), [endSession]);
+
   useEffect(() => {
-    setOnUnauthorized(() => { logout(); });
+    setOnUnauthorized(failedToken => { void endSession(failedToken); });
     return () => setOnUnauthorized(null);
-  }, [logout]);
+  }, [endSession]);
 
   const refreshUser = useCallback(async () => {
-    if (refreshInFlight.current) return;
-    refreshInFlight.current = true;
-    let t: string | null = null;
+    const session = await readStoredSession();
+    if (!session || refreshInFlight.current === session.token) return;
+    refreshInFlight.current = session.token;
     try {
-      t = await getItem(TOKEN_KEY);
-      if (!t) return;
-      const storedRole = (await getItem(ROLE_KEY)) as UserRole | null;
-      const me = await fetchMe(storedRole);
-      if ((await getItem(TOKEN_KEY)) !== t) return;
-      setUserName(me.name);
-      setRole(me.role);
-      setPermissions(current => JSON.stringify(current) === JSON.stringify(me.permissions) ? current : me.permissions);
-      await setItem(USER_KEY, me.name);
-      await setItem(ROLE_KEY, me.role);
-      if (me.permissions) {
-        await setItem(PERMISSIONS_KEY, JSON.stringify(me.permissions));
-      } else {
-        await removeItem(PERMISSIONS_KEY);
-      }
+      const me = await fetchMe(session.role, session.token);
+      const next = { ...session, userName: me.name, role: me.role, permissions: me.permissions };
+      if (await writeStoredSession(next, session.token)) applySession(next);
     } catch (e: any) {
-      if (e?.response?.status === 401 && t && (await getItem(TOKEN_KEY)) === t) {
-        await logout();
-      }
+      if (e?.response?.status === 401) await endSession(session.token);
     } finally {
-      refreshInFlight.current = false;
+      if (refreshInFlight.current === session.token) refreshInFlight.current = null;
     }
-  }, [logout]);
+  }, [applySession, endSession]);
 
   // Admin AND staff are re-checked regularly, so a block or a feature change by the Super Admin applies quickly.
   useEffect(() => {
@@ -112,81 +132,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loading, token, role, refreshUser]);
 
   useEffect(() => {
-    (async () => {
-      const [t, u, r, p] = await Promise.all([
-        getItem(TOKEN_KEY),
-        getItem(USER_KEY),
-        getItem(ROLE_KEY),
-        getItem(PERMISSIONS_KEY),
-      ]);
-      setToken(t);
-      setUserName(u ?? '');
-      setRole((r as UserRole) ?? null);
+    let active = true;
+    const unsubscribe = Platform.OS === 'web' ? subscribeBrowserSession(applySession) : undefined;
+    void (async () => {
       try {
-        setPermissions(p ? JSON.parse(p) : null);
+        const session = await readStoredSession();
+        if (!active) return;
+        applySession(session);
+        if (session) await refreshUser();
       } catch {
-        setPermissions(null);
+        if (active) applySession(null);
+      } finally {
+        if (active) setLoading(false);
       }
-
-      // Fetch live permissions and profile from the server on load.
-      if (t) {
-        try {
-          const me = await fetchMe((r as UserRole) ?? null);
-          setUserName(me.name);
-          setRole(me.role);
-          setPermissions(me.permissions);
-          await setItem(USER_KEY, me.name);
-          await setItem(ROLE_KEY, me.role);
-          if (me.permissions) {
-            await setItem(PERMISSIONS_KEY, JSON.stringify(me.permissions));
-          } else {
-            await removeItem(PERMISSIONS_KEY);
-          }
-        } catch (e: any) {
-          if (e?.response?.status === 401) {
-            await logout();
-          }
-        }
-      }
-      setLoading(false);
     })();
-  }, [logout]);
+    return () => { active = false; unsubscribe?.(); };
+  }, [applySession, refreshUser]);
+
+  const beginLogin = useCallback(async (authenticate: () => Promise<AuthSession>) => {
+    if (loginInFlight.current) throw new Error('A sign-in is already in progress. Please wait.');
+    loginInFlight.current = true;
+    try {
+      if (Platform.OS === 'web') {
+        await createBrowserSession(authenticate);
+      } else {
+        if (await readStoredSession()) throw new Error('Sign out of the current account before signing in with another account.');
+        const session = await authenticate();
+        if (await readStoredSession()) throw new Error('Sign out of the current account before signing in with another account.');
+        await writeStoredSession(session);
+      }
+      applySession(await readStoredSession());
+    } finally {
+      loginInFlight.current = false;
+    }
+  }, [applySession]);
 
   const login = useCallback(async (id: string, password: string) => {
-    const res = await loginRequest(id, password);
-    await setItem(TOKEN_KEY, res.accessToken);
-    await setItem(USER_KEY, res.user.name);
-    await setItem(ROLE_KEY, 'admin');
-    await setItem(PERMISSIONS_KEY, JSON.stringify(res.user.permissions));
-    setUserName(res.user.name);
-    setToken(res.accessToken);
-    setRole('admin');
-    setPermissions(res.user.permissions);
-  }, []);
+    await beginLogin(async () => {
+      const res = await loginRequest(id, password);
+      return { token: res.accessToken, userName: res.user.name, role: 'admin', permissions: res.user.permissions };
+    });
+  }, [beginLogin]);
 
   const staffLogin = useCallback(async (email: string, password: string) => {
-    const res = await staffLoginRequest(email, password);
-    await setItem(TOKEN_KEY, res.accessToken);
-    await setItem(USER_KEY, res.user.name);
-    await setItem(ROLE_KEY, 'staff');
-    await setItem(PERMISSIONS_KEY, JSON.stringify(res.user.permissions));
-    setUserName(res.user.name);
-    setToken(res.accessToken);
-    setRole('staff');
-    setPermissions(res.user.permissions);
-  }, []);
+    await beginLogin(async () => {
+      const res = await staffLoginRequest(email, password);
+      return { token: res.accessToken, userName: res.user.name, role: 'staff', permissions: res.user.permissions };
+    });
+  }, [beginLogin]);
 
   const superAdminLogin = useCallback(async (id: string, password: string) => {
-    const res = await superAdminLoginRequest(id, password);
-    await setItem(TOKEN_KEY, res.accessToken);
-    await setItem(USER_KEY, res.user.name);
-    await setItem(ROLE_KEY, 'super_admin');
-    await removeItem(PERMISSIONS_KEY);
-    setUserName(res.user.name);
-    setToken(res.accessToken);
-    setRole('super_admin');
-    setPermissions(null);
-  }, []);
+    await beginLogin(async () => {
+      const res = await superAdminLoginRequest(id, password);
+      return { token: res.accessToken, userName: res.user.name, role: 'super_admin', permissions: null };
+    });
+  }, [beginLogin]);
 
   const value = useMemo(
     () => ({ token, userName, role, permissions, loading, login, staffLogin, superAdminLogin, refreshUser, logout }),

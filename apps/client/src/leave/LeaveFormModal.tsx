@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
 import { colors } from '@/theme/colors';
+import { useErrorToast } from '@/components/FeedbackToast';
 import { ApplyLeavePayload, LeaveType } from '@/types/leave';
 
 export interface LeaveFormValues {
@@ -46,6 +47,7 @@ const REASONS = [
 ];
 
 export function LeaveFormModal({ visible, mode, values, error, pending, onChange, onClose, onSubmit }: Props) {
+  useErrorToast(error, 'Leave request needs attention');
   const edit = mode === 'edit';
   const [picker, setPicker] = useState<'startDate' | 'endDate' | null>(null);
 

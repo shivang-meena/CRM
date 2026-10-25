@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { errorMessage } from '@/api/client';
+import { useErrorToast } from '@/components/FeedbackToast';
 import { fetchHsnMaster, HSN_MASTER_KEY, INVOICE_HSN_MASTER_KEY, saveHsnMaster } from '@/api/hsnMaster';
 import type { HsnMasterEntry } from '@/api/hsnMaster';
 import { ProfileField } from './ProfileFields';
@@ -17,6 +18,7 @@ export default function HsnMasterEditor() {
   const [form, setForm] = useState<Draft | null>(null);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
+  useErrorToast(error, 'HSN details need attention');
   const [message, setMessage] = useState('');
   function edit(entry?: HsnMasterEntry) {
     setForm(entry ? { ...entry, igstRate: String(entry.igstRate), sgstRate: String(entry.sgstRate), cgstRate: String(entry.cgstRate) } : { ...EMPTY });

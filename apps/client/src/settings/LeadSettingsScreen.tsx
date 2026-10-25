@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
 import { errorMessage } from '@/api/client';
+import { useErrorToast } from '@/components/FeedbackToast';
 import Button from '@/components/Button';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import {
@@ -61,6 +62,7 @@ export default function LeadSettingsScreen() {
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState<FormDraft>(EMPTY_DRAFT);
   const [formError, setFormError] = useState('');
+  useErrorToast(formError, 'Lead status needs attention');
   const [deleteTarget, setDeleteTarget] = useState<LeadStatusMasterEntry | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);

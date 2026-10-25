@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { errorMessage } from '@/api/client';
+import { useErrorToast } from '@/components/FeedbackToast';
 import {
   fetchServiceMaster,
   saveServiceMaster,
@@ -45,6 +46,7 @@ export default function ServiceMasterEditor() {
   const [editingId, setEditingId] = useState<string>();
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
+  useErrorToast(error, 'Service details need attention');
   const [message, setMessage] = useState('');
 
   function reset() {

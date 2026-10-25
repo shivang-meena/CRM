@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AssigneeSelect from '@/components/AssigneeSelect';
 import { errorMessage } from '@/api/client';
 import { saveActivity } from '@/api/leadActivities';
 import { useCrmMutation, useSubmissionKey } from '@/hooks/useLeadActivities';
@@ -48,6 +49,7 @@ export default function MeetingFormModal({
   const [endAt, setEndAt] = useState(() => formatDateTime(record?.endAt));
   const [mode, setMode] = useState(() => record?.mode ?? 'ONLINE');
   const [assignedTo, setAssignedTo] = useState(() => record?.assignedTo ?? defaultAssignee);
+  const [assignedToId, setAssignedToId] = useState(record?.assignedToId ?? '');
   const [location, setLocation] = useState(() => record?.location ?? '');
   const [meetingUrl, setMeetingUrl] = useState(() => record?.meetingUrl ?? '');
   const [agenda, setAgenda] = useState(() => record?.agenda ?? '');
@@ -99,6 +101,7 @@ export default function MeetingFormModal({
       timezone: 'Asia/Kolkata',
       mode,
       assignedTo: assignedTo.trim() || defaultAssignee,
+      assignedToId: assignedToId || undefined,
       agenda: agenda.trim() || undefined,
       location: location.trim() || undefined,
       meetingUrl: meetingUrl.trim() || undefined,
@@ -146,7 +149,7 @@ export default function MeetingFormModal({
       {mode === 'ONLINE' ? (
         <Field label="Meeting Link" value={meetingUrl} onChange={setMeetingUrl} placeholder="https://meet.google.com/..." />
       ) : null}
-      <Field label="Assigned To" value={assignedTo} onChange={setAssignedTo} placeholder={defaultAssignee} />
+      <AssigneeSelect value={assignedTo} assigneeId={assignedToId} onChange={(name, id) => { setAssignedTo(name); setAssignedToId(id); }} />
       <Field label="Agenda" value={agenda} onChange={setAgenda} multiline placeholder="Meeting agenda / points..." />
       <Field
         label="Attendees (Comma-separated: John <john@example.com>, Alice)"

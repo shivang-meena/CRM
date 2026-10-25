@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { BrochureRecord } from '../api/salesDocuments';
 import { useBrochureActions, useBrochures } from '../hooks/useSalesDocuments';
+import { useErrorToast } from '@/components/FeedbackToast';
 
 const BROCHURE_TYPES = ['Quotation', 'Invoice', 'PDF', 'DOC', 'DOCX', 'PPT', 'PPTX'];
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
@@ -113,6 +114,7 @@ export function BrochureScreen() {
   const [fileName, setFileName] = useState('');
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
+  useErrorToast(formError, 'Brochure details need attention');
 
   // Pagination states
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);

@@ -73,11 +73,8 @@ export default function MonthCalendar({ month, items, selectedDate, onSelectDate
             const isSelected = date === selectedDate;
 
             return (
-              <Pressable
+              <View
                 key={date}
-                accessibilityRole="button"
-                accessibilityLabel={`Open ${date}`}
-                onPress={() => onSelectDate(date)}
                 style={[
                   styles.cell,
                   { height: cellHeight },
@@ -87,6 +84,13 @@ export default function MonthCalendar({ month, items, selectedDate, onSelectDate
                   isSelected && styles.selectedCell,
                 ]}
               >
+                {/* Keep the day target beside event buttons, so web buttons never nest. */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${date}`}
+                  onPress={() => onSelectDate(date)}
+                  style={StyleSheet.absoluteFill}
+                />
                 <View style={[styles.dayBadge, dotMode && styles.dayBadgeCentered, isToday && styles.dayBadgeToday]}>
                   <Text style={[styles.dayNumber, outside && styles.outsideText, isToday && styles.todayText]}>{day}</Text>
                 </View>
@@ -124,7 +128,7 @@ export default function MonthCalendar({ month, items, selectedDate, onSelectDate
                     ) : null}
                   </View>
                 )}
-              </Pressable>
+              </View>
             );
           })}
         </View>
@@ -146,20 +150,20 @@ const styles = StyleSheet.create({
   todayCell: { backgroundColor: TODAY_TINT },
   selectedCell: { borderWidth: 1, borderColor: colors.primary, zIndex: 1 },
 
-  dayBadge: { alignSelf: 'flex-start', minWidth: 26, height: 26, paddingHorizontal: 4, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  dayBadge: { pointerEvents: 'none', alignSelf: 'flex-start', minWidth: 26, height: 26, paddingHorizontal: 4, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   dayBadgeCentered: { alignSelf: 'center' },
   dayBadgeToday: { backgroundColor: colors.primary },
   dayNumber: { color: colors.text, fontSize: 12.5, fontWeight: '700' },
   outsideText: { color: '#A5AEC0' },
   todayText: { color: colors.white },
 
-  events: { gap: 3, marginTop: 5 },
+  events: { pointerEvents: 'box-none', gap: 3, marginTop: 5 },
   chip: { borderLeftWidth: 3, borderRadius: 5, paddingHorizontal: 5, paddingVertical: 3 },
   chipText: { color: colors.text, fontSize: 10.5, fontWeight: '600' },
   chipTime: { color: colors.muted, fontWeight: '700' },
   more: { color: colors.primaryText, fontSize: 10.5, fontWeight: '800', paddingVertical: 2, paddingHorizontal: 2 },
 
-  dots: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 3, marginTop: 4 },
+  dots: { pointerEvents: 'none', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 3, marginTop: 4 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   dotMore: { color: colors.muted, fontSize: 9, fontWeight: '800' },
 });

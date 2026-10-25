@@ -7,10 +7,12 @@ import { ActivityRecord } from '@/types/leadActivities';
 import { formatDateTime, parseDateTimeInput } from '@/utils/format';
 import Button from '../Button';
 import DateTimePickerModal from '../DateTimePickerModal';
+import AssigneeSelect from '../AssigneeSelect';
+import { useErrorToast } from '../FeedbackToast';
 
 type Props = { visible: boolean; record: ActivityRecord | null; userName: string; onClose: () => void; onSave: (data: Record<string, unknown>) => Promise<void> };
 type MeetingMode = 'ONLINE' | 'PHONE' | 'IN_PERSON';
-type FormState = { title: string; agenda: string; startAt: string; endAt: string; mode: MeetingMode; location: string; meetingUrl: string; assignedTo: string };
+type FormState = { title: string; agenda: string; startAt: string; endAt: string; mode: MeetingMode; location: string; meetingUrl: string; assignedTo: string; assignedToId: string };
 
 const requestKey = () => 'crm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2);
 const initial = (record: ActivityRecord | null, userName: string): FormState => {
@@ -18,7 +20,7 @@ const initial = (record: ActivityRecord | null, userName: string): FormState => 
   const end = record?.endAt ? new Date(record.endAt) : new Date(start.getTime() + 60 * 60000);
   return {
     title: record?.title ?? '', agenda: record?.agenda ?? '', startAt: formatDateTime(start.toISOString()), endAt: formatDateTime(end.toISOString()),
-    mode: (record?.mode as MeetingMode) ?? 'ONLINE', location: record?.location ?? '', meetingUrl: record?.meetingUrl ?? '', assignedTo: record?.assignedTo ?? userName,
+    mode: (record?.mode as MeetingMode) ?? 'ONLINE', location: record?.location ?? '', meetingUrl: record?.meetingUrl ?? '', assignedTo: record?.assignedTo ?? userName, assignedToId: record?.assignedToId ?? '',
   };
 };
 
@@ -30,6 +32,7 @@ export default function StandaloneMeetingFormModal({ visible, record, userName, 
   const [form, setForm] = useState<FormState>(() => initial(record, userName));
   const [picker, setPicker] = useState<'startAt' | 'endAt' | null>(null);
   const [error, setError] = useState('');
+  useErrorToast(error, 'Meeting needs attention');
   const [saving, setSaving] = useState(false);
   useEffect(() => { if (visible) { setForm(initial(record, userName)); setPicker(null); setError(''); } }, [visible, record, userName]);
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((old) => ({ ...old, [key]: value }));
@@ -43,7 +46,7 @@ export default function StandaloneMeetingFormModal({ visible, record, userName, 
     if (form.mode === 'ONLINE' && form.meetingUrl.trim() && !/^https?:\/\//i.test(form.meetingUrl.trim())) return setError('Meeting URL must start with http:// or https://.');
     setSaving(true); setError('');
     try {
-      await onSave({ title: form.title.trim(), agenda: form.agenda.trim(), startAt: start.value, endAt: end.value, timezone: 'Asia/Kolkata', mode: form.mode, location: form.location.trim(), meetingUrl: form.meetingUrl.trim(), attendees: [], assignedTo: form.assignedTo.trim() || userName, ...(!record ? { requestKey: requestKey() } : {}) });
+      await onSave({ title: form.title.trim(), agenda: form.agenda.trim(), startAt: start.value, endAt: end.value, timezone: 'Asia/Kolkata', mode: form.mode, location: form.location.trim(), meetingUrl: form.meetingUrl.trim(), attendees: [], assignedTo: form.assignedTo.trim() || userName, assignedToId: form.assignedToId || undefined, ...(!record ? { requestKey: requestKey() } : {}) });
       onClose();
     } catch (e) { setError(errorMessage(e)); } finally { setSaving(false); }
   }
@@ -51,7 +54,7 @@ export default function StandaloneMeetingFormModal({ visible, record, userName, 
   return <Modal visible={visible} transparent animationType="fade" onRequestClose={() => !saving && onClose()}>
     <View style={styles.overlay}><View style={styles.box}>
       <View style={styles.header}><Text style={styles.title}>{record ? 'Edit Meeting' : 'Add Meeting'}</Text></View>
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Field label="Title *" value={form.title} onChangeText={(v) => set('title', v)} />
         <Field label="Agenda" value={form.agenda} onChangeText={(v) => set('agenda', v)} multiline />
         <DateField label="Start *" value={form.startAt} onPress={() => setPicker('startAt')} onClear={() => set('startAt', '')} />
@@ -59,7 +62,7 @@ export default function StandaloneMeetingFormModal({ visible, record, userName, 
         <View style={styles.field}><Text style={styles.label}>Mode</Text><View style={styles.chips}>{(['ONLINE', 'PHONE', 'IN_PERSON'] as MeetingMode[]).map((mode) => <Pressable key={mode} onPress={() => set('mode', mode)} style={[styles.chip, form.mode === mode && styles.chipOn]}><Text style={[styles.chipText, form.mode === mode && styles.chipTextOn]}>{mode.replace('_', ' ')}</Text></Pressable>)}</View></View>
         {form.mode === 'IN_PERSON' ? <Field label="Location *" value={form.location} onChangeText={(v) => set('location', v)} /> : null}
         {form.mode === 'ONLINE' ? <Field label="Meeting URL" value={form.meetingUrl} onChangeText={(v) => set('meetingUrl', v)} placeholder="https://..." /> : null}
-        <Field label="Assign To" value={form.assignedTo} onChangeText={(v) => set('assignedTo', v)} />
+        <AssigneeSelect value={form.assignedTo} assigneeId={form.assignedToId} onChange={(name, id) => setForm(current => ({ ...current, assignedTo: name, assignedToId: id }))} />
       </ScrollView>
       <View style={styles.footer}>{!!error && <Text style={styles.error}>{error}</Text>}<View style={styles.buttons}><Button title="Cancel" variant="outline" onPress={onClose} disabled={saving} /><Button title={record ? 'Save Meeting' : 'Add Meeting'} onPress={save} loading={saving} /></View></View>
     </View></View>

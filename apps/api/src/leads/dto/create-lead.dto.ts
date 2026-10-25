@@ -16,6 +16,7 @@ export class CreateLeadDto {
   @IsOptional() @IsUUID() serviceId?: string | null;
   @IsOptional() @IsString() label?: string;
   @IsOptional() @IsString() assignedTo?: string;
+  @IsOptional() @IsString() @IsNotEmpty() assignedToId?: string;
 
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsEnum(LeadSource) source?: LeadSource;

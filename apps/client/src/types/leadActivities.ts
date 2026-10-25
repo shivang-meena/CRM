@@ -8,7 +8,7 @@ export interface ListFilters { page?: number; pageSize?: number; search?: string
 export interface ActivityRecord {
   id: string; leadId: string | null; title: string; status: string; version: number; independent?: boolean;
   createdAt: string; updatedAt: string; deletedAt: string | null; createdByName?: string; updatedByName?: string | null;
-  assignedTo?: string; description?: string | null; outcome?: string | null;
+  assignedTo?: string; assignedToId?: string | null; description?: string | null; outcome?: string | null;
   scheduledAt?: string; dueAt?: string; remindAt?: string; startAt?: string; endAt?: string;
   channel?: string; message?: string | null; agenda?: string | null;
   mode?: string; location?: string | null; meetingUrl?: string | null;

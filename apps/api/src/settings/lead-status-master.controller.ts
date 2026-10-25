@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AdminOnly } from '../auth/permissions';
+import { AdminOnly, RequirePermissions } from '../auth/permissions';
 import {
   ReorderLeadStatusDto,
   SaveLeadStatusMasterDto,
@@ -24,6 +24,7 @@ export class LeadStatusMasterController {
   constructor(private readonly service: LeadStatusMasterService) {}
 
   @Get()
+  @RequirePermissions('lead')
   list() {
     return this.service.list();
   }

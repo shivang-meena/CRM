@@ -50,6 +50,12 @@ export class ResetAdminPasswordDto {
   @IsString() @MinLength(8) @MaxLength(100) password: string;
 }
 
+export class UpdateAdminLoginIdDto {
+  @IsString()
+  @Matches(/^[a-zA-Z0-9._-]{3,50}$/, { message: 'Login ID must be 3-50 characters: letters, numbers, dot, underscore or hyphen.' })
+  loginId: string;
+}
+
 export class ListAdminsQueryDto {
   @IsOptional() @IsString() search?: string;
   @IsOptional() @IsIn(['ACTIVE', 'BLOCKED']) status?: 'ACTIVE' | 'BLOCKED';

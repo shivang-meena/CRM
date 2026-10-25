@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AssigneeSelect from '@/components/AssigneeSelect';
 import { errorMessage } from '@/api/client';
 import { saveActivity } from '@/api/leadActivities';
 import { useCrmMutation, useSubmissionKey } from '@/hooks/useLeadActivities';
@@ -31,6 +32,7 @@ export default function FollowUpFormModal({
   const [scheduledAt, setScheduledAt] = useState(() => formatDateTime(record?.scheduledAt));
   const [channel, setChannel] = useState(() => record?.channel ?? 'CALL');
   const [assignedTo, setAssignedTo] = useState(() => record?.assignedTo ?? defaultAssignee);
+  const [assignedToId, setAssignedToId] = useState(record?.assignedToId ?? '');
   const [description, setDescription] = useState(() => record?.description ?? '');
   const [outcome, setOutcome] = useState(() => record?.outcome ?? '');
   const [reminderAt, setReminderAt] = useState('');
@@ -60,6 +62,7 @@ export default function FollowUpFormModal({
       scheduledAt: parsedScheduled.value,
       channel,
       assignedTo: assignedTo.trim() || defaultAssignee,
+      assignedToId: assignedToId || undefined,
       description: description.trim() || undefined,
     };
 
@@ -97,7 +100,7 @@ export default function FollowUpFormModal({
       <Field label="Title *" value={title} onChange={setTitle} placeholder="e.g. Discuss requirement" />
       <DateField label="Scheduled Date & Time *" value={scheduledAt} onChange={setScheduledAt} />
       <Choices label="Contact Channel *" value={channel} options={CHANNELS} onChange={setChannel} />
-      <Field label="Assigned To" value={assignedTo} onChange={setAssignedTo} placeholder={defaultAssignee} />
+      <AssigneeSelect value={assignedTo} assigneeId={assignedToId} onChange={(name, id) => { setAssignedTo(name); setAssignedToId(id); }} />
       <Field label="Notes" value={description} onChange={setDescription} multiline placeholder="Additional notes..." />
       {record ? (
         <Field label="Outcome" value={outcome} onChange={setOutcome} multiline placeholder="Call outcome or remarks..." />

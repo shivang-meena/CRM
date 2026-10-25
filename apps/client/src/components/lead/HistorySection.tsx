@@ -65,11 +65,11 @@ export default function HistorySection({ leadId }: { leadId: string }) {
               <Text style={ui.muted}>
                 {row.actorName} • {formatDateTime(row.createdAt)} IST • {labelFor(row.entityType)}
               </Text>
-              {row.changes && Object.keys(row.changes).length > 0 ? (
+              {row.changes && Object.keys(row.changes).some(field => !['assignedToId', 'recipientId'].includes(field)) ? (
                 <View style={styles.changesBox}>
-                  {Object.entries(row.changes).map(([field, change]) => (
+                  {Object.entries(row.changes).filter(([field]) => !['assignedToId', 'recipientId'].includes(field)).map(([field, change]) => (
                     <Text key={field} style={styles.changeLine}>
-                      <Text style={styles.changeField}>{labelFor(field)}: </Text>
+                      <Text style={styles.changeField}>{field === 'assignedTo' ? 'Assigned To' : labelFor(field)}: </Text>
                       <Text style={styles.changeBefore}>{String(change.before ?? '—')}</Text>
                       <Text style={styles.changeArrow}> → </Text>
                       <Text style={styles.changeAfter}>{String(change.after ?? '—')}</Text>

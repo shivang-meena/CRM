@@ -39,3 +39,8 @@ export async function resetAdminPassword(id: string, password: string) {
   const res = await api.patch<{ success: boolean }>(`/super-admin/admins/${id}/password`, { password });
   return res.data;
 }
+
+export async function changeAdminLoginId(id: string, loginId: string) {
+  const res = await api.patch<AdminRecord>(`/super-admin/admins/${id}/login-id`, { loginId });
+  return res.data;
+}

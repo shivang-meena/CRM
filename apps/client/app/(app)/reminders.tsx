@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import AssigneeSelect from '@/components/AssigneeSelect';
 import {
   ActivityIndicator,
   Modal,
@@ -24,6 +25,8 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
 import Button from '@/components/Button';
 import StandaloneReminderFormModal from '@/components/reminders/StandaloneReminderFormModal';
+import { fieldStyles } from '@/settings/ProfileFields';
+import { useErrorToast } from '@/components/FeedbackToast';
 
 function parseDateOnly(iso?: string | null): string {
   if (!iso) return '—';
@@ -154,13 +157,17 @@ export default function RemindersScreen() {
 
   // Form state
   const [selectedLeadId, setSelectedLeadId] = useState('');
+  const [isLeadSelectOpen, setIsLeadSelectOpen] = useState(false);
+  const [leadSearch, setLeadSearch] = useState('');
   const [formTitle, setFormTitle] = useState('');
   const [formMessage, setFormMessage] = useState('');
   const [formDateTime, setFormDateTime] = useState('');
   const [formAssignTo, setFormAssignTo] = useState('');
+  const [formAssignToId, setFormAssignToId] = useState('');
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  useErrorToast(formError, 'Reminder needs attention');
 
   // Data queries
   const queryParams = useMemo(() => ({
@@ -173,6 +180,14 @@ export default function RemindersScreen() {
   const activitiesQuery = useDashboardActivities('reminders', queryParams);
   const leadsQuery = useLeads('');
   const standaloneActions = useStandaloneActivityActions();
+
+  const selectedLead = leadsQuery.data?.find((lead) => lead.id === selectedLeadId);
+  const filteredLeads = useMemo(() => {
+    const search = leadSearch.trim().toLowerCase();
+    return (leadsQuery.data ?? []).filter((lead) => !search ||
+      [lead.name, lead.companyName, lead.company, lead.phone, lead.email]
+        .some((value) => value?.toLowerCase().includes(search)));
+  }, [leadsQuery.data, leadSearch]);
 
   const items = activitiesQuery.data?.items ?? [];
   const total = activitiesQuery.data?.total ?? 0;
@@ -207,10 +222,13 @@ export default function RemindersScreen() {
   const openAddModal = () => {
     const leads = leadsQuery.data ?? [];
     setSelectedLeadId(leads[0]?.id ?? '');
+    setIsLeadSelectOpen(false);
+    setLeadSearch('');
     setFormTitle('Follow up reminder');
     setFormMessage('');
     setFormDateTime(formatDateTime(new Date().toISOString()));
-    setFormAssignTo(userName || 'Shivang Meena');
+    setFormAssignTo(userName);
+    setFormAssignToId('');
     setFormError('');
     setEditingItem(null);
     setIsAddOpen(true);
@@ -220,10 +238,13 @@ export default function RemindersScreen() {
   const openEditModal = (item: ActivityRecord) => {
     if (item.independent) { setStandaloneEditItem(item); return; }
     setSelectedLeadId(item.leadId ?? '');
+    setIsLeadSelectOpen(false);
+    setLeadSearch('');
     setFormTitle(item.title || 'Reminder');
     setFormMessage(item.message || '');
     setFormDateTime(formatDateTime(item.remindAt || item.createdAt));
-    setFormAssignTo(item.assignedTo || item.createdByName || userName || 'Shivang Meena');
+    setFormAssignTo(item.assignedTo || item.createdByName || userName);
+    setFormAssignToId(item.assignedToId ?? '');
     setFormError('');
     setEditingItem(item);
     setIsAddOpen(true);
@@ -256,7 +277,8 @@ export default function RemindersScreen() {
         title: cleanTitle,
         message: cleanMessage,
         remindAt: dateResult.value,
-        assignedTo: formAssignTo.trim() || userName || 'Shivang Meena',
+        assignedTo: formAssignTo.trim() || userName,
+        assignedToId: formAssignToId || undefined,
         requestKey,
       };
 
@@ -307,22 +329,6 @@ export default function RemindersScreen() {
     } finally {
       setIsDeleting(false);
       setDeleteConfirm({ open: false, type: 'single' });
-    }
-  };
-
-  // Dismiss / Bookmark Action
-  const handleToggleBookmark = async (item: ActivityRecord) => {
-    try {
-      if (item.status === 'PENDING') {
-        if (item.independent) await standaloneActions.dismissReminder.mutateAsync({ id: item.id, version: item.version });
-        else if (item.leadId) await changeActivity(item.leadId, 'reminders', item, 'dismiss');
-      } else {
-        if (item.independent) await standaloneActions.cancelReminder.mutateAsync({ id: item.id, version: item.version });
-        else if (item.leadId) await changeActivity(item.leadId, 'reminders', item, 'cancel');
-      }
-      await qc.invalidateQueries({ queryKey: ['dashboard-lead-activities'] });
-    } catch {
-      // silent or handled
     }
   };
 
@@ -505,10 +511,6 @@ export default function RemindersScreen() {
               <View style={styles.colAssignTo}>
                 <Text style={styles.headerText}>Assign To</Text>
               </View>
-
-              <View style={styles.colAutomation}>
-                <Text style={styles.headerText}>Automation</Text>
-              </View>
             </View>
 
             {/* Table Body */}
@@ -572,7 +574,7 @@ export default function RemindersScreen() {
                         <Text style={styles.cellTextDark}>{(page - 1) * pageSize + index + 1}</Text>
                       </View>
 
-                      {/* Actions: Edit, Delete, Bookmark */}
+                      {/* Actions: Edit, Delete */}
                       <View style={styles.colActions}>
                         <View style={styles.actionIconGroup}>
                           <Pressable
@@ -590,18 +592,6 @@ export default function RemindersScreen() {
                             style={styles.rowActionBtn}
                           >
                             <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                          </Pressable>
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel="Bookmark reminder"
-                            onPress={() => handleToggleBookmark(item)}
-                            style={styles.rowActionBtn}
-                          >
-                            <Ionicons
-                              name={item.status === 'DISMISSED' ? 'bookmark' : 'bookmark-outline'}
-                              size={16}
-                              color={item.status === 'DISMISSED' ? '#0B2F7D' : '#94A3B8'}
-                            />
                           </Pressable>
                         </View>
                       </View>
@@ -658,11 +648,6 @@ export default function RemindersScreen() {
                       {/* Assign To */}
                       <View style={styles.colAssignTo}>
                         <Text style={styles.cellTextDark} numberOfLines={1}>{assignToStr}</Text>
-                      </View>
-
-                      {/* Automation: 🚫 icon */}
-                      <View style={styles.colAutomation}>
-                        <Ionicons name="remove-circle-outline" size={19} color="#EF4444" />
                       </View>
                     </View>
 
@@ -843,33 +828,27 @@ export default function RemindersScreen() {
                 </Pressable>
               </View>
 
-              <ScrollView contentContainerStyle={styles.modalBody}>
+              <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
                 {/* Select Customer / Lead */}
                 <View style={styles.formGroup}>
                   <Text style={styles.formLabel}>Customer / Lead *</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={styles.leadChipRow}>
-                      {(leadsQuery.data ?? []).map((lead) => (
-                        <Pressable
-                          key={lead.id}
-                          style={[
-                            styles.leadChip,
-                            selectedLeadId === lead.id && styles.leadChipActive,
-                          ]}
-                          onPress={() => setSelectedLeadId(lead.id)}
-                        >
-                          <Text
-                            style={[
-                              styles.leadChipText,
-                              selectedLeadId === lead.id && styles.leadChipTextActive,
-                            ]}
-                          >
-                            {lead.name} {lead.company ? `(${lead.company})` : ''}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </ScrollView>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Customer / Lead: ${selectedLead?.name || editingItem?.lead?.name || 'Select a customer or lead'}`}
+                    accessibilityState={{ expanded: isLeadSelectOpen }}
+                    style={[styles.formInput, styles.leadSelectTrigger]}
+                    onPress={() => {
+                      setLeadSearch('');
+                      setIsLeadSelectOpen((open) => !open);
+                    }}
+                  >
+                    <Text style={[styles.leadSelectValue, styles.leadSelectLabel, !selectedLead && !editingItem?.lead?.name && styles.leadSelectMuted]} numberOfLines={1}>
+                      {selectedLead
+                        ? `${selectedLead.name}${selectedLead.companyName || selectedLead.company ? ` (${selectedLead.companyName || selectedLead.company})` : ''}`
+                        : editingItem?.lead?.name || 'Select a customer or lead'}
+                    </Text>
+                    <Ionicons name={isLeadSelectOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.muted} />
+                  </Pressable>
                 </View>
 
                 {/* Reminder Title */}
@@ -912,16 +891,7 @@ export default function RemindersScreen() {
                 </View>
 
                 {/* Assigned To */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Assign To</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Assignee name"
-                    placeholderTextColor={colors.muted}
-                    value={formAssignTo}
-                    onChangeText={setFormAssignTo}
-                  />
-                </View>
+                <AssigneeSelect value={formAssignTo} assigneeId={formAssignToId} onChange={(name, id) => { setFormAssignTo(name); setFormAssignToId(id); }} />
 
                 {formError ? <Text style={styles.formErrorText}>{formError}</Text> : null}
               </ScrollView>
@@ -941,6 +911,94 @@ export default function RemindersScreen() {
               </View>
             </View>
           </View>
+          <Modal
+            visible={isLeadSelectOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setIsLeadSelectOpen(false)}
+          >
+            <View style={fieldStyles.backdrop}>
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onPress={() => setIsLeadSelectOpen(false)}
+                accessibilityLabel="Close lead selection"
+              />
+              <View style={fieldStyles.dialog} accessibilityViewIsModal>
+                <View style={fieldStyles.dialogHeader}>
+                  <Text accessibilityRole="header" style={fieldStyles.dialogTitle}>Customer / Lead</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Close lead selection"
+                    hitSlop={12}
+                    onPress={() => setIsLeadSelectOpen(false)}
+                  >
+                    <Ionicons name="close" size={22} color="#514759" />
+                  </Pressable>
+                </View>
+                <TextInput
+                  accessibilityLabel="Search customers or leads"
+                  style={fieldStyles.input}
+                  placeholder="Search..."
+                  placeholderTextColor="#96919D"
+                  value={leadSearch}
+                  onChangeText={setLeadSearch}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoFocus
+                />
+                {leadsQuery.isLoading ? (
+                  <ActivityIndicator style={styles.leadSelectStatus} size="small" color="#0B2F7D" />
+                ) : leadsQuery.isError ? (
+                  <View style={styles.leadSelectStatus}>
+                    <Text style={styles.formErrorText}>Could not load leads.</Text>
+                    <Button title="Retry" variant="outline" onPress={() => { void leadsQuery.refetch(); }} />
+                  </View>
+                ) : (
+                  <ScrollView style={fieldStyles.options} keyboardShouldPersistTaps="handled">
+                    {filteredLeads.map((lead) => (
+                      <Pressable
+                        key={lead.id}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: selectedLeadId === lead.id }}
+                        style={[fieldStyles.option, selectedLeadId === lead.id && fieldStyles.selected]}
+                        onPress={() => {
+                          setSelectedLeadId(lead.id);
+                          setIsLeadSelectOpen(false);
+                          setLeadSearch('');
+                        }}
+                      >
+                        <View style={styles.leadOptionContent}>
+                          <Text style={fieldStyles.value}>
+                            {lead.name}{lead.companyName || lead.company ? ` (${lead.companyName || lead.company})` : ''}
+                          </Text>
+                          <Text style={styles.leadOptionDetail}>
+                            {[lead.phone, lead.email].filter(Boolean).join(' · ')}
+                          </Text>
+                        </View>
+                        {selectedLeadId === lead.id && <Ionicons name="checkmark" size={18} color="#0B2F7D" />}
+                      </Pressable>
+                    ))}
+                    {filteredLeads.length === 0 && (
+                      <Text style={fieldStyles.hint}>
+                        {leadSearch.trim() ? 'No matching leads found.' : 'No leads available.'}
+                      </Text>
+                    )}
+                  </ScrollView>
+                )}
+              </View>
+            </View>
+          </Modal>
+          {/* Date & Time Picker Modal */}
+          <DateTimePickerModal
+            visible={isPickerOpen}
+            value={formDateTime}
+            title="Set Reminder Date & Time"
+            onSelect={(val) => {
+              setFormDateTime(val);
+              setIsPickerOpen(false);
+            }}
+            onClose={() => setIsPickerOpen(false)}
+          />
         </Modal>
       )}
 
@@ -952,18 +1010,6 @@ export default function RemindersScreen() {
           if (!standaloneEditItem) return;
           await standaloneActions.updateReminder.mutateAsync({ id: standaloneEditItem.id, data: { ...data, version: standaloneEditItem.version } });
         }}
-      />
-
-      {/* Date & Time Picker Modal */}
-      <DateTimePickerModal
-        visible={isPickerOpen}
-        value={formDateTime}
-        title="Set Reminder Date & Time"
-        onSelect={(val) => {
-          setFormDateTime(val);
-          setIsPickerOpen(false);
-        }}
-        onClose={() => setIsPickerOpen(false)}
       />
 
       {/* Analytics Modal */}
@@ -1306,11 +1352,6 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     justifyContent: 'center',
   },
-  colAutomation: {
-    width: 85,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   checkbox: {
     width: 18,
     height: 18,
@@ -1562,30 +1603,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text,
   },
-  leadChipRow: {
+  leadSelectTrigger: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    paddingVertical: 4,
   },
-  leadChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: colors.white,
-  },
-  leadChipActive: {
-    borderColor: '#0B2F7D',
-    backgroundColor: '#E4EFFD',
-  },
-  leadChipText: {
-    fontSize: 12,
+  leadSelectValue: {
+    fontSize: 13,
     color: colors.text,
   },
-  leadChipTextActive: {
-    color: '#0B2F7D',
-    fontWeight: '700',
+  leadSelectLabel: {
+    flex: 1,
+  },
+  leadSelectMuted: {
+    color: colors.muted,
+    fontSize: 13,
+  },
+  leadOptionContent: {
+    flex: 1,
+    gap: 3,
+  },
+  leadOptionDetail: {
+    fontSize: 12,
+    color: colors.muted,
+  },
+  leadSelectStatus: {
+    padding: 14,
+    gap: 8,
   },
   formErrorText: {
     color: colors.danger,

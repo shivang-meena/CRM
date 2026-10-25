@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import AssigneeSelect from '@/components/AssigneeSelect';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { errorMessage } from '@/api/client';
 import Button from '@/components/Button';
@@ -21,7 +22,7 @@ type Draft = Record<string, string> & { attendeesText: string };
 function initialDraft(kind: ActivityKind, row?: ActivityRecord): Draft {
   const s = specs[kind];
   return {
-    title: row?.title ?? '', assignedTo: row?.assignedTo ?? '', description: row?.description ?? '',
+    title: row?.title ?? '', assignedTo: row?.assignedTo ?? '', assignedToId: row?.assignedToId ?? '', description: row?.description ?? '',
     agenda: row?.agenda ?? '', outcome: row?.outcome ?? '', message: row?.message ?? '',
     [s.date]: formatDateTime((row?.[s.date] as string | undefined) ?? ''),
     endAt: formatDateTime(row?.endAt), channel: row?.channel ?? 'CALL',
@@ -78,7 +79,7 @@ function ActivityForm({ leadId, kind, row, actor, onSaved, onClose }: { leadId: 
   async function save() {
     setError('');
     if (!draft.title.trim()) return setError('Title is required.');
-    let body: Record<string, unknown> = { title: draft.title.trim(), assignedTo: draft.assignedTo.trim() || actor };
+    let body: Record<string, unknown> = { title: draft.title.trim(), assignedTo: draft.assignedTo.trim() || actor, assignedToId: draft.assignedToId || undefined };
     const time = toIso(draft[s.date]);
     if (!time) return setError('Enter a valid date and time using the calendar.');
     if (kind === 'followups') body = { ...body, description: draft.description.trim(), channel: draft.channel, scheduledAt: time };
@@ -91,7 +92,7 @@ function ActivityForm({ leadId, kind, row, actor, onSaved, onClose }: { leadId: 
     }
     if (kind === 'reminders') {
       const linkedField = linkType === 'followups' ? 'followUpId' : 'meetingId';
-      body = { title: draft.title.trim(), message: draft.message.trim(), remindAt: time, ...(linkType !== 'none' && draft[linkedField] ? { [linkedField]: draft[linkedField] } : {}) };
+      body = { ...body, message: draft.message.trim(), remindAt: time, ...(linkType !== 'none' && draft[linkedField] ? { [linkedField]: draft[linkedField] } : {}) };
     }
     const reminderAt = draft.reminderAt ? toIso(draft.reminderAt) : null;
     if (draft.reminderAt && !reminderAt) return setError('Choose a valid linked reminder date.');
@@ -102,7 +103,7 @@ function ActivityForm({ leadId, kind, row, actor, onSaved, onClose }: { leadId: 
   const fields = (specs[kind].choices as unknown as Record<string, string[]>);
   return <FormShell title={(row ? 'Edit ' : 'Add ') + s.label} error={error || (mutation.error ? errorMessage(mutation.error) : '')} busy={mutation.isPending} onClose={onClose} onSave={save} saveLabel={row ? 'Save Changes' : 'Save ' + s.label}>
     <Field label="Title *" value={draft.title} onChange={v => set('title', v)} />
-    {kind !== 'reminders' ? <Field label="Assigned to" value={draft.assignedTo} onChange={v => set('assignedTo', v)} placeholder={actor} /> : null}
+    <AssigneeSelect value={draft.assignedTo || actor} assigneeId={draft.assignedToId} onChange={(name, id) => setDraft(current => ({ ...current, assignedTo: name, assignedToId: id }))} />
     <DateField label={s.dateLabel} value={draft[s.date]} onChange={v => set(s.date, v)} />
     {kind === 'meetings' ? <><DateField label="Meeting end" value={draft.endAt} onChange={v => set('endAt', v)} /><Field label="Agenda" value={draft.agenda} onChange={v => set('agenda', v)} multiline /><ChoiceField label="Meeting mode" value={draft.mode} options={fields.Mode} onChange={v => set('mode', v)} />{draft.mode === 'IN_PERSON' ? <Field label="Location *" value={draft.location} onChange={v => set('location', v)} /> : null}{draft.mode === 'ONLINE' ? <Field label="Meeting link" value={draft.meetingUrl} onChange={v => set('meetingUrl', v)} /> : null}<Field label="Attendees (comma-separated names or Name <email>)" value={draft.attendeesText} onChange={v => set('attendeesText', v)} multiline /></> : null}
     {kind === 'followups' ? <><ChoiceField label="Contact channel" value={draft.channel} options={fields.Channel} onChange={v => set('channel', v)} /><Field label="Notes" value={draft.description} onChange={v => set('description', v)} multiline />{row ? <Field label="Outcome" value={draft.outcome} onChange={v => set('outcome', v)} multiline /> : null}</> : null}
@@ -183,7 +184,7 @@ export function HistorySection({ leadId }: { leadId: string }) {
   const query = useHistory(leadId, filters);
   return <View style={{gap:12}}>
     <View style={[ui.panel,ui.row]}><TextInput accessibilityLabel="Search history" placeholder="Search history" value={text} onChangeText={setText} style={[ui.input,{flex:1}]} /><Button title="Search" variant="outline" onPress={()=>setFilters({page:1,pageSize:20,search:text.trim()||undefined})} /></View>
-    {query.isLoading ? <ActivityIndicator color={colors.primary}/> : query.isError ? <View style={ui.panel}><Text accessibilityRole="alert" style={ui.error}>{errorMessage(query.error)}</Text><Button title="Retry" variant="outline" onPress={()=>{void query.refetch();}}/></View> : !query.data?.items.length ? <View style={ui.panel}><Text style={ui.muted}>History appears here when this lead changes.</Text></View> : query.data.items.map((row:HistoryRecord)=><View key={row.id} style={ui.panel}><Text style={ui.label}>{row.summary}</Text><Text style={ui.muted}>{row.actorName} · {formatDateTime(row.createdAt)} IST · {labelFor(row.action)}</Text>{row.changes ? Object.entries(row.changes).map(([key,change])=><Text key={key} style={ui.muted}>{labelFor(key)}: {String(change.before ?? '—')} → {String(change.after ?? '—')}</Text>) : null}</View>)}
+    {query.isLoading ? <ActivityIndicator color={colors.primary}/> : query.isError ? <View style={ui.panel}><Text accessibilityRole="alert" style={ui.error}>{errorMessage(query.error)}</Text><Button title="Retry" variant="outline" onPress={()=>{void query.refetch();}}/></View> : !query.data?.items.length ? <View style={ui.panel}><Text style={ui.muted}>History appears here when this lead changes.</Text></View> : query.data.items.map((row:HistoryRecord)=><View key={row.id} style={ui.panel}><Text style={ui.label}>{row.summary}</Text><Text style={ui.muted}>{row.actorName} · {formatDateTime(row.createdAt)} IST · {labelFor(row.action)}</Text>{row.changes ? Object.entries(row.changes).filter(([key]) => !['assignedToId', 'recipientId'].includes(key)).map(([key,change])=><Text key={key} style={ui.muted}>{key === 'assignedTo' ? 'Assigned To' : labelFor(key)}: {String(change.before ?? '—')} → {String(change.after ?? '—')}</Text>) : null}</View>)}
     {query.data?.total ? <Pager page={filters.page??1} total={query.data.total} onChange={page=>setFilters(f=>({...f,page}))}/> : null}
   </View>;
 }

@@ -16,6 +16,8 @@ import { formatDateTime, parseDateTimeInput } from '@/utils/format';
 import Button from './Button';
 import DateTimePickerModal from './DateTimePickerModal';
 import Stars from './Stars';
+import AssigneeSelect from './AssigneeSelect';
+import { useErrorToast } from './FeedbackToast';
 
 type Props = {
   visible: boolean;
@@ -29,14 +31,14 @@ type FormState = {
   address: string; state: string; comment: string; reference: string;
   serviceId: string;
   status: LeadStatus; source: LeadSource; label: string;
-  estimatedAmount: string; rating: number; followUp: string; assignedTo: string;
+  estimatedAmount: string; rating: number; followUp: string; assignedTo: string; assignedToId: string;
 };
 
 const emptyForm = (assignee: string): FormState => ({
   name: '', companyName: '', phone: '', email: '', address: '', state: '', comment: '', reference: '',
   serviceId: '',
   status: 'NEW', source: 'CUSTOMER_REFERENCE', label: '',
-  estimatedAmount: '', rating: 0, followUp: '', assignedTo: assignee,
+  estimatedAmount: '', rating: 0, followUp: '', assignedTo: assignee, assignedToId: '',
 });
 
 const fromLead = (l: Lead): FormState => ({
@@ -45,7 +47,7 @@ const fromLead = (l: Lead): FormState => ({
   serviceId: l.serviceId ?? '',
   status: l.status, source: l.source, label: l.label ?? '',
   estimatedAmount: String(l.estimatedAmount), rating: l.rating,
-  followUp: formatDateTime(l.nextFollowUpAt), assignedTo: l.assignedTo,
+  followUp: formatDateTime(l.nextFollowUpAt), assignedTo: l.assignedTo, assignedToId: l.assignedToId ?? '',
 });
 
 function TextField(props: {
@@ -106,6 +108,7 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
 
   const [f, setF] = useState<FormState>(emptyForm(defaultAssignee));
   const [err, setErr] = useState('');
+  useErrorToast(err, 'Lead needs attention');
   const [showPicker, setShowPicker] = useState(false);
   const busy = create.isPending || update.isPending;
 
@@ -149,6 +152,7 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
       rating: f.rating,
       ...(!lead ? { nextFollowUpAt: date.value } : { version: lead.version }),
       assignedTo: f.assignedTo.trim() || defaultAssignee,
+      assignedToId: f.assignedToId || undefined,
     };
 
     try {
@@ -167,7 +171,7 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
           <View style={styles.titleBar}>
             <Text style={styles.titleText}>{lead ? 'Edit Lead' : 'Add Lead'}</Text>
           </View>
-          <ScrollView contentContainerStyle={styles.body}>
+          <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             <TextField label="Name *" value={f.name} onChangeText={(v) => set('name', v)} />
             <TextField label="Company Name" value={f.companyName} onChangeText={(v) => set('companyName', v)} />
             <View style={styles.field}>
@@ -234,7 +238,7 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
               </Pressable>
             </View>
             : <Text style={styles.label}>Next follow-up: {f.followUp || 'None'}. Manage dates in the FollowUp section.</Text>}
-            <TextField label="Assign To" value={f.assignedTo} onChangeText={(v) => set('assignedTo', v)} />
+            <AssigneeSelect value={f.assignedTo} assigneeId={f.assignedToId} onChange={(name, id) => setF(current => ({ ...current, assignedTo: name, assignedToId: id }))} />
           </ScrollView>
           <View style={styles.footer}>
             {!!err && <Text style={styles.err}>{err}</Text>}

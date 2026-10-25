@@ -8,7 +8,7 @@ import { runWithTenant } from '../tenant/tenant-context';
 import { seedTenantDefaults } from '../tenant/tenant-defaults';
 import {
   CreateAdminDto, FeaturesDto, ListAdminsQueryDto, ResetAdminPasswordDto,
-  UpdateAdminDto, UpdateAdminFeaturesDto, UpdateAdminStatusDto,
+  UpdateAdminDto, UpdateAdminFeaturesDto, UpdateAdminLoginIdDto, UpdateAdminStatusDto,
 } from './dto/super-admin.dto';
 
 type FeaturePatch = Partial<Pick<Admin,
@@ -159,6 +159,26 @@ export class SuperAdminService {
       },
     });
     return this.serialize(updated);
+  }
+
+  async changeLoginId(id: string, dto: UpdateAdminLoginIdDto) {
+    await this.getOrThrow(id);
+    const loginId = dto.loginId.trim().toLowerCase();
+    const exists = await this.prisma.admin.findFirst({ where: { loginId, id: { not: id } } });
+    if (exists) throw new ConflictException('This Login ID is already used. Choose another.');
+
+    try {
+      const updated = await this.prisma.admin.update({
+        where: { id },
+        data: { loginId, version: { increment: 1 } },
+      });
+      return this.serialize(updated);
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException('This Login ID is already used. Choose another.');
+      }
+      throw e;
+    }
   }
 
   async resetPassword(id: string, dto: ResetAdminPasswordDto) {

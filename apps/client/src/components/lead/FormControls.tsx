@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import Button from '@/components/Button';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
 import { colors } from '@/theme/colors';
+import { useErrorToast } from '@/components/FeedbackToast';
 
 export const labelFor = (value: string) => value.replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, x => x.toUpperCase());
 export function Field({ label, value, onChange, multiline, numeric, placeholder }: { label: string; value: string; onChange: (value: string) => void; multiline?: boolean; numeric?: boolean; placeholder?: string }) {
@@ -16,6 +17,7 @@ export function DateField({ label, value, onChange }: { label: string; value: st
   return <View style={ui.field}><Text style={ui.label}>{label} · IST</Text><View style={ui.row}><Pressable accessibilityRole="button" accessibilityLabel={label} style={[ui.input, { flex: 1 }]} onPress={() => setOpen(true)}><Text style={ui.text}>{value || 'Choose date and time'}</Text></Pressable>{value ? <Button title="Clear" variant="outline" onPress={() => onChange('')} /> : null}</View><DateTimePickerModal title={label} visible={open} value={value} onSelect={onChange} onClose={() => setOpen(false)} /></View>;
 }
 export function FormShell({ title, children, error, busy, onClose, onSave, saveLabel = 'Save' }: { title: string; children: React.ReactNode; error?: string; busy: boolean; onClose: () => void; onSave: () => void; saveLabel?: string }) {
+  useErrorToast(error, 'Please check the form');
   return <Modal visible transparent animationType="fade" onRequestClose={() => { if (!busy) onClose(); }}><View style={ui.overlay}><View style={ui.modal}><Text accessibilityRole="header" style={ui.heading}>{title}</Text><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={ui.body}>{children}</ScrollView><View style={ui.footer}>{error ? <Text accessibilityRole="alert" style={ui.error}>{error}</Text> : null}<View style={ui.row}><Button title="Cancel" variant="outline" disabled={busy} onPress={onClose} /><Button title={saveLabel} loading={busy} onPress={onSave} /></View></View></View></View></Modal>;
 }
 export function Pager({ page, total, pageSize = 20, onChange }: { page: number; total: number; pageSize?: number; onChange: (page: number) => void }) {
