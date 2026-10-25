@@ -8,21 +8,28 @@ import { BLOCKED_MESSAGE } from './jwt.strategy';
 import type { AuthenticatedUser } from './permissions';
 import { LoginDto } from './dto/login.dto';
 import { StaffLoginDto } from './dto/staff-login.dto';
+import { LoginAttempts } from './login-attempts';
 
 @Injectable()
 export class AuthService {
+  private readonly attempts = new LoginAttempts();
+
   constructor(
     private jwt: JwtService,
     private prisma: PrismaService,
   ) {}
 
   /** ADMIN login (the customer business). Credentials are in the `admins` table, set by the Super Admin. */
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ip = 'unknown') {
+    const attemptKey = `admin:${ip}`;
+    this.attempts.assertAllowed(attemptKey);
     const loginId = dto.id.trim().toLowerCase();
     const admin = await this.prisma.admin.findFirst({ where: { loginId, deletedAt: null } });
     const valid = admin ? await bcrypt.compare(dto.password, admin.passwordHash) : false;
-    if (!admin || !valid) throw new UnauthorizedException('Wrong ID or password');
-    if (admin.status !== 'ACTIVE') throw new UnauthorizedException(BLOCKED_MESSAGE);
+    if (!admin || !valid) this.rejectLogin(attemptKey, 'Wrong ID or password');
+    if (admin.status !== 'ACTIVE') this.rejectLogin(attemptKey, BLOCKED_MESSAGE);
+    this.attempts.assertAllowed(attemptKey);
+    this.attempts.reset(attemptKey);
 
     const accessToken = await this.jwt.signAsync({ sub: admin.id, name: admin.name, role: 'admin' });
     return {
@@ -37,7 +44,9 @@ export class AuthService {
     };
   }
 
-  async staffLogin(dto: StaffLoginDto) {
+  async staffLogin(dto: StaffLoginDto, ip = 'unknown') {
+    const attemptKey = `staff:${ip}`;
+    this.attempts.assertAllowed(attemptKey);
     // runAsSystem is allowed here (G9): we do not know the tenant yet, we look the staff up by email.
     const staff = await runAsSystem(async () =>
       await this.prisma.staffMember.findFirst({
@@ -45,15 +54,17 @@ export class AuthService {
       }),
     );
     if (!staff || !staff.passwordHash) {
-      throw new UnauthorizedException('Invalid email or password');
+      this.rejectLogin(attemptKey, 'Invalid email or password');
     }
     const valid = await bcrypt.compare(dto.password, staff.passwordHash);
-    if (!valid) throw new UnauthorizedException('Invalid email or password');
-    if (staff.status !== 'ACTIVE') throw new UnauthorizedException('Your account is inactive. Contact admin.');
+    if (!valid) this.rejectLogin(attemptKey, 'Invalid email or password');
+    if (staff.status !== 'ACTIVE') this.rejectLogin(attemptKey, 'Your account is inactive. Contact admin.');
 
     const admin = await this.prisma.admin.findFirst({ where: { id: staff.adminId, deletedAt: null } });
-    if (!admin) throw new UnauthorizedException('Invalid email or password');
-    if (admin.status !== 'ACTIVE') throw new UnauthorizedException(BLOCKED_MESSAGE);
+    if (!admin) this.rejectLogin(attemptKey, 'Invalid email or password');
+    if (admin.status !== 'ACTIVE') this.rejectLogin(attemptKey, BLOCKED_MESSAGE);
+    this.attempts.assertAllowed(attemptKey);
+    this.attempts.reset(attemptKey);
 
     const permissions = staffEffectivePermissions(staff, adminFeatures(admin));
     const name = `${staff.firstName} ${staff.lastName}`;
@@ -69,6 +80,11 @@ export class AuthService {
         businessName: admin.businessName,
       },
     };
+  }
+
+  private rejectLogin(attemptKey: string, message: string): never {
+    this.attempts.recordFailure(attemptKey);
+    throw new UnauthorizedException(message);
   }
 
   /** /auth/me. `user` was already fully validated and built by JwtStrategy, so just return it. */

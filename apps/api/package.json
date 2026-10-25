@@ -7,6 +7,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "db:tenant:inspect": "node --env-file-if-exists=.env prisma/scripts/recover-tenant-upgrade.cjs",
+    "db:tenant:recover:local": "node --env-file-if-exists=.env prisma/scripts/recover-tenant-upgrade.cjs --apply",
+    "test:migrations": "node --test prisma/scripts/tenant-upgrade.test.cjs",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
