@@ -242,6 +242,8 @@ import { errorMessage } from '@/api/client';
 import { notifyGlobalSuccess } from '@/components/FeedbackToast';
 import Button from '@/components/Button';
 import LeadDetailsModal from '@/components/lead/LeadDetailsModal';
+import LeadFormModal from '@/components/LeadFormModal';
+import { useAuth } from '@/context/AuthContext';
 import { useLeads, useUpdateLead } from '@/hooks/useLeads';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { Lead, statusLabel } from '@/types/lead';
@@ -472,6 +474,8 @@ function LeadCard({ lead, entry, saving, statusDisabled, onOpen, onStatus }: Omi
 
 /* ── Screen ───────────────────────────────────────────────────── */
 export default function LeadViewScreen() {
+  const { userName } = useAuth();
+  const [formOpen, setFormOpen] = useState(false);
   const { width } = useWindowDimensions();
   const [pageW, setPageW] = useState(0);
   const [searchText, setSearchText] = useState('');
@@ -685,6 +689,7 @@ export default function LeadViewScreen() {
               </Pressable>
             ) : null}
           </View>
+          <Button title="Add Lead" onPress={() => setFormOpen(true)} />
         </View>
 
         {showChips ? (
@@ -746,6 +751,9 @@ export default function LeadViewScreen() {
       </Modal>
 
       <LeadDetailsModal visible={!!selectedLeadId} leadId={selectedLeadId} onClose={() => setSelectedLeadId(null)} />
+      {formOpen ? (
+        <LeadFormModal visible lead={null} defaultAssignee={userName} onClose={() => setFormOpen(false)} />
+      ) : null}
     </View>
   );
 }

@@ -78,6 +78,7 @@ export class LeadsService {
     return this.prisma.$transaction(async tx => {
       const before = await this.core.lockLead(tx, id);
       this.core.version(before, dto.version);
+      const beforeHistory = await tx.lead.findUniqueOrThrow({ where: { id }, include: LEAD_SELECTION_INCLUDE });
       const previous = await this.selections.readIds(tx, id);
       const serviceIds = dto.serviceIds !== undefined ? dto.serviceIds : dto.serviceId !== undefined ? (dto.serviceId ? [dto.serviceId] : []) : undefined;
       const productIds = dto.productIds;
@@ -90,7 +91,7 @@ export class LeadsService {
       const assignmentSummary = this.assignees.summary(before, after);
       const summary = before.status !== after.status ? 'Lead status changed' : 'Lead details updated';
       const result = await tx.lead.findUniqueOrThrow({ where: { id }, include: LEAD_SELECTION_INCLUDE });
-      await this.core.history(tx, id, actor, 'LEAD', id, 'UPDATED', assignmentSummary ? `${summary}; ${assignmentSummary}` : summary, before, result);
+      await this.core.history(tx, id, actor, 'LEAD', id, 'UPDATED', assignmentSummary ? `${summary}; ${assignmentSummary}` : summary, beforeHistory, result);
       return this.format(result);
     }, LEAD_WRITE_TRANSACTION);
   }

@@ -5,6 +5,7 @@ import Button from '@/components/Button';
 import { useHistory } from '@/hooks/useLeadActivities';
 import { HistoryRecord, ListFilters } from '@/types/leadActivities';
 import { formatDateTime } from '@/utils/format';
+import { historyChanges } from '@/utils/history';
 import { colors } from '@/theme/colors';
 import { labelFor, Pager, ui } from './FormControls';
 
@@ -54,31 +55,34 @@ export default function HistorySection({ leadId }: { leadId: string }) {
         </View>
       ) : (
         <View style={styles.list}>
-          {query.data.items.map((row: HistoryRecord) => (
-            <View key={row.id} style={ui.panel}>
-              <View style={ui.row}>
-                <Text style={[ui.label, { flex: 1 }]}>{row.summary}</Text>
-                <View style={styles.actionTag}>
-                  <Text style={styles.actionTagText}>{labelFor(row.action)}</Text>
+          {query.data.items.map((row: HistoryRecord) => {
+            const changes = historyChanges(row.changes);
+            return (
+              <View key={row.id} style={ui.panel}>
+                <View style={ui.row}>
+                  <Text style={[ui.label, { flex: 1 }]}>{row.summary}</Text>
+                  <View style={styles.actionTag}>
+                    <Text style={styles.actionTagText}>{labelFor(row.action)}</Text>
+                  </View>
                 </View>
+                <Text style={ui.muted}>
+                  {row.actorName} • {formatDateTime(row.createdAt)} IST • {labelFor(row.entityType)}
+                </Text>
+                {changes.length > 0 ? (
+                  <View style={styles.changesBox}>
+                    {changes.map(change => (
+                      <Text key={change.field} style={styles.changeLine}>
+                        <Text style={styles.changeField}>{change.label}: </Text>
+                        <Text style={styles.changeBefore}>{change.before}</Text>
+                        <Text style={styles.changeArrow}> → </Text>
+                        <Text style={styles.changeAfter}>{change.after}</Text>
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
               </View>
-              <Text style={ui.muted}>
-                {row.actorName} • {formatDateTime(row.createdAt)} IST • {labelFor(row.entityType)}
-              </Text>
-              {row.changes && Object.keys(row.changes).some(field => !['assignedToId', 'recipientId'].includes(field)) ? (
-                <View style={styles.changesBox}>
-                  {Object.entries(row.changes).filter(([field]) => !['assignedToId', 'recipientId'].includes(field)).map(([field, change]) => (
-                    <Text key={field} style={styles.changeLine}>
-                      <Text style={styles.changeField}>{field === 'assignedTo' ? 'Assigned To' : labelFor(field)}: </Text>
-                      <Text style={styles.changeBefore}>{String(change.before ?? '—')}</Text>
-                      <Text style={styles.changeArrow}> → </Text>
-                      <Text style={styles.changeAfter}>{String(change.after ?? '—')}</Text>
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-          ))}
+            );
+          })}
           {query.data.total > (filters.pageSize ?? 20) ? (
             <Pager
               page={filters.page ?? 1}

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import AssigneeSelect from '@/components/AssigneeSelect';
+import { historyChanges } from '@/utils/history';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { errorMessage } from '@/api/client';
 import Button from '@/components/Button';
@@ -184,7 +185,7 @@ export function HistorySection({ leadId }: { leadId: string }) {
   const query = useHistory(leadId, filters);
   return <View style={{gap:12}}>
     <View style={[ui.panel,ui.row]}><TextInput accessibilityLabel="Search history" placeholder="Search history" value={text} onChangeText={setText} style={[ui.input,{flex:1}]} /><Button title="Search" variant="outline" onPress={()=>setFilters({page:1,pageSize:20,search:text.trim()||undefined})} /></View>
-    {query.isLoading ? <ActivityIndicator color={colors.primary}/> : query.isError ? <View style={ui.panel}><Text accessibilityRole="alert" style={ui.error}>{errorMessage(query.error)}</Text><Button title="Retry" variant="outline" onPress={()=>{void query.refetch();}}/></View> : !query.data?.items.length ? <View style={ui.panel}><Text style={ui.muted}>History appears here when this lead changes.</Text></View> : query.data.items.map((row:HistoryRecord)=><View key={row.id} style={ui.panel}><Text style={ui.label}>{row.summary}</Text><Text style={ui.muted}>{row.actorName} · {formatDateTime(row.createdAt)} IST · {labelFor(row.action)}</Text>{row.changes ? Object.entries(row.changes).filter(([key]) => !['assignedToId', 'recipientId'].includes(key)).map(([key,change])=><Text key={key} style={ui.muted}>{key === 'assignedTo' ? 'Assigned To' : labelFor(key)}: {String(change.before ?? '—')} → {String(change.after ?? '—')}</Text>) : null}</View>)}
+    {query.isLoading ? <ActivityIndicator color={colors.primary}/> : query.isError ? <View style={ui.panel}><Text accessibilityRole="alert" style={ui.error}>{errorMessage(query.error)}</Text><Button title="Retry" variant="outline" onPress={()=>{void query.refetch();}}/></View> : !query.data?.items.length ? <View style={ui.panel}><Text style={ui.muted}>History appears here when this lead changes.</Text></View> : query.data.items.map((row:HistoryRecord)=><View key={row.id} style={ui.panel}><Text style={ui.label}>{row.summary}</Text><Text style={ui.muted}>{row.actorName} · {formatDateTime(row.createdAt)} IST · {labelFor(row.action)}</Text>{historyChanges(row.changes).map(change=><Text key={change.field} style={ui.muted}>{change.label}: {change.before} → {change.after}</Text>)}</View>)}
     {query.data?.total ? <Pager page={filters.page??1} total={query.data.total} onChange={page=>setFilters(f=>({...f,page}))}/> : null}
   </View>;
 }
