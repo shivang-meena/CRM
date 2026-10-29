@@ -10,6 +10,7 @@ import {
   ProductMasterEntry,
 } from '@/api/productMaster';
 import { INVOICE_HSN_MASTER_KEY } from '@/api/hsnMaster';
+import { LEAD_PRODUCTS_KEY } from '@/api/serviceMaster';
 import Button from '@/components/Button';
 import { ProfileField } from './ProfileFields';
 
@@ -146,6 +147,14 @@ export default function ProductMasterEditor() {
       reset();
       setMessage(editingId ? 'Product updated successfully.' : 'Product added successfully.');
       await queryClient.invalidateQueries({ queryKey: PRODUCT_MASTER_KEY });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: LEAD_PRODUCTS_KEY }),
+        queryClient.invalidateQueries({ queryKey: ['customer-products'] }),
+        queryClient.invalidateQueries({ queryKey: ['leads'] }),
+        queryClient.invalidateQueries({ queryKey: ['lead'] }),
+        queryClient.invalidateQueries({ queryKey: ['customers'] }),
+        queryClient.invalidateQueries({ queryKey: ['customer'] }),
+      ]);
       await queryClient.invalidateQueries({ queryKey: INVOICE_HSN_MASTER_KEY });
     } catch (e) {
       setError(errorMessage(e));

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AdminOnly } from '../auth/permissions';
+import { AdminOnly, RequirePermissions } from '../auth/permissions';
 import { SaveCompanyProfileDto } from './company-profile.dto';
 import { SettingsService } from './settings.service';
 
@@ -9,6 +9,12 @@ import { SettingsService } from './settings.service';
 @AdminOnly()
 export class SettingsController {
   constructor(private readonly settings: SettingsService) {}
+
+  @Get('branding')
+  @RequirePermissions()
+  getCompanyBranding() {
+    return this.settings.getCompanyBranding();
+  }
 
   @Get()
   getCompanyProfile() {

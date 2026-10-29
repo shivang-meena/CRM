@@ -24,6 +24,9 @@ export class LeadsController {
     return this.leads.listServices();
   }
 
+  @Get('products')
+  products() { return this.leads.listProducts(); }
+
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.leads.findOne(id);

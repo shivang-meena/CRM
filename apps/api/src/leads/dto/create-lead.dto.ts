@@ -1,6 +1,6 @@
 import { LeadSource } from '@prisma/client';
 import {
-  IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, Min,
+  ArrayUnique, IsArray, IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, Min, ValidateIf,
 } from 'class-validator';
 
 export class CreateLeadDto {
@@ -14,6 +14,8 @@ export class CreateLeadDto {
   @IsOptional() @IsString() comment?: string;
   @IsOptional() @IsString() reference?: string;
   @IsOptional() @IsUUID() serviceId?: string | null;
+  @ValidateIf((_object, value) => value !== undefined) @IsArray() @ArrayUnique() @IsUUID('all', { each: true }) serviceIds?: string[];
+  @ValidateIf((_object, value) => value !== undefined) @IsArray() @ArrayUnique() @IsUUID('all', { each: true }) productIds?: string[];
   @IsOptional() @IsString() label?: string;
   @IsOptional() @IsString() assignedTo?: string;
   @IsOptional() @IsString() @IsNotEmpty() assignedToId?: string;

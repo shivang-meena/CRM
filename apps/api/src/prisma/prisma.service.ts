@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { tenantExtension } from '../tenant/tenant.extension';

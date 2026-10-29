@@ -444,7 +444,8 @@ export default function LeadDetailsSection({ lead, onEdit, onDelete, onCancel }:
         <Card title="Lead information" icon="person-outline" wide={wide}>
           <Item stacked={stacked} label="Name" value={lead.name} />
           <Item stacked={stacked} label="Company name" value={lead.companyName} />
-          <Item stacked={stacked} label="Service" value={lead.service?.name} />
+          <Item stacked={stacked} label="Services" value={lead.services?.map(item => item.name).join(', ') || lead.service?.name} />
+          <Item stacked={stacked} label="Products" value={lead.products?.map(item => item.name).join(', ')} />
           <Item stacked={stacked} label="Phone" value={lead.phone} />
           <Item stacked={stacked} label="Email address" value={lead.email} />
           <Item stacked={stacked} label="Address" value={lead.address} />

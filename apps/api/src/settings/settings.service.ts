@@ -7,6 +7,12 @@ import { SaveCompanyProfileDto } from './company-profile.dto';
 export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  getCompanyBranding() {
+    return this.prisma.companyProfile.findFirst({
+      select: { companyName: true, logo: true },
+    });
+  }
+
   async getCompanyProfile() {
     return this.prisma.companyProfile.findFirst();
   }

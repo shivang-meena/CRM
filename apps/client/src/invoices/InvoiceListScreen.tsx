@@ -950,30 +950,42 @@ export function InvoiceListScreen({ mode }: InvoiceListScreenProps) {
                       {previewCompany ? <InvoiceCompanyDetails profile={previewCompany} /> : null}
                     </View>
 
-                    <View style={printStyles.bankInfoRight}>
-                      <Text style={printStyles.bankInfoTitle}>Payment Details</Text>
-                      <Text style={printStyles.bankDetailLine}>
-                        Bank:{' '}
-                        <Text style={printStyles.bankDetailVal}>
-                          {previewRecord.type === 'INVOICE' ? previewRecord.bankName ?? '' : previewRecord.bankName || DEFAULT_DOCUMENT_CONFIG.bankName}
-                        </Text>
-                      </Text>
-                      <Text style={printStyles.bankDetailLine}>
-                        A/C:{' '}
-                        <Text style={printStyles.bankDetailVal}>
-                          {previewRecord.type === 'INVOICE' ? previewRecord.bankAccountNo ?? '' : previewRecord.bankAccountNo || DEFAULT_DOCUMENT_CONFIG.accountNo}
-                        </Text>
-                      </Text>
-                      <Text style={printStyles.bankDetailLine}>
-                        IFSC:{' '}
-                        <Text style={printStyles.bankDetailVal}>
-                          {previewRecord.type === 'INVOICE' ? previewRecord.bankIfsc ?? '' : previewRecord.bankIfsc || DEFAULT_DOCUMENT_CONFIG.ifscCode}
-                        </Text>
-                      </Text>
-                      {previewInvoiceSettings?.paymentUpiId ? <Text style={printStyles.bankDetailLine}>
-                        UPI ID: <Text style={printStyles.bankDetailVal}>{previewInvoiceSettings.paymentUpiId}</Text>
-                      </Text> : null}
-                    </View>
+                    {(() => {
+                      const bankName = (previewRecord.type === 'INVOICE' ? previewRecord.bankName : previewRecord.bankName || DEFAULT_DOCUMENT_CONFIG.bankName) || '';
+                      const accountNo = (previewRecord.type === 'INVOICE' ? previewRecord.bankAccountNo : previewRecord.bankAccountNo || DEFAULT_DOCUMENT_CONFIG.accountNo) || '';
+                      const ifscCode = (previewRecord.type === 'INVOICE' ? previewRecord.bankIfsc : previewRecord.bankIfsc || DEFAULT_DOCUMENT_CONFIG.ifscCode) || '';
+                      const upiId = previewInvoiceSettings?.paymentUpiId || '';
+
+                      if (!bankName.trim() && !accountNo.trim() && !ifscCode.trim() && !upiId.trim()) {
+                        return null;
+                      }
+
+                      return (
+                        <View style={printStyles.bankInfoRight}>
+                          <Text style={printStyles.bankInfoTitle}>Payment Details</Text>
+                          {bankName.trim() ? (
+                            <Text style={printStyles.bankDetailLine}>
+                              Bank: <Text style={printStyles.bankDetailVal}>{bankName}</Text>
+                            </Text>
+                          ) : null}
+                          {accountNo.trim() ? (
+                            <Text style={printStyles.bankDetailLine}>
+                              A/C: <Text style={printStyles.bankDetailVal}>{accountNo}</Text>
+                            </Text>
+                          ) : null}
+                          {ifscCode.trim() ? (
+                            <Text style={printStyles.bankDetailLine}>
+                              IFSC: <Text style={printStyles.bankDetailVal}>{ifscCode}</Text>
+                            </Text>
+                          ) : null}
+                          {upiId.trim() ? (
+                            <Text style={printStyles.bankDetailLine}>
+                              UPI ID: <Text style={printStyles.bankDetailVal}>{upiId}</Text>
+                            </Text>
+                          ) : null}
+                        </View>
+                      );
+                    })()}
                   </View>
 
                   <View style={printStyles.docDivider} />

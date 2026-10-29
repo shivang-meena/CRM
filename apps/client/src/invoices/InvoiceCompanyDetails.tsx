@@ -88,9 +88,9 @@ export default function InvoiceCompanyDetails({
   const location = [profile.city, profile.state, profile.country]
     .filter(Boolean)
     .join(', ');
-  const phone = [profile.dialCode, profile.contactNumber]
-    .filter(Boolean)
-    .join(' ');
+  const phone = profile.contactNumber?.trim()
+    ? [profile.dialCode, profile.contactNumber].filter(Boolean).join(' ')
+    : '';
   const textColor = { color: profile.fontColor };
  
   return (

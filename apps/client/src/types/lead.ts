@@ -15,6 +15,10 @@ export interface Lead {
   reference: string | null;
   serviceId?: string | null;
   service?: { id: string; name: string; isActive: boolean } | null;
+  serviceIds: string[];
+  productIds: string[];
+  services: { id: string; name: string; isActive: boolean }[];
+  products: { id: string; name: string; isActive: boolean }[];
   status: LeadStatus;
   source: LeadSource;
   label: string | null;
@@ -40,6 +44,8 @@ export interface LeadInput {
   comment?: string;
   reference?: string;
   serviceId?: string | null;
+  serviceIds?: string[];
+  productIds?: string[];
   status?: LeadStatus;
   source?: LeadSource;
   label?: string;

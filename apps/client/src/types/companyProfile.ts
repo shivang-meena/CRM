@@ -19,6 +19,8 @@ export type CompanyProfile = {
   staffWhatsAppDeviceReconnect: boolean;
 };
 
+export type CompanyBranding = Pick<CompanyProfile, 'companyName' | 'logo'>;
+
 export type InvoiceCompanyProfile = Pick<
   CompanyProfile,
   | 'companyName'

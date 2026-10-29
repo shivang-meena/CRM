@@ -10,11 +10,11 @@ export async function fetchLead(id: string): Promise<Lead> {
   return res.data;
 }
 export async function createLeadRequest(data: LeadInput): Promise<Lead> {
-  const res = await api.post<Lead>('/leads', data);
+  const res = await api.post<Lead>('/leads', data, { timeout: 30_000 });
   return res.data;
 }
 export async function updateLeadRequest(id: string, data: Partial<LeadInput>): Promise<Lead> {
-  const res = await api.patch<Lead>(`/leads/${id}`, data);
+  const res = await api.patch<Lead>(`/leads/${id}`, data, { timeout: 30_000 });
   return res.data;
 }
 export async function deleteLeadRequest(id: string, version: number): Promise<void> {

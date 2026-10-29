@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, UseGuards,
+  Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequirePermissions } from '../auth/permissions';
@@ -7,6 +7,7 @@ import { Actor } from '../crm/crm-core.service';
 import { VersionDto } from '../crm/crm.dto';
 import { CustomerListQueryDto } from './customers.dto';
 import { CustomersService } from './customers.service';
+import { UpdateCustomerSelectionsDto } from './customer-selections.dto';
 
 @UseGuards(JwtAuthGuard)
 @RequirePermissions('customer')
@@ -18,6 +19,15 @@ export class CustomersController {
   findAll(@Query() query: CustomerListQueryDto) {
     return this.customers.findAll(query);
   }
+
+  @Get('services') services() { return this.customers.listServices(); }
+  @Get('products') products() { return this.customers.listProducts(); }
+
+  @Patch(':id/selections') updateSelections(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCustomerSelectionsDto,
+    @Req() request: { user: Actor },
+  ) { return this.customers.updateSelections(id, dto, request.user); }
 
   @Get('by-lead/:leadId')
   async findByLead(@Param('leadId', ParseUUIDPipe) leadId: string) {

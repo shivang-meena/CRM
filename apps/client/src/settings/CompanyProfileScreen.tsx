@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchCompanyProfile, saveCompanyProfile } from "@/api/companyProfile";
+import { COMPANY_BRANDING_KEY, fetchCompanyProfile, saveCompanyProfile } from "@/api/companyProfile";
 import { errorMessage } from "@/api/client";
 import { CompanyProfile, EMPTY_COMPANY_PROFILE } from "@/types/companyProfile";
 import CompanyLogo from "./CompanyLogo";
@@ -71,20 +71,6 @@ function SectionHeading({
 
 function validate(profile: CompanyProfile): Errors {
   const errors: Errors = {};
-  const required = {
-    companyName: "Company Name",
-    contactNumber: "Company Contact Number",
-    email: "Company Email",
-    address: "Company Address",
-    country: "Country",
-    state: "State",
-    city: "City",
-    businessCategory: "Business Category",
-  } as const;
-  for (const [key, label] of Object.entries(required)) {
-    if (!String(profile[key as keyof CompanyProfile]).trim())
-      errors[key as keyof CompanyProfile] = `${label} is required.`;
-  }
   if (profile.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email.trim()))
     errors.email = "Enter a valid email address.";
   if (
@@ -93,11 +79,11 @@ function validate(profile: CompanyProfile): Errors {
       profile.contactNumber.replace(/\D/g, "").length < 4)
   )
     errors.contactNumber = "Enter a valid contact number.";
-  if (!/^\+\d{1,4}$/.test(profile.dialCode))
+  if (profile.dialCode && !/^\+\d{1,4}$/.test(profile.dialCode))
     errors.dialCode = "Choose a valid country calling code.";
-  if (!/^#[\da-f]{6}$/i.test(profile.themeColor))
+  if (profile.themeColor && !/^#[\da-f]{6}$/i.test(profile.themeColor))
     errors.themeColor = "Enter a six-digit hex color, e.g. #1966A6.";
-  if (!/^#[\da-f]{6}$/i.test(profile.fontColor))
+  if (profile.fontColor && !/^#[\da-f]{6}$/i.test(profile.fontColor))
     errors.fontColor = "Enter a six-digit hex color, e.g. #1966A6.";
   if (Boolean(profile.openingTime) !== Boolean(profile.closingTime))
     errors.openingTime =
@@ -211,6 +197,10 @@ function CompanyProfileForm({
     try {
       const saved = await mutation.mutateAsync(payload);
       queryClient.setQueryData(PROFILE_KEY, saved);
+      queryClient.setQueryData(COMPANY_BRANDING_KEY, {
+        companyName: saved.companyName,
+        logo: saved.logo,
+      });
       await queryClient.invalidateQueries({ queryKey: INVOICE_COMPANY_PROFILE_KEY });
       setProfile({ ...EMPTY_COMPANY_PROFILE, ...saved });
       setMessage("Company profile saved successfully.");
@@ -299,14 +289,13 @@ function CompanyProfileForm({
                 <View style={[styles.row, !wide && styles.stack]}>
                   <ProfileField
                     label="Company Name"
-                    required
                     value={profile.companyName}
                     onChange={(value) => update("companyName", value)}
                     error={errors.companyName}
                     maxLength={200}
                   />
                   <View style={fieldStyles.field}>
-                    <FieldLabel label="Company Contact Number" required />
+                    <FieldLabel label="Company Contact Number" />
                     <View style={styles.phoneRow}>
                       <View style={{ width: 82 }}>
                         <ProfileSelect
@@ -340,7 +329,6 @@ function CompanyProfileForm({
                   />
                   <ProfileField
                     label="Company Email"
-                    required
                     value={profile.email}
                     onChange={(value) => update("email", value)}
                     keyboardType="email-address"
@@ -350,7 +338,6 @@ function CompanyProfileForm({
                 </View>
                 <ProfileField
                   label="Company Address"
-                  required
                   multiline
                   value={profile.address}
                   onChange={(value) => update("address", value)}
@@ -369,7 +356,6 @@ function CompanyProfileForm({
               <View style={locationStyle}>
                 <ProfileSelect
                   label="Country"
-                  required
                   value={profile.country}
                   onChange={(value) => update("country", value)}
                   options={COUNTRIES}
@@ -379,7 +365,6 @@ function CompanyProfileForm({
               <View style={locationStyle}>
                 <ProfileSelect
                   label="State"
-                  required
                   value={profile.state}
                   onChange={(value) => update("state", value)}
                   options={
@@ -391,7 +376,6 @@ function CompanyProfileForm({
               <View style={locationStyle}>
                 <ProfileSelect
                   label="City"
-                  required
                   value={profile.city}
                   onChange={(value) => update("city", value)}
                   options={NO_OPTIONS}
@@ -401,7 +385,6 @@ function CompanyProfileForm({
               <View style={locationStyle}>
                 <ProfileSelect
                   label="Business Category"
-                  required
                   value={profile.businessCategory}
                   onChange={(value) => update("businessCategory", value)}
                   options={BUSINESS_CATEGORIES}

@@ -2,102 +2,122 @@ import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsEmail,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
 
 export class SaveCompanyProfileDto {
+  @IsOptional()
   @Transform(trim)
   @IsString()
-  @Matches(/\S/, { message: 'Company Name is required.' })
   @MaxLength(200)
-  companyName: string;
+  companyName?: string;
 
+  @IsOptional()
   @Transform(trim)
   @IsString()
+  @ValidateIf((_, val) => Boolean(val))
   @Matches(/^(?=(?:\D*\d){4})[0-9 ()-]{4,25}$/, {
     message: 'Enter a valid company contact number.',
   })
-  contactNumber: string;
+  contactNumber?: string;
 
+  @IsOptional()
   @IsString()
+  @ValidateIf((_, val) => Boolean(val))
   @Matches(/^\+\d{1,4}$/)
-  dialCode: string;
+  dialCode?: string;
 
+  @IsOptional()
   @Transform(trim)
   @IsString()
   @MaxLength(30)
-  gstNumber: string;
+  gstNumber?: string;
 
-  @Transform(trim)
-  @IsEmail()
-  @MaxLength(254)
-  email: string;
-
+  @IsOptional()
   @Transform(trim)
   @IsString()
-  @Matches(/\S/, { message: 'Company Address is required.' })
-  @MaxLength(2000)
-  address: string;
+  @ValidateIf((_, val) => Boolean(val))
+  @IsEmail()
+  @MaxLength(254)
+  email?: string;
 
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(2000)
+  address?: string;
+
+  @IsOptional()
   @IsString()
   @MaxLength(1500000)
   @Matches(
     /^(?:$|data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$|https:\/\/[^\s]+$)/,
     { message: 'Choose a PNG, JPG, WEBP or GIF logo (maximum 1 MB).' },
   )
-  logo: string;
+  logo?: string;
 
+  @IsOptional()
   @Transform(trim)
   @IsString()
-  @Matches(/\S/)
   @MaxLength(100)
-  country: string;
+  country?: string;
 
+  @IsOptional()
   @Transform(trim)
   @IsString()
-  @Matches(/\S/)
   @MaxLength(100)
-  state: string;
+  state?: string;
 
+  @IsOptional()
   @Transform(trim)
   @IsString()
-  @Matches(/\S/)
   @MaxLength(100)
-  city: string;
+  city?: string;
 
+  @IsOptional()
   @Transform(trim)
   @IsString()
-  @Matches(/\S/)
   @MaxLength(150)
-  businessCategory: string;
+  businessCategory?: string;
 
+  @IsOptional()
   @IsString()
   @Matches(/^(?:|(?:[01]\d|2[0-3]):[0-5]\d)$/)
-  openingTime: string;
+  openingTime?: string;
 
+  @IsOptional()
   @IsString()
   @Matches(/^(?:|(?:[01]\d|2[0-3]):[0-5]\d)$/)
-  closingTime: string;
+  closingTime?: string;
 
+  @IsOptional()
   @IsBoolean()
-  considerOvertime: boolean;
+  considerOvertime?: boolean;
 
+  @IsOptional()
   @IsString()
+  @ValidateIf((_, val) => Boolean(val))
   @Matches(/^#[0-9a-fA-F]{6}$/)
-  themeColor: string;
+  themeColor?: string;
 
+  @IsOptional()
   @IsString()
+  @ValidateIf((_, val) => Boolean(val))
   @Matches(/^#[0-9a-fA-F]{6}$/)
-  fontColor: string;
+  fontColor?: string;
 
+  @IsOptional()
   @IsBoolean()
-  missedFollowUpReminder: boolean;
+  missedFollowUpReminder?: boolean;
 
+  @IsOptional()
   @IsBoolean()
-  staffWhatsAppDeviceReconnect: boolean;
+  staffWhatsAppDeviceReconnect?: boolean;
 }

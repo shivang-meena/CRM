@@ -18,6 +18,8 @@ import { colors } from '@/theme/colors';
 import { sourceLabel, statusLabel } from '@/types/lead';
 import { LeadSection } from '@/types/leadActivities';
 import { formatDateTime, formatINR } from '@/utils/format';
+import CustomerSelectionsModal from './CustomerSelectionsModal';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function CustomerDetailsScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -25,11 +27,13 @@ export default function CustomerDetailsScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const query = useCustomer(id);
+  const queryClient = useQueryClient();
   const customer = query.data;
   const lead = customer?.lead;
   const summary = useSectionSummary(lead && !lead.deletedAt ? lead.id : '');
   const [section, setSection] = useState<LeadSection>('details');
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [selectionsOpen, setSelectionsOpen] = useState(false);
 
   const back = () => router.replace('/customers' as Href);
 
@@ -58,6 +62,8 @@ export default function CustomerDetailsScreen() {
     ['Address', lead.address || '—'],
     ['Comment', lead.comment || '—'],
     ['Reference', lead.reference || '—'],
+    ['Services', lead.services?.map(item => item.name).join(', ') || '—'],
+    ['Products', lead.products?.map(item => item.name).join(', ') || '—'],
     ['Lead Status', statusLabel(lead.status)],
     ['Source', sourceLabel(lead.source)],
     ['Label', lead.label || '—'],
@@ -126,6 +132,7 @@ export default function CustomerDetailsScreen() {
                 <Stars value={lead.rating} size={18} />
               </View>
             </View>
+            {!lead.deletedAt ? <View style={{ marginTop: 16, alignItems: 'flex-start' }}><Button title="Edit Services & Products" variant="outline" onPress={() => setSelectionsOpen(true)} /></View> : null}
           </View>
         ) : (
           <View style={styles.section}>
@@ -160,6 +167,7 @@ export default function CustomerDetailsScreen() {
           }}
         />
       ) : null}
+      {selectionsOpen && !lead.deletedAt ? <CustomerSelectionsModal customer={customer} visible onClose={() => setSelectionsOpen(false)} onSaved={updated => queryClient.setQueryData(['customer', updated.id], updated)} /> : null}
     </View>
   );
 }

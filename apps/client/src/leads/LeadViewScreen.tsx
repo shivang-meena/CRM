@@ -239,6 +239,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { errorMessage } from '@/api/client';
+import { notifyGlobalSuccess } from '@/components/FeedbackToast';
 import Button from '@/components/Button';
 import LeadDetailsModal from '@/components/lead/LeadDetailsModal';
 import { useLeads, useUpdateLead } from '@/hooks/useLeads';
@@ -526,6 +527,9 @@ export default function LeadViewScreen() {
     setRefreshError(null);
     try {
       await updateLead.mutateAsync({ id: lead.id, data: { status: nextStatus } });
+      const targetEntry = findStatus(nextStatus, statuses);
+      const statusName = targetEntry ? targetEntry.name : nextStatus;
+      notifyGlobalSuccess(`Lead status changed to "${statusName}"`, 'Status updated');
       const refreshed = await leadsQuery.refetch();
       if (refreshed.isError) setRefreshError(errorMessage(refreshed.error));
     } catch (error) {

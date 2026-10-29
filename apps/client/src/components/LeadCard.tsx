@@ -213,6 +213,7 @@ export default function LeadCard({ lead, onOpen, onMenu }: Props) {
   const overdue = isOverdue(lead);
   const dnd = useLeadDnd();
   const isDragging = dnd?.draggingLeadId === lead.id;
+  const isStatusPending = dnd?.pendingLeadIds.has(lead.id) ?? false;
   const isDraggingRef = useRef(false);
   const isWeb = Platform.OS === 'web';
 
@@ -308,8 +309,12 @@ export default function LeadCard({ lead, onOpen, onMenu }: Props) {
   if (isWeb) {
     return (
       <div
-        draggable
+        draggable={!isStatusPending}
         onDragStart={(e) => {
+          if (isStatusPending) {
+            e.preventDefault();
+            return;
+          }
           isDraggingRef.current = true;
           e.dataTransfer.setData('text/plain', lead.id);
           e.dataTransfer.effectAllowed = 'move';
@@ -329,10 +334,10 @@ export default function LeadCard({ lead, onOpen, onMenu }: Props) {
           width: '100%',
           minWidth: 0,
           boxSizing: 'border-box',
-          cursor: isDragging ? 'grabbing' : 'grab',
+          cursor: isStatusPending ? 'wait' : isDragging ? 'grabbing' : 'grab',
           userSelect: 'none',
           WebkitUserSelect: 'none',
-          opacity: isDragging ? 0.35 : 1,
+          opacity: isDragging ? 0.35 : isStatusPending ? 0.7 : 1,
           transition: 'opacity 0.15s ease',
         }}
       >

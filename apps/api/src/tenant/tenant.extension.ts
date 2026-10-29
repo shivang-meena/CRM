@@ -4,6 +4,8 @@ import { tenantStorage } from './tenant-context';
 /** Prisma MODEL names (PascalCase) that have an `adminId` column. Exactly 23. */
 export const TENANT_MODELS = new Set<string>([
   'Lead',
+  'LeadServiceSelection',
+  'LeadProductSelection',
   'ServiceMaster',
   'ProductMaster',
   'LeadStatusMaster',

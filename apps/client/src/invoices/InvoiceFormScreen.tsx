@@ -3015,8 +3015,17 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
     </View>
   );
  
+  const bankRows = [
+    ['Bank', documentBank.bankName],
+    ['Account no.', documentBank.accountNo],
+    ['IFSC', documentBank.ifscCode],
+    ...(documentBank.paymentUpiId ? [['UPI ID', documentBank.paymentUpiId]] : []),
+  ].filter(([, v]) => Boolean(v?.trim())) as [string, string][];
+
+  const hasBankDetails = bankRows.length > 0;
+
   const customerCard = (
-    <SectionCard flex={twoCol ? 1.45 : undefined} title={docType === 'QUOTATION' ? 'Quotation to' : 'Bill to'} subtitle="Choose the customer and confirm their state for tax" icon="person-outline">
+    <SectionCard flex={twoCol ? (hasBankDetails ? 1.45 : 1) : undefined} title={docType === 'QUOTATION' ? 'Quotation to' : 'Bill to'} subtitle="Choose the customer and confirm their state for tax" icon="person-outline">
       <View style={{ gap: 14 }}>
         <DropdownField
           label="Customer"
@@ -3133,44 +3142,20 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
     </SectionCard>
   );
  
-  const bankCard = (
+  const bankCard = hasBankDetails ? (
     <SectionCard flex={twoCol ? 1 : undefined} title="Payment details" subtitle="Bank details printed on the document" icon="card-outline">
       <View style={{ gap: 12 }}>
-        {[
-          ['Bank', documentBank.bankName],
-          ['Account no.', documentBank.accountNo],
-          ['IFSC', documentBank.ifscCode],
-          ...(documentBank.paymentUpiId ? [['UPI ID', documentBank.paymentUpiId]] : []),
-        ].map(([k, v]) => (
+        {bankRows.map(([k, v]) => (
           <View key={k} style={s.bankRow}>
             <Text style={s.bankKey}>{k}</Text>
             <Text style={s.bankVal} numberOfLines={1}>
-              {v || '—'}
+              {v}
             </Text>
           </View>
         ))}
-        {docType === 'INVOICE' && !editingExisting && (settingsQuery.isFetching || settingsQuery.isError || !invoiceSettings) ? (
-          <View style={{ gap: 8, marginTop: 2 }}>
-            {settingsQuery.isFetching ? (
-              <ActivityIndicator accessibilityLabel="Loading Invoice Settings" color={colors.primary} />
-            ) : (
-              <View style={s.alertBox}>
-                <Ionicons name="alert-circle" size={18} color={ui.danger} />
-                <View style={{ flex: 1, gap: 6 }}>
-                  <Text accessibilityRole="alert" style={s.alertText}>
-                    {settingsQuery.isError ? errorMessage(settingsQuery.error) : `Save ${isGstInvoice ? 'GST' : 'Non GST'} bank details and signature in Master Data → Invoice Settings.`}
-                  </Text>
-                  <Pressable accessibilityRole="button" onPress={() => { void settingsQuery.refetch(); }}>
-                    <Text style={s.linkText}>Reload Invoice Settings</Text>
-                  </Pressable>
-                </View>
-              </View>
-            )}
-          </View>
-        ) : null}
       </View>
     </SectionCard>
-  );
+  ) : null;
  
   const taxCard = (
     <SectionCard title="Tax and currency" subtitle="Rates are filled in automatically from the HSN master" icon="receipt-outline">
@@ -3851,7 +3836,7 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
  
           <View style={s.formCol}>
             <View style={{ zIndex: 60 }}>{headerCard}</View>
-            <Row cols={twoCol} z={50}>
+            <Row cols={twoCol && hasBankDetails} z={50}>
               {customerCard}
               {bankCard}
             </Row>
@@ -3979,12 +3964,27 @@ export function InvoiceFormScreen({ initialType = 'INVOICE', existingDocument, i
                   <Text style={printStyles.grandTotalValue}>{fmt(calculations.grandTotal)}</Text>
                 </View>
  
-                <View style={printStyles.divider} />
-                <Text style={[printStyles.fieldLabel, { marginBottom: 4 }]}>Payment Details:</Text>
-                <Text style={printStyles.companyMetaText}>
-                  Bank: {previewBank.bankName} | A/C: {previewBank.accountNo} | IFSC: {previewBank.ifscCode}
-                </Text>
-                {previewBank.paymentUpiId ? <Text style={printStyles.companyMetaText}>UPI ID: {previewBank.paymentUpiId}</Text> : null}
+                {Boolean(
+                  previewBank.bankName?.trim() ||
+                  previewBank.accountNo?.trim() ||
+                  previewBank.ifscCode?.trim() ||
+                  previewBank.paymentUpiId?.trim()
+                ) ? (
+                  <>
+                    <View style={printStyles.divider} />
+                    <Text style={[printStyles.fieldLabel, { marginBottom: 4 }]}>Payment Details:</Text>
+                    <Text style={printStyles.companyMetaText}>
+                      {[
+                        previewBank.bankName?.trim() ? `Bank: ${previewBank.bankName.trim()}` : null,
+                        previewBank.accountNo?.trim() ? `A/C: ${previewBank.accountNo.trim()}` : null,
+                        previewBank.ifscCode?.trim() ? `IFSC: ${previewBank.ifscCode.trim()}` : null,
+                      ].filter(Boolean).join(' | ')}
+                    </Text>
+                    {previewBank.paymentUpiId?.trim() ? (
+                      <Text style={printStyles.companyMetaText}>UPI ID: {previewBank.paymentUpiId.trim()}</Text>
+                    ) : null}
+                  </>
+                ) : null}
                 {docType === 'INVOICE' ? (
                   <InvoiceSignature
                     signature={previewInvoiceSettings?.signature}

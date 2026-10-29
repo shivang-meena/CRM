@@ -5,7 +5,7 @@ import { colors } from '@/theme/colors';
 import { errorMessage } from '@/api/client';
 import { useCreateLead, useUpdateLead } from '@/hooks/useLeads';
 import { useModuleQuery } from '@/hooks/useModuleQuery';
-import { fetchLeadServices, LEAD_SERVICES_KEY } from '@/api/serviceMaster';
+import { fetchLeadServices, fetchLeadProducts, LEAD_SERVICES_KEY, LEAD_PRODUCTS_KEY } from '@/api/serviceMaster';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { ProfileSelect } from '@/settings/ProfileFields';
 import { INDIA_STATES } from '@/settings/profileOptions';
@@ -17,7 +17,8 @@ import Button from './Button';
 import DateTimePickerModal from './DateTimePickerModal';
 import Stars from './Stars';
 import AssigneeSelect from './AssigneeSelect';
-import { useErrorToast } from './FeedbackToast';
+import { notifyGlobalSuccess, useErrorToast } from './FeedbackToast';
+import SearchableMultiSelect from './SearchableMultiSelect';
 
 type Props = {
   visible: boolean;
@@ -29,14 +30,14 @@ type Props = {
 type FormState = {
   name: string; companyName: string; phone: string; email: string;
   address: string; state: string; comment: string; reference: string;
-  serviceId: string;
+  serviceIds: string[]; productIds: string[];
   status: LeadStatus; source: LeadSource; label: string;
   estimatedAmount: string; rating: number; followUp: string; assignedTo: string; assignedToId: string;
 };
 
 const emptyForm = (assignee: string): FormState => ({
   name: '', companyName: '', phone: '', email: '', address: '', state: '', comment: '', reference: '',
-  serviceId: '',
+  serviceIds: [], productIds: [],
   status: 'NEW', source: 'CUSTOMER_REFERENCE', label: '',
   estimatedAmount: '', rating: 0, followUp: '', assignedTo: assignee, assignedToId: '',
 });
@@ -44,7 +45,7 @@ const emptyForm = (assignee: string): FormState => ({
 const fromLead = (l: Lead): FormState => ({
   name: l.name, companyName: l.companyName ?? '', phone: l.phone, email: l.email ?? '',
   address: l.address ?? '', state: l.state ?? '', comment: l.comment ?? '', reference: l.reference ?? '',
-  serviceId: l.serviceId ?? '',
+  serviceIds: l.serviceIds ?? (l.serviceId ? [l.serviceId] : []), productIds: l.productIds ?? [],
   status: l.status, source: l.source, label: l.label ?? '',
   estimatedAmount: String(l.estimatedAmount), rating: l.rating,
   followUp: formatDateTime(l.nextFollowUpAt), assignedTo: l.assignedTo, assignedToId: l.assignedToId ?? '',
@@ -100,6 +101,7 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
   const create = useCreateLead();
   const update = useUpdateLead();
   const services = useModuleQuery('lead', { queryKey: LEAD_SERVICES_KEY, queryFn: fetchLeadServices, enabled: visible });
+  const products = useModuleQuery('lead', { queryKey: LEAD_PRODUCTS_KEY, queryFn: fetchLeadProducts, enabled: visible });
   const statusesQuery = useLeadStatuses();
   const activeStatuses = statusesQuery.data?.filter((s) => s.isActive) ?? [];
   const statusOptions = activeStatuses.length > 0
@@ -144,7 +146,8 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
       state: f.state.trim() || undefined,
       comment: f.comment.trim(),
       reference: f.reference.trim(),
-      serviceId: f.serviceId || null,
+      serviceIds: f.serviceIds,
+      productIds: f.productIds,
       status: f.status,
       source: f.source,
       label: f.label.trim(),
@@ -156,8 +159,18 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
     };
 
     try {
-      if (lead) await update.mutateAsync({ id: lead.id, data: body });
-      else await create.mutateAsync(body);
+      if (lead) {
+        await update.mutateAsync({ id: lead.id, data: body });
+        if (lead.status !== body.status) {
+          const opt = statusOptions.find((s) => s.key === body.status);
+          notifyGlobalSuccess(`Lead status changed to "${opt?.label ?? body.status}"`, 'Status updated');
+        } else {
+          notifyGlobalSuccess('Lead details updated successfully', 'Lead updated');
+        }
+      } else {
+        await create.mutateAsync(body);
+        notifyGlobalSuccess('Lead created successfully', 'Lead added');
+      }
       onClose();
     } catch (e) {
       setErr(errorMessage(e));
@@ -174,22 +187,8 @@ export default function LeadFormModal({ visible, lead, defaultAssignee, onClose 
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             <TextField label="Name *" value={f.name} onChangeText={(v) => set('name', v)} />
             <TextField label="Company Name" value={f.companyName} onChangeText={(v) => set('companyName', v)} />
-            <View style={styles.field}>
-              <ProfileSelect
-                label="Service"
-                allowCustom={false}
-                value={services.data?.find((row) => row.id === f.serviceId)?.name || (f.serviceId === lead?.serviceId ? lead.service?.name : '') || ''}
-                options={(services.data ?? []).map((row) => row.name)}
-                onChange={(name) => set('serviceId', services.data?.find((row) => row.name === name)?.id ?? '')}
-              />
-              {services.isLoading ? <Text style={styles.label}>Loading services...</Text> : null}
-              {services.isError ? <>
-                <Text accessibilityRole="alert" style={styles.err}>{errorMessage(services.error)}</Text>
-                <Button title="Retry Services" variant="outline" onPress={() => { void services.refetch(); }} />
-              </> : null}
-              {services.isSuccess && !services.data?.length ? <Text style={styles.label}>No active services. Add services in General Settings.</Text> : null}
-              {f.serviceId ? <Button title="Clear Service" variant="outline" onPress={() => set('serviceId', '')} /> : null}
-            </View>
+            <SearchableMultiSelect label="Service" options={[...(services.data ?? []), ...(lead?.services ?? []).filter(item => !(services.data ?? []).some(row => row.id === item.id))]} selectedIds={f.serviceIds} onChange={(ids) => set('serviceIds', ids)} disabled={busy} loading={services.isLoading} error={services.isError ? errorMessage(services.error) : undefined} onRetry={() => { void services.refetch(); }} />
+            <SearchableMultiSelect label="Product" options={[...(products.data ?? []), ...(lead?.products ?? []).filter(item => !(products.data ?? []).some(row => row.id === item.id))]} selectedIds={f.productIds} onChange={(ids) => set('productIds', ids)} disabled={busy} loading={products.isLoading} error={products.isError ? errorMessage(products.error) : undefined} onRetry={() => { void products.refetch(); }} />
             <TextField label="Phone *" value={f.phone} onChangeText={(v) => set('phone', v)} keyboardType="phone-pad" />
             <TextField label="Email" value={f.email} onChangeText={(v) => set('email', v)} keyboardType="email-address" />
             <TextField label="Address" value={f.address} onChangeText={(v) => set('address', v)} multiline />

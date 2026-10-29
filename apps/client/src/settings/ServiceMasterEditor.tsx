@@ -149,11 +149,14 @@ export default function ServiceMasterEditor() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: SERVICE_MASTER_KEY }),
         queryClient.invalidateQueries({ queryKey: LEAD_SERVICES_KEY }),
+        queryClient.invalidateQueries({ queryKey: ['customer-services'] }),
         queryClient.invalidateQueries({ queryKey: HSN_MASTER_KEY }),
         queryClient.invalidateQueries({ queryKey: INVOICE_HSN_MASTER_KEY }),
         queryClient.invalidateQueries({ queryKey: ['sales-documents', 'hsn-master'] }),
         queryClient.invalidateQueries({ queryKey: ['leads'] }),
         queryClient.invalidateQueries({ queryKey: ['lead'] }),
+        queryClient.invalidateQueries({ queryKey: ['customers'] }),
+        queryClient.invalidateQueries({ queryKey: ['customer'] }),
       ]);
     } catch (e) {
       setError(errorMessage(e));

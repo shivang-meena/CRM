@@ -1,5 +1,11 @@
 import { api } from './client';
-import { CompanyProfile, InvoiceCompanyProfile } from '@/types/companyProfile';
+import { CompanyBranding, CompanyProfile, InvoiceCompanyProfile } from '@/types/companyProfile';
+
+export const COMPANY_BRANDING_KEY = ['company-branding'] as const;
+
+export async function fetchCompanyBranding(): Promise<CompanyBranding | null> {
+  return (await api.get<CompanyBranding | null>('/settings/company-profile/branding')).data;
+}
 
 export async function fetchInvoiceCompanyProfile(): Promise<InvoiceCompanyProfile | null> {
   return (

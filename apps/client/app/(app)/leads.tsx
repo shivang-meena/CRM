@@ -439,6 +439,7 @@ import { useDeleteLead, useLeads, useUpdateLead } from '@/hooks/useLeads';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { Lead, LeadStatus, STATUS_LIST } from '@/types/lead';
 import { LeadDndProvider } from '@/context/LeadDndContext';
+import { notifyGlobalSuccess } from '@/components/FeedbackToast';
 import ActionMenu from '@/components/ActionMenu';
 import Button from '@/components/Button';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -513,10 +514,13 @@ export default function LeadsBoard() {
     subtitle = 'Unable to load leads';
   }
 
-  const handleDropLead = (leadId: string, targetStatus: LeadStatus) => {
+  const handleDropLead = async (leadId: string, targetStatus: LeadStatus) => {
     const target = leads.find((l) => l.id === leadId);
     if (!target || target.status === targetStatus) return;
-    updateLead.mutate({ id: leadId, data: { status: targetStatus } });
+    await updateLead.mutateAsync({ id: leadId, data: { status: targetStatus } });
+    const targetCol = columns.find((c) => c.key === targetStatus);
+    const statusName = targetCol ? targetCol.label : targetStatus;
+    notifyGlobalSuccess(`Lead status changed to "${statusName}"`, 'Status updated');
   };
 
   async function confirmDelete() {

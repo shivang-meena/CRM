@@ -72,6 +72,8 @@ model Lead {
   reference       String?
   serviceId       String?
   service         ServiceMaster? @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  serviceSelections LeadServiceSelection[]
+  productSelections LeadProductSelection[]
   status          String     @default("NEW")
   source          LeadSource @default(CUSTOMER_REFERENCE)
   label           String?
@@ -113,6 +115,7 @@ model ServiceMaster {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   leads          Lead[]
+  leadSelections LeadServiceSelection[]
 
   @@unique([adminId, normalizedName])
   @@map("service_masters")
@@ -130,6 +133,7 @@ model ProductMaster {
   sgstRate       Decimal  @default(0) @db.Decimal(5, 2)
   cgstRate       Decimal  @default(0) @db.Decimal(5, 2)
   isActive       Boolean  @default(true)
+  leadSelections LeadProductSelection[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -137,6 +141,36 @@ model ProductMaster {
   @@map("product_masters")
   adminId String
   @@index([adminId])
+}
+
+model LeadServiceSelection {
+  adminId   String
+  leadId    String
+  serviceId String
+  position  Int @default(0)
+
+  lead    Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  service ServiceMaster @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@id([leadId, serviceId])
+  @@index([adminId, leadId])
+  @@index([serviceId])
+  @@map("lead_service_selections")
+}
+
+model LeadProductSelection {
+  adminId   String
+  leadId    String
+  productId String
+  position  Int @default(0)
+
+  lead    Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  product ProductMaster @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@id([leadId, productId])
+  @@index([adminId, leadId])
+  @@index([productId])
+  @@map("lead_product_selections")
 }
 
 model LeadStatusMaster {

@@ -470,6 +470,9 @@ import { Href, usePathname, useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
 import { useAuth } from '@/context/AuthContext';
 import Button from './Button';
+import { useQuery } from '@tanstack/react-query';
+import { COMPANY_BRANDING_KEY, fetchCompanyBranding, fetchCompanyProfile } from '@/api/companyProfile';
+import type { CompanyBranding } from '@/types/companyProfile';
 
 type Module =
   | 'lead' | 'reminder' | 'meeting'
@@ -477,7 +480,16 @@ type Module =
   | 'staff' | 'leave';
 
 export default function Sidebar({ horizontal, fillHeight = false }: { horizontal: boolean; fillHeight?: boolean }) {
-  const { userName, role, permissions, logout } = useAuth();
+  const { token, userName, role, permissions, logout } = useAuth();
+  const branding = useQuery<CompanyBranding | null>({
+    queryKey: role === 'admin' ? ['settings', 'company-profile'] : COMPANY_BRANDING_KEY,
+    queryFn: role === 'admin' ? fetchCompanyProfile : fetchCompanyBranding,
+    enabled: Boolean(token) && (role === 'admin' || role === 'staff'),
+    staleTime: 60_000,
+  });
+  const companyName = branding.data?.companyName.trim() || 'Company';
+  const companyLogo = branding.data?.logo.trim();
+  const [failedLogo, setFailedLogo] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const [invoiceExpanded, setInvoiceExpanded] = useState(true);
@@ -577,15 +589,20 @@ export default function Sidebar({ horizontal, fillHeight = false }: { horizontal
       {/* Brand lockup — serif wordmark like ERP, CRM colors */}
       <View style={s.brand}>
         <View style={s.logoTile}>
-          <Image
-            source={require('../../assets/images/image.png')}
-            style={s.logo}
-            resizeMode="contain"
-          />
+          {companyLogo && failedLogo !== companyLogo ? (
+            <Image
+              source={{ uri: companyLogo }}
+              style={s.logo}
+              resizeMode="contain"
+              accessibilityLabel={companyName + ' logo'}
+              onError={() => setFailedLogo(companyLogo)}
+            />
+          ) : (
+            <Ionicons name="business-outline" size={24} color={C.accent} />
+          )}
         </View>
         <View style={s.brandText}>
-          <Text numberOfLines={1} style={s.wordmark}>SHIVORA</Text>
-          <Text numberOfLines={1} style={s.wordmarkSub}>TECHNOLOGIES</Text>
+          <Text numberOfLines={2} accessibilityLabel={companyName} style={s.wordmark}>{companyName}</Text>
         </View>
       </View>
 
