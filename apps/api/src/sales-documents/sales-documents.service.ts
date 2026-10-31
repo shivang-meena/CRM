@@ -395,6 +395,31 @@ export class SalesDocumentsService {
     return `${prefix}-${year}-${seq}`;
   }
 
+  /** Tenant guard: every linked master record must belong to the current admin (auto-scoped lookups). */
+  private async assertPaymentMethodAndBrochureOwned(
+    paymentMethodId?: string | null,
+    brochureId?: string | null,
+  ) {
+    if (paymentMethodId) {
+      const method = await this.prisma.paymentMethodMaster.findFirst({
+        where: { id: paymentMethodId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!method) {
+        throw new BadRequestException('Selected payment method does not exist.');
+      }
+    }
+    if (brochureId) {
+      const brochure = await this.prisma.brochureMaster.findFirst({
+        where: { id: brochureId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!brochure) {
+        throw new BadRequestException('Selected brochure does not exist.');
+      }
+    }
+  }
+
   async listDocuments(query: SalesDocumentQueryDto) {
     const where: any = { deletedAt: null };
 
@@ -508,6 +533,11 @@ export class SalesDocumentsService {
     if (!customer) {
       throw new NotFoundException('Selected customer does not exist.');
     }
+
+    await this.assertPaymentMethodAndBrochureOwned(
+      dto.paymentMethodId,
+      dto.brochureId,
+    );
 
     const activeGstMode = dto.gstMode ?? dto.gstType ?? GstModeDto.NON_GST;
     const isGstInvoice =
@@ -724,6 +754,11 @@ export class SalesDocumentsService {
     if (!customer) {
       throw new NotFoundException('Selected customer does not exist.');
     }
+
+    await this.assertPaymentMethodAndBrochureOwned(
+      dto.paymentMethodId !== existing.paymentMethodId ? dto.paymentMethodId : undefined,
+      dto.brochureId !== existing.brochureId ? dto.brochureId : undefined,
+    );
 
     const activeGstMode = dto.gstMode ?? dto.gstType ?? GstModeDto.NON_GST;
     const resolvedItems = await this.hsnMaster.resolveItems(dto.items, activeGstMode, existing.items, existing.gstMode);
@@ -1226,6 +1261,15 @@ export class SalesDocumentsService {
   }
 
   async create(leadId: string, type: any, body: any, actor: any) {
+    // Tenant guard: this lookup is auto-scoped to the current admin. A lead of another admin is "not found".
+    const ownLead = await this.prisma.lead.findFirst({
+      where: { id: leadId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!ownLead) {
+      throw new NotFoundException('Lead not found.');
+    }
+
     let customer = await this.prisma.customer.findUnique({ where: { leadId } });
     if (!customer) {
       customer = await this.prisma.customer.create({
@@ -1292,6 +1336,15 @@ export class SalesDocumentsService {
   }
 
   async pay(leadId: string, id: string, body: any, actor: any) {
+    // Tenant guard: invoice must belong to the current admin (auto-scoped lookup).
+    const ownInvoice = await this.prisma.salesDocument.findFirst({
+      where: { id, type: 'INVOICE', deletedAt: null },
+      select: { id: true },
+    });
+    if (!ownInvoice) {
+      throw new NotFoundException('Invoice not found.');
+    }
+
     const payment = await this.prisma.invoicePayment.create({
       data: {
         adminId: currentAdminId(),

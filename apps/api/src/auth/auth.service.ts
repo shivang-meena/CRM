@@ -9,6 +9,7 @@ import type { AuthenticatedUser } from './permissions';
 import { LoginDto } from './dto/login.dto';
 import { StaffLoginDto } from './dto/staff-login.dto';
 import { LoginAttempts } from './login-attempts';
+import { passwordFingerprint } from './token-fingerprint';
 
 @Injectable()
 export class AuthService {
@@ -31,7 +32,12 @@ export class AuthService {
     this.attempts.assertAllowed(attemptKey);
     this.attempts.reset(attemptKey);
 
-    const accessToken = await this.jwt.signAsync({ sub: admin.id, name: admin.name, role: 'admin' });
+    const accessToken = await this.jwt.signAsync({
+      sub: admin.id,
+      name: admin.name,
+      role: 'admin',
+      pwv: passwordFingerprint(admin.passwordHash),
+    });
     return {
       accessToken,
       user: {
@@ -68,7 +74,12 @@ export class AuthService {
 
     const permissions = staffEffectivePermissions(staff, adminFeatures(admin));
     const name = `${staff.firstName} ${staff.lastName}`;
-    const accessToken = await this.jwt.signAsync({ sub: staff.id, name, role: 'staff' });
+    const accessToken = await this.jwt.signAsync({
+      sub: staff.id,
+      name,
+      role: 'staff',
+      pwv: passwordFingerprint(staff.passwordHash),
+    });
     return {
       accessToken,
       user: {

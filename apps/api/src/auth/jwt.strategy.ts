@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { runAsSystem } from '../tenant/tenant-context';
 import { adminFeatures } from './features';
 import type { AuthenticatedUser } from './permissions';
+import { passwordFingerprint } from './token-fingerprint';
 
 export const BLOCKED_MESSAGE = 'Your account has been blocked. Please contact support.';
 
@@ -19,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: string; name: string; role?: string }): Promise<AuthenticatedUser> {
+  async validate(payload: { sub: string; name: string; role?: string; pwv?: string }): Promise<AuthenticatedUser> {
     if (typeof payload.sub !== 'string' || !payload.sub) throw new UnauthorizedException('Invalid account');
 
     // 1) SUPER ADMIN (credentials only in .env, never in the database)
@@ -40,6 +41,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       const admin = await this.prisma.admin.findFirst({ where: { id: payload.sub, deletedAt: null } });
       if (!admin) throw new UnauthorizedException('Invalid account');
       if (admin.status !== 'ACTIVE') throw new UnauthorizedException(BLOCKED_MESSAGE);
+      if (payload.pwv !== passwordFingerprint(admin.passwordHash)) {
+        throw new UnauthorizedException('Session expired. Please log in again.');
+      }
       return {
         id: admin.id,
         name: admin.name,
@@ -59,6 +63,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       await this.prisma.staffMember.findFirst({
         where: { id: payload.sub, deletedAt: null, status: 'ACTIVE', canLoginApp: true },
         select: {
+          passwordHash: true,
           id: true, adminId: true, firstName: true, lastName: true, email: true,
           permLead: true, permReminder: true, permMeeting: true, permNote: true, permCalendar: true,
           permCustomer: true, permInvoice: true, permStaff: true, permLeave: true,
@@ -66,6 +71,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }),
     );
     if (!staff) throw new UnauthorizedException('Staff account is inactive or access has been revoked');
+    if (payload.pwv !== passwordFingerprint(staff.passwordHash)) {
+      throw new UnauthorizedException('Session expired. Please log in again.');
+    }
 
     const admin = await this.prisma.admin.findFirst({ where: { id: staff.adminId, deletedAt: null } });
     if (!admin) throw new UnauthorizedException('Invalid account');
