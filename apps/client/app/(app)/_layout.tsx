@@ -23,7 +23,7 @@ export default function AppLayout() {
       </View>
     );
   }
-  if (!token) return <Redirect href={'/login' as any} />;
+  if (!token) return <Redirect href={'/landing' as any} />;
   // The super admin has no CRM; send them to their own panel.
   if (role === 'super_admin') return <Redirect href={'/super-admin' as any} />;
 
